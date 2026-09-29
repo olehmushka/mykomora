@@ -1,0 +1,94 @@
+openapi: 3.1.0
+info:
+  title: mykomora core-api
+  description: |
+    Family inventory API. This file is the single source of truth for the HTTP
+    contract: Go handlers and types are generated from it with `oapi-codegen`,
+    and the web client's types with `openapi-typescript`. Edit the spec first,
+    then regenerate. Never hand-edit generated code.
+  version: 0.1.0
+  license:
+    name: Proprietary
+servers:
+  - url: http://localhost:8081
+    description: Local development (core-api directly)
+  - url: http://localhost:8080
+    description: Local development (through Caddy)
+
+tags:
+  - name: system
+    description: Operational endpoints — no tenant data, no authentication.
+
+paths:
+  /healthz:
+    get:
+      operationId: getHealthz
+      tags: [system]
+      summary: Liveness probe
+      description: Returns 200 as long as the process is serving. Does not touch the database.
+      responses:
+        "200":
+          description: The process is alive.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /api/v1/ping:
+    get:
+      operationId: getPing
+      tags: [system]
+      summary: Round-trip probe
+      description: |
+        Exercises the full request path — generated handler, sqlc query, Postgres —
+        and returns the database's own clock. Exists to prove the toolchain end to
+        end; it carries no domain meaning.
+      responses:
+        "200":
+          description: The database answered.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PingResult"
+        "503":
+          description: The database did not answer.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+          description: Always `ok`; a non-200 status is the real signal.
+
+    PingResult:
+      type: object
+      required: [now, database]
+      properties:
+        now:
+          type: string
+          format: date-time
+          description: Current time as reported by Postgres, not by the API process.
+        database:
+          type: string
+          enum: [ok]
+          description: Always `ok`; the 503 response covers the failure case.
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Stable, machine-readable error code.
+          examples: [database_unavailable]
+        message:
+          type: string
+          description: Human-readable detail. Localised from the Go message catalogue (M2 onward).

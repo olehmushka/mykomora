@@ -1,0 +1,83 @@
+# golangci-lint v2 configuration.
+#
+# The set is deliberately strict: this codebase will hold a family's entire
+# inventory behind a tenancy invariant, so `gosec` and complexity limits earn
+# their keep. Generated code is excluded rather than appeased.
+version: "2"
+
+linters:
+  enable:
+    - errcheck      # an ignored error is a silent data bug
+    - govet
+    - staticcheck
+    - unused
+    - revive        # style and documentation
+    - gosec         # security
+    - gocyclo       # complexity limits
+    - gocritic
+    - dupl          # copy-paste detection
+
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+
+    gocyclo:
+      min-complexity: 12
+
+    dupl:
+      threshold: 120
+
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+        - opinionated
+      disabled-checks:
+        # Conflicts with the `if err := ...; err != nil` idiom used throughout.
+        - ifElseChain
+
+    revive:
+      rules:
+        - name: exported
+        - name: error-strings
+        - name: error-naming
+        - name: errorf
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: indent-error-flow
+        - name: var-declaration
+        - name: receiver-naming
+        - name: unexported-return
+        - name: package-comments
+        - name: blank-imports
+        - name: range
+        - name: superfluous-else
+        - name: unreachable-code
+        - name: time-naming
+
+  exclusions:
+    generated: strict
+    rules:
+      # Tests may repeat themselves; a table test that reads clearly is worth
+      # more than a deduplicated one, and assertions are not security surface.
+      - path: _test\.go$
+        linters:
+          - dupl
+          - gosec
+          - gocyclo
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      # stdlib | third-party | this module — the three-group order in CLAUDE.md.
+      local-prefixes:
+        - github.com/olehmushka/mykomora/core-api
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
