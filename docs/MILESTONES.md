@@ -29,10 +29,15 @@ Prove the entire toolchain end to end before writing any domain code.
 - OpenAPI 3.1 file with one trivial endpoint → `oapi-codegen` → handler → `sqlc` query → Postgres
 - goose migration #1: extensions `pgcrypto`, `unaccent`, `pg_trgm`
 - web: Next.js, TS `strict` + `noUncheckedIndexedAccess`, Tailwind, ESLint/Prettier, `@/` alias, calling that endpoint
-- `deploy/docker-compose.yml` — postgres, core-api, web, caddy, minio (local S3) — plus `.env.example`
+- `deploy/docker-compose.yml` — postgres, core-api, web, caddy, LocalStack (local S3) — plus `.env.example`
 - GitHub Actions: lint, test and build both services; codegen-drift check; migration up/down check
 
 **Done when:** `make dev` gives a working local stack and CI is green on a PR to `main`.
+
+> **Delivered with one substitution.** MinIO was the planned local S3 stand-in, but its images were
+> withdrawn from Docker Hub — `minio/minio` and `minio/mc` no longer resolve — so a fresh clone
+> could not start the stack. LocalStack takes its place, pinned to the 4.x line because `latest` is
+> now a licensed build. The S3 API contract is unchanged and production remains R2/B2.
 
 ---
 
@@ -81,7 +86,7 @@ Prove the entire toolchain end to end before writing any domain code.
 
 ## M4 — Photos & attachments *(4–5 days)*
 
-- `item_photos`, `item_attachments`; storage interface with an S3-compatible implementation (MinIO locally, R2/B2 in production)
+- `item_photos`, `item_attachments`; storage interface with an S3-compatible implementation (LocalStack locally, R2/B2 in production)
 - `POST /uploads/presign` plus confirm endpoints; server-side content-type and size validation; private bucket, presigned GETs
 - Client-side resize and thumbnail generation before upload; camera capture on mobile
 - Photo gallery with primary selection and reordering; receipts and manuals on the item detail page

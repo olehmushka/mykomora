@@ -56,7 +56,7 @@ func TestGetHealthzReportsOK(t *testing.T) {
 
 	srv := newTestServer(t, stubQuerier{now: time.Now()})
 	rec := httptest.NewRecorder()
-	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
+	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", http.NoBody))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
@@ -79,7 +79,7 @@ func TestGetHealthzIgnoresDatabaseFailure(t *testing.T) {
 
 	srv := newTestServer(t, stubQuerier{err: errors.New("connection refused")})
 	rec := httptest.NewRecorder()
-	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
+	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", http.NoBody))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
@@ -93,7 +93,7 @@ func TestGetPingReturnsDatabaseClock(t *testing.T) {
 
 	srv := newTestServer(t, stubQuerier{now: want})
 	rec := httptest.NewRecorder()
-	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/ping", nil))
+	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/ping", http.NoBody))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
@@ -120,7 +120,7 @@ func TestGetPingReportsDatabaseUnavailable(t *testing.T) {
 
 	srv := newTestServer(t, stubQuerier{err: errors.New("connection refused")})
 	rec := httptest.NewRecorder()
-	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/ping", nil))
+	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/ping", http.NoBody))
 
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusServiceUnavailable)

@@ -1,0 +1,202 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# A second push to the same PR cancels the first: the older result is never the
+# one that matters.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION: "1.26"
+  NODE_VERSION: "22"
+
+jobs:
+  core-api-lint:
+    name: core-api / lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: core-api/go.sum
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.13.1
+          working-directory: core-api
+
+  core-api-test:
+    name: core-api / test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: core-api/go.sum
+
+      # Runs the integration tests too: testcontainers boots Postgres on the
+      # runner's Docker daemon, applies the goose migrations and exercises the
+      # generated sqlc queries against the resulting schema.
+      - name: Unit and integration tests
+        working-directory: core-api
+        run: go test -race -count=1 -tags=integration -timeout=15m ./...
+
+  codegen-drift:
+    name: codegen drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: core-api/go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install web dependencies
+        working-directory: web
+        run: npm ci
+
+      # Generated code is committed. If regenerating changes anything, the spec
+      # and the code have drifted and the contract is no longer the source of
+      # truth. Tool versions come from go.mod's tool directives, so CI uses
+      # byte-identical versions to a developer's machine.
+      - name: Regenerate everything
+        run: make generate
+
+      - name: Fail on drift
+        run: |
+          if ! git diff --exit-code; then
+            echo "::error::Generated code is out of date. Run 'make generate' and commit the result."
+            exit 1
+          fi
+
+  migrations:
+    name: migrations / up, down, up
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: mykomora
+          POSTGRES_PASSWORD: mykomora
+          POSTGRES_DB: mykomora
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mykomora -d mykomora"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+
+    env:
+      DATABASE_URL: postgres://mykomora:mykomora@localhost:5432/mykomora?sslmode=disable
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: core-api/go.sum
+
+      # Every migration must be reversible. Rolling forward, all the way back to
+      # base, and forward again is what proves the down path was actually
+      # written rather than stubbed.
+      - name: goose up
+        working-directory: core-api
+        run: make migrate-up
+
+      - name: goose down to base
+        working-directory: core-api
+        run: make migrate-reset
+
+      - name: goose up again
+        working-directory: core-api
+        run: make migrate-up
+
+      # Needs the migrated schema, so it runs here rather than in the lint job.
+      # This is where an unscoped query fails the build.
+      - name: sqlc vet
+        working-directory: core-api
+        run: make vet-sql
+
+  web:
+    name: web / lint, types, test, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+
+      - name: Prettier
+        run: npm run format:check
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
+  images:
+    name: images / build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Builds the production runtime stages, which Compose never exercises
+      # locally, so a broken Dockerfile is caught before deploy day.
+      - name: Build core-api runtime image
+        uses: docker/build-push-action@v6
+        with:
+          context: core-api
+          target: runtime
+          push: false
+          cache-from: type=gha,scope=core-api
+          cache-to: type=gha,scope=core-api,mode=max
+
+      - name: Build web runtime image
+        uses: docker/build-push-action@v6
+        with:
+          context: web
+          target: runtime
+          push: false
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,scope=web,mode=max
