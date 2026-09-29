@@ -64,6 +64,13 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+    healthcheck:
+      # start_period is generous because the dev stage compiles on first boot.
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${CORE_API_PORT}/healthz || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 180s
 
   web:
     build:
