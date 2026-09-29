@@ -1,0 +1,41 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    # goose migrations double as the schema: one source of truth, no drift
+    # between what sqlc type-checks against and what actually ships.
+    schema: "db/migrations"
+    queries: "db/queries"
+    # Only `sqlc vet` connects; `sqlc generate` type-checks offline against the
+    # migrations above, so codegen never depends on a running database.
+    database:
+      uri: "${DATABASE_URL}"
+    analyzer:
+      # Keep codegen offline: types are inferred from the migrations, not from a
+      # live server, so `make generate` works on a laptop with nothing running.
+      database: false
+    gen:
+      go:
+        package: "db"
+        out: "internal/db"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_json_tags: true
+        emit_empty_slices: true
+    rules:
+      - sqlc/db-prepare
+      - family-scoped
+
+rules:
+  # SPEC 4, "Tenancy invariant": every query takes family_id and every handler
+  # resolves it from the session. A query without a family scope is a review
+  # failure. This makes it a CI failure too.
+  #
+  # The allowlist is intentionally in this file rather than in a magic comment:
+  # widening it is a diff a reviewer cannot miss.
+  - name: family-scoped
+    message: >-
+      query is not family-scoped: it must filter or insert on family_id
+      (see SPEC.md "Tenancy invariant"). If it genuinely touches no tenant data,
+      add its name to the allowlist in the family-scoped rule in sqlc.yaml.
+    rule: >-
+      !query.sql.contains("family_id") && !(query.name in ["GetServerTime"])

@@ -1,0 +1,178 @@
+# Local development stack. Run it from the repo root with `make dev`.
+#
+# The shape mirrors production — Caddy in front, core-api and web behind it,
+# Postgres and S3-compatible storage beneath — so that what works here is what
+# gets deployed. Differences are deliberate and limited to: plain HTTP, source
+# bind-mounts with live reload, and MinIO standing in for the real bucket.
+
+name: mykomora
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      # Published so psql, `make migrate-*` and `sqlc vet` work from the host.
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # Postgres 18+ wants a single mount at /var/lib/postgresql, with the data
+      # in a version-specific subdirectory, so that pg_upgrade --link can work
+      # without crossing a mount boundary. Mounting .../data instead is ignored.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  # One-shot: brings the schema up to date, then exits. core-api waits for it to
+  # succeed, so the API never serves against a stale schema.
+  migrate:
+    build:
+      context: ../core-api
+      target: dev
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    command: ["go", "tool", "goose", "-dir", "db/migrations", "postgres", "${DATABASE_URL}", "up"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  core-api:
+    build:
+      context: ../core-api
+      target: dev
+    restart: unless-stopped
+    environment:
+      ENV: ${ENV}
+      LOG_LEVEL: ${LOG_LEVEL}
+      PORT: ${CORE_API_PORT}
+      DATABASE_URL: ${DATABASE_URL}
+    volumes:
+      # Source is mounted for live reload; the module and build caches are named
+      # volumes so a rebuild after `make down` is not a cold one.
+      - ../core-api:/app
+      - core-api-gomod:/go/pkg/mod
+      - core-api-gocache:/root/.cache/go-build
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      # start_period is generous because the dev stage compiles on first boot.
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${CORE_API_PORT}/healthz || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 180s
+
+  web:
+    build:
+      context: ../web
+      target: dev
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: ${WEB_PORT}
+      CORE_API_URL: ${CORE_API_URL}
+    volumes:
+      - ../web:/app
+      # Keep the image's node_modules and .next: the host's are the wrong
+      # platform, and mounting over them breaks the dev server.
+      - web-node-modules:/app/node_modules
+      - web-next-cache:/app/.next
+    depends_on:
+      - core-api
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      CORE_API_PORT: ${CORE_API_PORT}
+      WEB_PORT: ${WEB_PORT}
+    ports:
+      - "${PUBLIC_PORT:-8080}:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - web
+      - core-api
+
+  # S3-compatible object storage. Nothing uses it until M4; it is here so the
+  # local stack has the same set of moving parts as production from the start.
+  #
+  # LocalStack stands in for the production bucket (R2/B2). MinIO was the
+  # original choice in SPEC.md, but its images were withdrawn from Docker Hub,
+  # so a fresh clone could no longer start the stack. LocalStack emulates the
+  # parts M4 depends on — presigned PUT and GET against a private bucket.
+  #
+  # Pinned to the 4.x line on purpose: from release 2026.03 the `latest` tag is
+  # a licensed build that refuses to start without an auth token, and the
+  # S3-only `s3-latest` image was discontinued at the same time.
+  s3:
+    image: localstack/localstack:4
+    restart: unless-stopped
+    environment:
+      SERVICES: s3
+      DEBUG: "0"
+      # Fixed dummy credentials: local only, and never valid anywhere else.
+      AWS_DEFAULT_REGION: ${S3_REGION}
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+    ports:
+      - "${S3_PORT:-4566}:4566"
+    volumes:
+      - s3-data:/var/lib/localstack
+    healthcheck:
+      test: ["CMD-SHELL", "awslocal s3 ls >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 20s
+
+  # One-shot: creates the bucket.
+  #
+  # No public-read policy is attached, but note that LocalStack does not enforce
+  # IAM unless asked to, so anonymous access succeeds locally. Privacy is a
+  # production property of the real bucket (R2/B2); what the local stack proves
+  # is the presigned PUT/GET flow itself (SPEC 6, "Photos and attachments").
+  s3-init:
+    image: localstack/localstack:4
+    depends_on:
+      s3:
+        condition: service_healthy
+    environment:
+      AWS_DEFAULT_REGION: ${S3_REGION}
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+      AWS_ENDPOINT_URL: http://s3:4566
+      S3_BUCKET: ${S3_BUCKET}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        aws --endpoint-url "$$AWS_ENDPOINT_URL" s3api create-bucket \
+          --bucket "$$S3_BUCKET" --region "$$AWS_DEFAULT_REGION" 2>/dev/null \
+          || echo "bucket $$S3_BUCKET already exists"
+        aws --endpoint-url "$$AWS_ENDPOINT_URL" s3api head-bucket --bucket "$$S3_BUCKET"
+        echo "bucket $$S3_BUCKET ready"
+    restart: "no"
+
+volumes:
+  postgres-data:
+  s3-data:
+  caddy-data:
+  caddy-config:
+  core-api-gomod:
+  core-api-gocache:
+  web-node-modules:
+  web-next-cache:

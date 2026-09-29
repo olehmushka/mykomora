@@ -1,0 +1,27 @@
+# --- Go / core-api ---
+core-api/bin/
+core-api/tmp/
+*.test
+*.out
+coverage.txt
+
+# --- Node / web ---
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+.eslintcache
+
+# --- local env ---
+.env
+.env.local
+.env.*.local
+deploy/.env
+
+# --- editors / OS ---
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp

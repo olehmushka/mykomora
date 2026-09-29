@@ -1,0 +1,10 @@
+# oapi-codegen configuration. Regenerate with `make generate`; CI fails on drift.
+# The generated file is committed and must never be hand-edited.
+package: api
+output: internal/api/api.gen.go
+generate:
+  chi-server: true
+  strict-server: true
+  models: true
+output-options:
+  skip-prune: false

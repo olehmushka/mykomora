@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-This repository is in the pre-scaffolding stage: it contains this file, a README, and the approved
-specification. There is no code or build tooling yet, so there are no build/lint/test commands to
-document — update this file once M0 (walking skeleton) lands and real commands exist.
+M0 (walking skeleton) has landed: both services are scaffolded, the local stack runs, and CI
+enforces lint, tests, codegen drift and migration reversibility. No domain code exists yet — the
+first real tables and endpoints arrive in M1.
 
 The domain is settled and written down. Treat these as the source of truth and read them before
 proposing domain changes:
@@ -19,7 +19,48 @@ Two constraints from the spec that are easy to violate and expensive to undo:
 - **core-api owns identity.** The web app is a thin client. Auth must never migrate into Next.js,
   or the planned mobile client inherits a rewrite.
 - **Every query is family-scoped.** Each sqlc query takes `family_id` and every handler resolves it
-  from the session. An unscoped query is a review failure.
+  from the session. An unscoped query is a review failure — and now a CI failure: `sqlc.yaml`
+  carries a `family-scoped` vet rule that fails any query not mentioning `family_id` unless its
+  name is in the rule's explicit allowlist. Widening that allowlist is a visible diff; do it only
+  for queries that genuinely touch no tenant data.
+
+## Commands
+
+Run everything from the repo root. `make help` lists all targets.
+
+| Command | What it does |
+|---|---|
+| `make dev` | Build and start the whole local stack; prints the URLs |
+| `make down` / `make clean` | Stop the stack, keeping / deleting volumes |
+| `make logs` | Follow logs from every service |
+| `make generate` | Regenerate all generated code, Go and TypeScript |
+| `make lint` | golangci-lint, ESLint and Prettier |
+| `make test` | Unit tests, both services — no Docker needed |
+| `make test-integration` | Adds the testcontainers tests — needs Docker |
+| `make check` | Everything CI runs, minus the Docker-bound jobs |
+| `make vet-sql` | `sqlc vet`, including the family-scoping rule (stack must be up) |
+| `make migrate-create name=add_items` | New goose migration |
+
+The app is served through Caddy on one origin: <http://localhost:8080>, with `/api/*` and
+`/healthz` going to core-api and everything else to the web app.
+
+### Generated code — never hand-edit
+
+Four paths are generated and committed. CI regenerates them and fails on any diff.
+
+| Path | Generated from | By |
+|---|---|---|
+| `core-api/internal/api/api.gen.go` | `core-api/api/openapi.yaml` | `oapi-codegen` |
+| `core-api/internal/db/*.go` | `core-api/db/queries/*.sql` | `sqlc` |
+| `web/src/lib/api/schema.d.ts` | `core-api/api/openapi.yaml` | `openapi-typescript` |
+
+To change the HTTP contract: edit `openapi.yaml`, run `make generate`, then implement the new
+method on the generated strict interface. To change a query: edit the `.sql` file, run
+`make generate`. Never edit the output.
+
+Go dev tools (`oapi-codegen`, `sqlc`, `goose`, `air`) are pinned as `tool` directives in
+`core-api/go.mod` and invoked as `go tool <name>`, so there is nothing to install first and CI uses
+identical versions.
 
 ## Intended architecture
 

@@ -1,0 +1,5 @@
+.next/
+node_modules/
+package-lock.json
+# Generated from ../core-api/api/openapi.yaml — never edited by hand.
+src/lib/api/schema.d.ts
