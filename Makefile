@@ -27,8 +27,15 @@ $(ENV_FILE):
 .PHONY: env
 env: $(ENV_FILE) ## Create deploy/.env from the example if it is missing
 
+# Compose mounts a named volume at web/.next so the container's build cache is
+# not the host's. Docker creates a missing mount point as root, which then
+# makes `next typegen` — and so `make typecheck` — fail on the host. Creating
+# it first leaves it owned by whoever ran make.
+web/.next:
+	@mkdir -p web/.next
+
 .PHONY: dev
-dev: env ## Build and start the whole local stack
+dev: env web/.next ## Build and start the whole local stack
 	$(COMPOSE) up --build -d
 	@echo
 	@echo "  web        http://localhost:$$(grep -E '^PUBLIC_PORT=' $(ENV_FILE) | cut -d= -f2)"
@@ -39,7 +46,7 @@ dev: env ## Build and start the whole local stack
 	@echo "  logs: make logs   stop: make down"
 
 .PHONY: up
-up: env ## Start the stack without rebuilding images
+up: env web/.next ## Start the stack without rebuilding images
 	$(COMPOSE) up -d
 
 .PHONY: down
@@ -59,7 +66,7 @@ ps: ## Show the status of each service
 	$(COMPOSE) ps
 
 .PHONY: build
-build: env ## Build every image, including the production runtime stages
+build: env web/.next ## Build every image, including the production runtime stages
 	$(COMPOSE) build
 
 ## --- quality ---------------------------------------------------------------

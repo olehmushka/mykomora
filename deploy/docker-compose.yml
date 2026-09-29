@@ -53,6 +53,16 @@ services:
       LOG_LEVEL: ${LOG_LEVEL}
       PORT: ${CORE_API_PORT}
       DATABASE_URL: ${DATABASE_URL}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
+      APP_SECRET: ${APP_SECRET}
+      ACCESS_TOKEN_TTL: ${ACCESS_TOKEN_TTL}
+      REFRESH_TOKEN_TTL: ${REFRESH_TOKEN_TTL}
+      INVITE_TTL: ${INVITE_TTL}
+      # Empty is a supported state: the stack runs, sign-in reports itself
+      # unavailable, and nothing else is affected.
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URL: ${GOOGLE_REDIRECT_URL}
     volumes:
       # Source is mounted for live reload; the module and build caches are named
       # volumes so a rebuild after `make down` is not a cold one.

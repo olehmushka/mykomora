@@ -6,19 +6,41 @@
  * to the spec surfaces as a TypeScript error rather than as a runtime surprise.
  *
  * core-api owns identity, so this file will only ever forward credentials —
- * never mint or validate them.
+ * never mint or validate them. It takes the session cookie as a plain string
+ * and stays free of `next/headers`, which keeps it testable in isolation;
+ * `server.ts` is the layer that knows how to get one.
  */
 import type { components, operations } from "@/lib/api/schema";
 import { coreApiBaseUrl } from "@/lib/api/config";
+import { CSRF_HEADER } from "@/lib/api/cookies";
 
 export type PingResult = components["schemas"]["PingResult"];
 export type ApiError = components["schemas"]["Error"];
 
-/** A successful call, or a reason it did not succeed. Never a thrown error. */
+/**
+ * A successful call, or a reason it did not succeed. Never a thrown error.
+ *
+ * `unauthenticated` is separated from the other failures because it is the one
+ * the caller can act on: it means redirect to sign-in, not show an error.
+ */
 export type ApiResult<T> =
-  { ok: true; data: T } | { ok: false; reason: "unavailable" | "error"; detail: string };
+  | { ok: true; data: T }
+  | {
+      ok: false;
+      reason: "unauthenticated" | "forbidden" | "missing" | "unavailable" | "error";
+      detail: string;
+    };
 
-type FetchOptions = {
+export type ApiFailure = Extract<ApiResult<unknown>, { ok: false }>;
+
+export type RequestOptions = {
+  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  /** Serialised as JSON. Omitted for GET. */
+  body?: unknown;
+  /** Forwarded verbatim, so core-api sees the browser's session. */
+  cookieHeader?: string;
+  /** Echoed in the CSRF header; required by core-api for cookie mutations. */
+  csrfToken?: string;
   /** Overrides the default base URL. Used by tests. */
   baseUrl?: string;
   fetchImpl?: typeof fetch;
@@ -32,15 +54,42 @@ type FetchOptions = {
  * product rule is that a screen must stay useful when data is missing — an
  * unreachable API is a state to display, not a crash.
  */
-async function getJson<T>(path: string, options: FetchOptions = {}): Promise<ApiResult<T>> {
-  const { baseUrl = coreApiBaseUrl(), fetchImpl = fetch, signal } = options;
+export async function apiRequest<T>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<ApiResult<T>> {
+  const {
+    method = "GET",
+    body,
+    cookieHeader,
+    csrfToken,
+    baseUrl = coreApiBaseUrl(),
+    fetchImpl = fetch,
+    signal,
+  } = options;
+
+  const headers = new Headers({ Accept: "application/json" });
+
+  if (cookieHeader) {
+    headers.set("Cookie", cookieHeader);
+  }
+
+  if (csrfToken) {
+    headers.set(CSRF_HEADER, csrfToken);
+  }
+
+  if (body !== undefined) {
+    headers.set("Content-Type", "application/json");
+  }
 
   let response: Response;
   try {
     response = await fetchImpl(`${baseUrl}${path}`, {
-      headers: { Accept: "application/json" },
-      // A probe must never be served from a cache; Next 16 does not cache
-      // fetches by default, but saying so keeps the intent explicit.
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      // Session-scoped data must never be served from a cache; Next 16 does
+      // not cache fetches by default, but saying so keeps the intent explicit.
       cache: "no-store",
       signal,
     });
@@ -53,15 +102,33 @@ async function getJson<T>(path: string, options: FetchOptions = {}): Promise<Api
   }
 
   if (!response.ok) {
-    const detail = await readErrorDetail(response);
     return {
       ok: false,
-      reason: response.status >= 500 ? "unavailable" : "error",
-      detail,
+      reason: failureReason(response.status),
+      detail: await readErrorDetail(response),
     };
   }
 
+  // 204 is a successful answer with nothing in it. Parsing it as JSON would
+  // turn a sign-out into an error.
+  if (response.status === 204) {
+    return { ok: true, data: undefined as T };
+  }
+
   return { ok: true, data: (await response.json()) as T };
+}
+
+function failureReason(status: number): ApiFailure["reason"] {
+  switch (status) {
+    case 401:
+      return "unauthenticated";
+    case 403:
+      return "forbidden";
+    case 404:
+      return "missing";
+    default:
+      return status >= 500 ? "unavailable" : "error";
+  }
 }
 
 async function readErrorDetail(response: Response): Promise<string> {
@@ -78,8 +145,8 @@ async function readErrorDetail(response: Response): Promise<string> {
 }
 
 /** Round-trip probe: proves web -> core-api -> Postgres end to end. */
-export function getPing(options?: FetchOptions): Promise<ApiResult<PingResult>> {
+export function getPing(options?: RequestOptions): Promise<ApiResult<PingResult>> {
   type Ok = operations["getPing"]["responses"][200]["content"]["application/json"];
 
-  return getJson<Ok>("/api/v1/ping", options);
+  return apiRequest<Ok>("/api/v1/ping", options);
 }

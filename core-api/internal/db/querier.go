@@ -11,6 +11,72 @@ import (
 )
 
 type Querier interface {
+	// Single-use, enforced by the statement rather than by the caller: the
+	// predicate and the write happen in one round trip, so two invitees racing on
+	// the same link cannot both win. No row means expired, revoked or already used.
+	AcceptInvite(ctx context.Context, arg AcceptInviteParams) (AcceptInviteRow, error)
+	AddFamilyMember(ctx context.Context, arg AddFamilyMemberParams) (FamilyMember, error)
+	ArchivePerson(ctx context.Context, arg ArchivePersonParams) (int64, error)
+	// Families and membership.
+	//
+	// `families` is the awkward table for the tenancy invariant: its own id *is*
+	// the tenant key, so there is no family_id column to filter on. The two
+	// queries that read and write a family row therefore scope themselves through
+	// family_members, which is stronger than a primary-key lookup — the caller
+	// proves membership rather than asserting it — and is what the `family-scoped`
+	// vet rule is checking for.
+	// Called once per account that signs in without an existing membership. The
+	// returned id is the tenant every later query is scoped by.
+	CreateFamily(ctx context.Context, name string) (CreateFamilyRow, error)
+	// Family invites.
+	//
+	// An owner generates a single-use link; the invitee signs in with Google and
+	// joins. There is no email anywhere in the system (SPEC 2, "Notifications"),
+	// so the link travels over whatever channel the family already uses.
+	//
+	// Only the SHA-256 of the token is stored. A database dump therefore yields no
+	// usable invite links.
+	CreateFamilyInvite(ctx context.Context, arg CreateFamilyInviteParams) (CreateFamilyInviteRow, error)
+	// People: anyone the family tracks things for (SPEC 3, "Concepts").
+	//
+	// Archived rather than deleted, because items recorded against a person must
+	// keep their history when that person stops being current.
+	CreatePerson(ctx context.Context, arg CreatePersonParams) (Person, error)
+	// Refresh tokens (SPEC 6, "core-api owns identity").
+	//
+	// Rotating refresh tokens with reuse detection: every refresh issues a new
+	// token and retires the old one. A token that is presented after it has been
+	// rotated away can only have been captured, so it triggers a revocation of the
+	// whole account rather than a quiet failure.
+	//
+	// Tokens are stored as SHA-256 digests. The raw value exists only in the
+	// client's cookie.
+	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (CreateRefreshTokenRow, error)
+	// Scoped through family_members rather than by primary key alone.
+	//
+	// `families` is the one tenant table with no family_id column of its own — its
+	// id *is* the tenant key — so "filter on family_id" has to mean something else
+	// here. Joining membership is the honest reading: the caller proves they are
+	// in the family they are asking about, instead of the query trusting a claim
+	// the session made. It is also what lets the `family-scoped` vet rule see a
+	// real scope instead of a bare primary-key lookup.
+	GetFamily(ctx context.Context, arg GetFamilyParams) (Family, error)
+	// The authorisation primitive: does this user belong to this family, and as
+	// what. Every family-scoped handler resolves it from the session before it
+	// touches anything else.
+	GetFamilyMembership(ctx context.Context, arg GetFamilyMembershipParams) (FamilyMember, error)
+	// One family exists in practice, but the schema is multi-tenant from day one
+	// (SPEC 2, "Audience"), so sign-in picks the earliest membership deterministically
+	// rather than assuming there is exactly one.
+	GetFirstFamilyForUser(ctx context.Context, userID pgtype.UUID) (GetFirstFamilyForUserRow, error)
+	// Backs the public `/invites/{token}` preview, so it returns the family's name
+	// and nothing else about it: an invite link must be enough to see who invited
+	// you, and never enough to see their inventory.
+	GetInviteByTokenHash(ctx context.Context, tokenHash []byte) (GetInviteByTokenHashRow, error)
+	GetPerson(ctx context.Context, arg GetPersonParams) (Person, error)
+	// `rotated_to` is what makes reuse detectable: a non-NULL value means this
+	// token was already exchanged, and the presenter should not still have it.
+	GetRefreshTokenByHash(ctx context.Context, tokenHash []byte) (GetRefreshTokenByHashRow, error)
 	// Operational queries. No tenant data lives here.
 	// Round-trip probe: proves the generated code, the pool and Postgres all agree.
 	//
@@ -18,6 +84,57 @@ type Querier interface {
 	// It is allowlisted by name in sqlc.yaml's `family-scoped` vet rule, so adding
 	// another unscoped query requires an obvious, reviewable change to that list.
 	GetServerTime(ctx context.Context) (pgtype.Timestamptz, error)
+	// TENANCY: pre-tenant. Resolves the principal carried by an access token; the
+	// caller then scopes everything that follows by the token's tenant claim.
+	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
+	ListFamilyInvites(ctx context.Context, familyID pgtype.UUID) ([]ListFamilyInvitesRow, error)
+	ListFamilyMembers(ctx context.Context, familyID pgtype.UUID) ([]ListFamilyMembersRow, error)
+	// `include_archived` is a parameter rather than a second query so the list and
+	// its archived variant cannot drift apart.
+	ListPeople(ctx context.Context, arg ListPeopleParams) ([]Person, error)
+	// Owners are deliberately not removable through this path: demoting or
+	// removing the last owner would leave the family unadministrable, and there is
+	// no role-change endpoint in M1. Zero affected rows is the caller's signal.
+	RemoveFamilyMember(ctx context.Context, arg RemoveFamilyMemberParams) (int64, error)
+	// TENANCY: deliberately account-wide, and the only write allowlisted in
+	// sqlc.yaml's `family-scoped` rule.
+	//
+	// This runs only on reuse detection. A captured token is evidence that the
+	// account is compromised, not that one tenant is — so the revocation crosses
+	// every family the user belongs to, on purpose. Scoping it would leave the
+	// attacker holding live sessions elsewhere.
+	RevokeAllUserRefreshTokens(ctx context.Context, userID pgtype.UUID) (int64, error)
+	RevokeFamilyInvite(ctx context.Context, arg RevokeFamilyInviteParams) (int64, error)
+	// Sign-out. Scoped to the session's family so a token can only ever be
+	// revoked by the tenant it was issued for.
+	RevokeRefreshToken(ctx context.Context, arg RevokeRefreshTokenParams) (int64, error)
+	// Retires a token in favour of its successor. Both columns are set: the
+	// successor makes reuse detectable, and the revocation keeps the live-token
+	// index honest.
+	RotateRefreshToken(ctx context.Context, arg RotateRefreshTokenParams) (int64, error)
+	// TENANCY: pre-tenant. Presence is a property of the account, not of a tenant.
+	TouchUserLastSeen(ctx context.Context, id pgtype.UUID) error
+	// Partial update: an argument left NULL leaves its column alone, so the caller
+	// does not have to read-modify-write the whole row.
+	//
+	// Membership-scoped for the same reason as GetFamily above.
+	UpdateFamily(ctx context.Context, arg UpdateFamilyParams) (Family, error)
+	// Partial update; a NULL argument leaves its column untouched. `birthdate`,
+	// `user_id` and `avatar_url` are therefore not clearable through this path,
+	// which is the right trade while nothing in the UI clears them.
+	UpdatePerson(ctx context.Context, arg UpdatePersonParams) (Person, error)
+	// Identity. `users` is the one global table in the schema: a Google account
+	// exists before it belongs to any family, so the queries here run *before* a
+	// tenant is known and cannot be scoped by one.
+	//
+	// Every query in this file is therefore named in the `family-scoped` vet rule's
+	// allowlist in sqlc.yaml. Nothing else in the repo may join that list without
+	// the same justification: no tenant row is read or written here.
+	// TENANCY: pre-tenant. Runs on the OAuth callback, before membership is known.
+	//
+	// Google's `sub` is the stable identity; email and display name are profile
+	// data that may change between sign-ins, so they are refreshed every time.
+	UpsertUserByGoogleSub(ctx context.Context, arg UpsertUserByGoogleSubParams) (User, error)
 }
 
 var _ Querier = (*Queries)(nil)

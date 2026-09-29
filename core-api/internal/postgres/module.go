@@ -11,7 +11,7 @@ import (
 // Module provides the connection pool and the generated query interface, and
 // ties the pool's health check and teardown to the application lifecycle.
 var Module = fx.Module("postgres",
-	fx.Provide(NewPool, NewQuerier),
+	fx.Provide(NewPool, NewQuerier, NewTxRunner),
 	fx.Invoke(func(lc fx.Lifecycle, pool *pgxpool.Pool, log *slog.Logger) {
 		lc.Append(fx.Hook{
 			OnStart: func(ctx context.Context) error {

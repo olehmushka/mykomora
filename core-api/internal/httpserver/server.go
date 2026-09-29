@@ -18,6 +18,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/olehmushka/mykomora/core-api/internal/api"
+	"github.com/olehmushka/mykomora/core-api/internal/auth"
 	"github.com/olehmushka/mykomora/core-api/internal/config"
 )
 
@@ -37,14 +38,34 @@ const (
 // default locale (M2) and scopes rate limits (M10) — so it gets a deliberate,
 // proxy-aware resolver against Caddy's known address when those land, rather
 // than a convenience middleware now.
-func NewRouter(log *slog.Logger, handlers api.StrictServerInterface) *chi.Mux {
+func NewRouter(
+	log *slog.Logger,
+	handlers api.StrictServerInterface,
+	session *auth.Middleware,
+) *chi.Mux {
 	router := chi.NewRouter()
 
 	router.Use(middleware.RequestID)
 	router.Use(requestLogger(log))
 	router.Use(middleware.Recoverer)
 
-	api.HandlerFromMux(api.NewStrictHandler(handlers, nil), router)
+	// The session middleware runs per operation rather than per route, because
+	// that is the level at which it can see the operation ID — and the list of
+	// operations served without a session is a deliberate, reviewed list
+	// rather than something re-derived from methods and paths.
+	strict := api.NewStrictHandlerWithOptions(
+		handlers,
+		[]api.StrictMiddlewareFunc{session.Strict()},
+		api.StrictHTTPServerOptions{
+			RequestErrorHandlerFunc:  requestErrorHandler(log),
+			ResponseErrorHandlerFunc: responseErrorHandler(log),
+		},
+	)
+
+	api.HandlerWithOptions(strict, api.ChiServerOptions{
+		BaseRouter:       router,
+		ErrorHandlerFunc: requestErrorHandler(log),
+	})
 
 	return router
 }

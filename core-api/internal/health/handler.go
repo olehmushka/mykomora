@@ -9,25 +9,36 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/olehmushka/mykomora/core-api/internal/api"
-	"github.com/olehmushka/mykomora/core-api/internal/db"
 )
 
 // codeDatabaseUnavailable is the stable error code clients match on when the
 // database did not answer.
 const codeDatabaseUnavailable = "database_unavailable"
 
+// Store is the slice of the generated queries this package needs.
+//
+// Narrow on purpose. db.Querier grows with every query in the repo, and a
+// handler that can reach any query is a handler that can reach an unscoped
+// one — so each package names only what it uses, and a test double has one
+// method to write instead of thirty.
+type Store interface {
+	GetServerTime(ctx context.Context) (pgtype.Timestamptz, error)
+}
+
 // Handler serves the system endpoints declared in api/openapi.yaml.
 type Handler struct {
-	queries db.Querier
-	log     *slog.Logger
+	store Store
+	log   *slog.Logger
 }
 
 // New builds the system endpoint handler.
-func New(queries db.Querier, log *slog.Logger) *Handler {
+func New(store Store, log *slog.Logger) *Handler {
 	return &Handler{
-		queries: queries,
-		log:     log.With(slog.String("component", "health")),
+		store: store,
+		log:   log.With(slog.String("component", "health")),
 	}
 }
 
@@ -47,7 +58,7 @@ func (h *Handler) GetPing(
 	ctx context.Context,
 	_ api.GetPingRequestObject,
 ) (api.GetPingResponseObject, error) {
-	now, err := h.queries.GetServerTime(ctx)
+	now, err := h.store.GetServerTime(ctx)
 	if err != nil {
 		// Reported, not returned: an unreachable database is an expected
 		// operational state with a documented 503 in the contract, not an

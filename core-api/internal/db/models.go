@@ -3,3 +3,116 @@
 //   sqlc v1.31.1
 
 package db
+
+import (
+	"database/sql/driver"
+	"fmt"
+	"net/netip"
+
+	"github.com/jackc/pgx/v5/pgtype"
+)
+
+type FamilyRole string
+
+const (
+	FamilyRoleOwner  FamilyRole = "owner"
+	FamilyRoleMember FamilyRole = "member"
+)
+
+func (e *FamilyRole) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = FamilyRole(s)
+	case string:
+		*e = FamilyRole(s)
+	default:
+		return fmt.Errorf("unsupported scan type for FamilyRole: %T", src)
+	}
+	return nil
+}
+
+type NullFamilyRole struct {
+	FamilyRole FamilyRole `json:"family_role"`
+	Valid      bool       `json:"valid"` // Valid is true if FamilyRole is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullFamilyRole) Scan(value interface{}) error {
+	if value == nil {
+		ns.FamilyRole, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.FamilyRole.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullFamilyRole) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.FamilyRole), nil
+}
+
+type Family struct {
+	ID              pgtype.UUID        `json:"id"`
+	Name            string             `json:"name"`
+	DefaultCurrency string             `json:"default_currency"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
+type FamilyInvite struct {
+	ID               pgtype.UUID        `json:"id"`
+	FamilyID         pgtype.UUID        `json:"family_id"`
+	TokenHash        []byte             `json:"token_hash"`
+	CreatedBy        pgtype.UUID        `json:"created_by"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt        pgtype.Timestamptz `json:"expires_at"`
+	AcceptedAt       pgtype.Timestamptz `json:"accepted_at"`
+	AcceptedByUserID pgtype.UUID        `json:"accepted_by_user_id"`
+	RevokedAt        pgtype.Timestamptz `json:"revoked_at"`
+}
+
+type FamilyMember struct {
+	FamilyID pgtype.UUID        `json:"family_id"`
+	UserID   pgtype.UUID        `json:"user_id"`
+	Role     FamilyRole         `json:"role"`
+	JoinedAt pgtype.Timestamptz `json:"joined_at"`
+}
+
+type Person struct {
+	ID         pgtype.UUID        `json:"id"`
+	FamilyID   pgtype.UUID        `json:"family_id"`
+	Name       string             `json:"name"`
+	Birthdate  pgtype.Date        `json:"birthdate"`
+	UserID     pgtype.UUID        `json:"user_id"`
+	IsChild    bool               `json:"is_child"`
+	AvatarUrl  pgtype.Text        `json:"avatar_url"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+	ArchivedAt pgtype.Timestamptz `json:"archived_at"`
+}
+
+type RefreshToken struct {
+	ID        pgtype.UUID        `json:"id"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	FamilyID  pgtype.UUID        `json:"family_id"`
+	TokenHash []byte             `json:"token_hash"`
+	IssuedAt  pgtype.Timestamptz `json:"issued_at"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	RotatedTo pgtype.UUID        `json:"rotated_to"`
+	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
+	UserAgent pgtype.Text        `json:"user_agent"`
+	Ip        *netip.Addr        `json:"ip"`
+}
+
+type User struct {
+	ID          pgtype.UUID        `json:"id"`
+	GoogleSub   string             `json:"google_sub"`
+	Email       string             `json:"email"`
+	DisplayName string             `json:"display_name"`
+	AvatarUrl   pgtype.Text        `json:"avatar_url"`
+	Locale      pgtype.Text        `json:"locale"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	LastSeenAt  pgtype.Timestamptz `json:"last_seen_at"`
+}

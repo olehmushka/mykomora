@@ -3,6 +3,11 @@
 package: api
 output: internal/api/api.gen.go
 generate:
+  # The spec is embedded so GetSwagger() can be walked at test time: one test
+  # asserts that every operation is either on the handwritten public list or
+  # behind the session middleware, which is the auth analogue of sqlc.yaml's
+  # family-scoped rule.
+  embedded-spec: true
   chi-server: true
   strict-server: true
   models: true

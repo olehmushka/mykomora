@@ -46,6 +46,282 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/google/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Begin the Google sign-in flow
+         * @description Generates the OAuth2 `state` and the PKCE verifier, stores both in a
+         *     signed, short-lived cookie, and redirects to Google. No server-side
+         *     state table is involved.
+         */
+        get: operations["startGoogleAuth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/google/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Complete the Google sign-in flow
+         * @description Validates `state` against the cookie, exchanges the code with PKCE,
+         *     verifies the ID token against Google's JWKS, then upserts the user. A
+         *     first sign-in with no membership creates a family and makes the user its
+         *     owner; a valid invite joins that family instead. Sets the session
+         *     cookies and redirects back into the app.
+         */
+        get: operations["handleGoogleCallback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rotate the session
+         * @description Exchanges the refresh cookie for a new access/refresh pair. The old
+         *     token is retired in the same statement. Presenting a token that has
+         *     already been rotated is treated as theft: every refresh token belonging
+         *     to that account is revoked, across every family.
+         */
+        post: operations["refreshSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sign out
+         * @description Revokes the presented refresh token and clears the session cookies.
+         */
+        post: operations["logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The signed-in user and their current family */
+        get: operations["getMe"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/family": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The current family's settings */
+        get: operations["getFamily"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update the current family's settings
+         * @description Owners only. Omitted fields are left alone.
+         */
+        patch: operations["updateFamily"];
+        trace?: never;
+    };
+    "/api/v1/family/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Everyone in the current family */
+        get: operations["listFamilyMembers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/family/members/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a member from the family
+         * @description Owners only, and owners cannot be removed through this path: there is no
+         *     role-change endpoint yet, so removing the last owner would leave the
+         *     family unadministrable.
+         */
+        delete: operations["removeFamilyMember"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/family/invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Invites issued for the current family
+         * @description Owners only. The tokens themselves are not returned — only their status.
+         */
+        get: operations["listFamilyInvites"];
+        put?: never;
+        /**
+         * Generate a single-use invite link
+         * @description Owners only. The link is returned exactly once, in this response: only
+         *     its hash is stored, so it cannot be shown again.
+         */
+        post: operations["createFamilyInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/family/invites/{inviteId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke an unused invite */
+        delete: operations["revokeFamilyInvite"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/invites/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What an invite link leads to
+         * @description Public, because the invitee has not signed in yet. It returns the
+         *     family's name and whether the link is still usable — never anything
+         *     about the family's contents.
+         */
+        get: operations["getInvitePreview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/people": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** People the family tracks things for */
+        get: operations["listPeople"];
+        put?: never;
+        /** Add a person */
+        post: operations["createPerson"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/people/{personId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: string;
+            };
+            cookie?: never;
+        };
+        /** One person */
+        get: operations["getPerson"];
+        put?: never;
+        post?: never;
+        /**
+         * Archive a person
+         * @description Archives rather than deletes. Items recorded against this person keep
+         *     their history (SPEC 7, "Data safety").
+         */
+        delete: operations["archivePerson"];
+        options?: never;
+        head?: never;
+        /**
+         * Update a person
+         * @description Omitted fields are left alone.
+         */
+        patch: operations["updatePerson"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -78,8 +354,167 @@ export interface components {
             /** @description Human-readable detail. Localised from the Go message catalogue (M2 onward). */
             message: string;
         };
+        /**
+         * @description Both roles see and edit everything (SPEC 3, "Concepts"). `owner`
+         *     additionally administers the family: settings, members and invites.
+         * @enum {string}
+         */
+        FamilyRole: "owner" | "member";
+        User: {
+            /** Format: uuid */
+            id: string;
+            /** Format: email */
+            email: string;
+            displayName: string;
+            avatarUrl?: string;
+            /**
+             * @description The stored preference, absent until the user chooses one (M2).
+             * @enum {string}
+             */
+            locale?: "en" | "uk";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            lastSeenAt: string;
+        };
+        Family: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /**
+             * @description ISO 4217 code. One currency per family in v1.
+             * @example UAH
+             */
+            defaultCurrency: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        Me: {
+            user: components["schemas"]["User"];
+            family: components["schemas"]["Family"];
+            role: components["schemas"]["FamilyRole"];
+        };
+        FamilyMember: {
+            /** Format: uuid */
+            userId: string;
+            role: components["schemas"]["FamilyRole"];
+            /** Format: date-time */
+            joinedAt: string;
+            /** Format: email */
+            email: string;
+            displayName: string;
+            avatarUrl?: string;
+            /** Format: date-time */
+            lastSeenAt?: string;
+        };
+        UpdateFamilyRequest: {
+            name?: string;
+            defaultCurrency?: string;
+        };
+        /** @enum {string} */
+        InviteStatus: "pending" | "accepted" | "revoked" | "expired";
+        FamilyInvite: {
+            /** Format: uuid */
+            id: string;
+            status: components["schemas"]["InviteStatus"];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: date-time */
+            acceptedAt?: string;
+        };
+        CreatedInvite: {
+            invite: components["schemas"]["FamilyInvite"];
+            /**
+             * @description The full link to share. Returned exactly once — only its hash is
+             *     stored, so it cannot be retrieved later.
+             */
+            url: string;
+        };
+        InvitePreview: {
+            usable: boolean;
+            familyName: string;
+            status?: components["schemas"]["InviteStatus"];
+        };
+        Person: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: date */
+            birthdate?: string;
+            isChild: boolean;
+            avatarUrl?: string;
+            /**
+             * Format: uuid
+             * @description Set when this person is also a member of the family.
+             */
+            userId?: string;
+            /** Format: date-time */
+            archivedAt?: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CreatePersonRequest: {
+            name: string;
+            /** Format: date */
+            birthdate?: string;
+            /** @default false */
+            isChild: boolean;
+            avatarUrl?: string;
+            /** Format: uuid */
+            userId?: string;
+        };
+        UpdatePersonRequest: {
+            name?: string;
+            /** Format: date */
+            birthdate?: string;
+            isChild?: boolean;
+            avatarUrl?: string;
+            /** Format: uuid */
+            userId?: string;
+        };
     };
-    responses: never;
+    responses: {
+        /** @description The request was malformed. */
+        BadRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description No valid session. */
+        Unauthorized: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description Authenticated, but not allowed to do this. */
+        Forbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description No such thing in this family. */
+        NotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+    };
     parameters: never;
     requestBodies: never;
     headers: never;
@@ -134,6 +569,443 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
+        };
+    };
+    startGoogleAuth: {
+        parameters: {
+            query?: {
+                /**
+                 * @description An invite token from a `/join/{token}` link. Carried through the
+                 *     round trip so the callback can join that family instead of creating
+                 *     a new one.
+                 */
+                invite?: string;
+                /**
+                 * @description Where to land after signing in. Must be a path on this origin;
+                 *     anything else is ignored rather than rejected, so a tampered link
+                 *     cannot turn sign-in into an open redirect.
+                 */
+                next?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect to Google's consent screen. */
+            302: {
+                headers: {
+                    Location: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Google sign-in is not configured on this deployment. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    handleGoogleCallback: {
+        parameters: {
+            query?: {
+                code?: string;
+                state?: string;
+                /** @description Set by Google when the user declines consent. */
+                error?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /**
+             * @description Signed in; redirecting into the app. Anything a person can cause —
+             *     declining consent, following a stale link, an unverified address —
+             *     also redirects, back to the sign-in page with an `error` code.
+             */
+            302: {
+                headers: {
+                    Location: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+        };
+    };
+    refreshSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rotated. New cookies are set on this response. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Signed out. The session cookies are cleared on this response. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    getMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The current session. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    getFamily: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The family. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Family"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateFamily: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateFamilyRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated family. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Family"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listFamilyMembers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The member list, oldest membership first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FamilyMember"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    removeFamilyMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listFamilyInvites: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The invite list, newest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FamilyInvite"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createFamilyInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The invite, including the link to share. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedInvite"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    revokeFamilyInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inviteId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getInvitePreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The invite's state. An unusable link is a 200 with `usable` false, not an error: the invitee sees an explanation, not a failure. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitePreview"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listPeople: {
+        parameters: {
+            query?: {
+                includeArchived?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Children first, then everyone else, by name. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Person"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    createPerson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePersonRequest"];
+            };
+        };
+        responses: {
+            /** @description The created person. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Person"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    getPerson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The person. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Person"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    archivePerson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Archived. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updatePerson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePersonRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated person. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Person"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
         };
     };
 }
