@@ -1,0 +1,32 @@
+# Local development reverse proxy.
+#
+# Everything is served from one origin so the browser never sees core-api's
+# address, cookies stay same-site, and the local setup matches production's
+# shape. Production replaces this block with a real hostname and gets automatic
+# TLS from Caddy (M10); here it is plain HTTP on purpose.
+
+{
+	admin off
+	auto_https off
+}
+
+:80 {
+	log {
+		output stdout
+		format console
+	}
+
+	# core-api owns these paths. Keep this list in step with api/openapi.yaml.
+	handle /api/* {
+		reverse_proxy core-api:{$CORE_API_PORT:8081}
+	}
+
+	handle /healthz {
+		reverse_proxy core-api:{$CORE_API_PORT:8081}
+	}
+
+	# Everything else is the Next.js app.
+	handle {
+		reverse_proxy web:{$WEB_PORT:3000}
+	}
+}
