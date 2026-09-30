@@ -54,6 +54,23 @@ Prove the entire toolchain end to end before writing any domain code.
 
 **Done when:** two Google accounts share one family and both see the same (empty) inventory.
 
+> **Delivered, with three notes.**
+>
+> *The web app's session refresh lives in `web/src/proxy.ts`, not `middleware.ts`.* Next 16
+> deprecated and renamed the middleware convention; the mechanism is unchanged, and it is still
+> the only place that can rotate a cookie before a page renders.
+>
+> *`families` needed a stronger reading of the tenancy invariant, not an exemption.* It is the one
+> tenant table whose own id is the tenant key, so there is no `family_id` column to filter on.
+> Rather than allowlisting the two queries that read and write a family row, both now scope
+> themselves through `family_members` — the caller proves membership instead of asserting it, and
+> the vet rule sees a real scope. The allowlist grew only by the three `users` queries, which run
+> before any tenant exists, and by the reuse-detection revoke, which crosses families on purpose.
+>
+> *The browser-facing auth endpoints answer in redirects, not status codes.* A deployment with no
+> Google client is a supported state, and the person in front of the browser is owed a sign-in
+> page that explains itself rather than a JSON body rendered raw.
+
 ---
 
 ## M2 — Places, taxonomy & i18n *(5–6 days)*

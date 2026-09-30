@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/olehmushka/mykomora/core-api/internal/config"
@@ -62,4 +63,32 @@ func Ping(ctx context.Context, pool *pgxpool.Pool) error {
 // invariant stays enforceable.
 func NewQuerier(pool *pgxpool.Pool) db.Querier {
 	return db.New(pool)
+}
+
+// TxRunner runs work inside a database transaction.
+//
+// Several M1 flows write more than one row and must not be observable
+// half-done: creating a family and its first owner, accepting an invite while
+// joining, and rotating a refresh token while issuing its successor. Giving
+// callers a runner rather than the pool keeps `pgxpool` out of the handler
+// packages and keeps commit and rollback in exactly one place.
+type TxRunner struct {
+	pool *pgxpool.Pool
+}
+
+// NewTxRunner builds the transaction runner over the pool.
+func NewTxRunner(pool *pgxpool.Pool) *TxRunner {
+	return &TxRunner{pool: pool}
+}
+
+// InTx runs fn against queries bound to a transaction, committing when fn
+// returns nil and rolling back on any error or panic.
+func (r *TxRunner) InTx(ctx context.Context, fn func(*db.Queries) error) error {
+	if err := pgx.BeginFunc(ctx, r.pool, func(tx pgx.Tx) error {
+		return fn(db.New(tx))
+	}); err != nil {
+		return fmt.Errorf("run transaction: %w", err)
+	}
+
+	return nil
 }

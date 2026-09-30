@@ -6,7 +6,12 @@ info:
     contract: Go handlers and types are generated from it with `oapi-codegen`,
     and the web client's types with `openapi-typescript`. Edit the spec first,
     then regenerate. Never hand-edit generated code.
-  version: 0.1.0
+
+    **core-api owns identity.** The OAuth2 exchange, ID-token verification and
+    token issuance all happen here. The web app is a thin client that forwards
+    credentials; a future mobile client uses these same endpoints with a bearer
+    token instead of cookies.
+  version: 0.2.0
   license:
     name: Proprietary
 servers:
@@ -18,6 +23,19 @@ servers:
 tags:
   - name: system
     description: Operational endpoints — no tenant data, no authentication.
+  - name: auth
+    description: Sign-in, session rotation and sign-out.
+  - name: family
+    description: The tenant itself — its settings, members and invites.
+  - name: people
+    description: Anyone the family tracks things for. Not the same as a member.
+
+# There is deliberately no document-level `security` default. oapi-codegen only
+# emits the per-operation security markers that the session middleware reads
+# when an operation declares `security` itself, so an inherited default would
+# read as protected here and be wide open in Go. Every operation therefore says
+# what it requires, and TestEveryOperationDeclaresSecurity fails the build if
+# one forgets.
 
 paths:
   /healthz:
@@ -26,6 +44,7 @@ paths:
       tags: [system]
       summary: Liveness probe
       description: Returns 200 as long as the process is serving. Does not touch the database.
+      security: []
       responses:
         "200":
           description: The process is alive.
@@ -43,6 +62,7 @@ paths:
         Exercises the full request path — generated handler, sqlc query, Postgres —
         and returns the database's own clock. Exists to prove the toolchain end to
         end; it carries no domain meaning.
+      security: []
       responses:
         "200":
           description: The database answered.
@@ -57,7 +77,505 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /api/v1/auth/google/start:
+    get:
+      operationId: startGoogleAuth
+      tags: [auth]
+      summary: Begin the Google sign-in flow
+      description: |
+        Generates the OAuth2 `state` and the PKCE verifier, stores both in a
+        signed, short-lived cookie, and redirects to Google. No server-side
+        state table is involved.
+      security: []
+      parameters:
+        - name: invite
+          in: query
+          required: false
+          description: |
+            An invite token from a `/join/{token}` link. Carried through the
+            round trip so the callback can join that family instead of creating
+            a new one.
+          schema:
+            type: string
+        - name: next
+          in: query
+          required: false
+          description: |
+            Where to land after signing in. Must be a path on this origin;
+            anything else is ignored rather than rejected, so a tampered link
+            cannot turn sign-in into an open redirect.
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect to Google's consent screen.
+          headers:
+            Location:
+              required: true
+              schema:
+                type: string
+        "503":
+          description: Google sign-in is not configured on this deployment.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/auth/google/callback:
+    get:
+      operationId: handleGoogleCallback
+      tags: [auth]
+      summary: Complete the Google sign-in flow
+      description: |
+        Validates `state` against the cookie, exchanges the code with PKCE,
+        verifies the ID token against Google's JWKS, then upserts the user. A
+        first sign-in with no membership creates a family and makes the user its
+        owner; a valid invite joins that family instead. Sets the session
+        cookies and redirects back into the app.
+      security: []
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: error
+          in: query
+          required: false
+          description: Set by Google when the user declines consent.
+          schema:
+            type: string
+      responses:
+        "302":
+          description: |
+            Signed in; redirecting into the app. Anything a person can cause —
+            declining consent, following a stale link, an unverified address —
+            also redirects, back to the sign-in page with an `error` code.
+          headers:
+            Location:
+              required: true
+              schema:
+                type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/auth/refresh:
+    post:
+      operationId: refreshSession
+      tags: [auth]
+      summary: Rotate the session
+      description: |
+        Exchanges the refresh cookie for a new access/refresh pair. The old
+        token is retired in the same statement. Presenting a token that has
+        already been rotated is treated as theft: every refresh token belonging
+        to that account is revoked, across every family.
+      security: []
+      responses:
+        "204":
+          description: Rotated. New cookies are set on this response.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/auth/logout:
+    post:
+      operationId: logout
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [auth]
+      summary: Sign out
+      description: Revokes the presented refresh token and clears the session cookies.
+      responses:
+        "204":
+          description: Signed out. The session cookies are cleared on this response.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/me:
+    get:
+      operationId: getMe
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [auth]
+      summary: The signed-in user and their current family
+      responses:
+        "200":
+          description: The current session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Me"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/family:
+    get:
+      operationId: getFamily
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [family]
+      summary: The current family's settings
+      responses:
+        "200":
+          description: The family.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Family"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateFamily
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [family]
+      summary: Update the current family's settings
+      description: Owners only. Omitted fields are left alone.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFamilyRequest"
+      responses:
+        "200":
+          description: The updated family.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Family"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/family/members:
+    get:
+      operationId: listFamilyMembers
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [family]
+      summary: Everyone in the current family
+      responses:
+        "200":
+          description: The member list, oldest membership first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FamilyMember"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/family/members/{userId}:
+    delete:
+      operationId: removeFamilyMember
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [family]
+      summary: Remove a member from the family
+      description: |
+        Owners only, and owners cannot be removed through this path: there is no
+        role-change endpoint yet, so removing the last owner would leave the
+        family unadministrable.
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Removed.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/family/invites:
+    get:
+      operationId: listFamilyInvites
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [family]
+      summary: Invites issued for the current family
+      description: Owners only. The tokens themselves are not returned — only their status.
+      responses:
+        "200":
+          description: The invite list, newest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FamilyInvite"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createFamilyInvite
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [family]
+      summary: Generate a single-use invite link
+      description: |
+        Owners only. The link is returned exactly once, in this response: only
+        its hash is stored, so it cannot be shown again.
+      responses:
+        "201":
+          description: The invite, including the link to share.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedInvite"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/family/invites/{inviteId}:
+    delete:
+      operationId: revokeFamilyInvite
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [family]
+      summary: Revoke an unused invite
+      parameters:
+        - name: inviteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Revoked.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/invites/{token}:
+    get:
+      operationId: getInvitePreview
+      tags: [family]
+      summary: What an invite link leads to
+      description: |
+        Public, because the invitee has not signed in yet. It returns the
+        family's name and whether the link is still usable — never anything
+        about the family's contents.
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: >-
+            The invite's state. An unusable link is a 200 with `usable` false,
+            not an error: the invitee sees an explanation, not a failure.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitePreview"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/people:
+    get:
+      operationId: listPeople
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [people]
+      summary: People the family tracks things for
+      parameters:
+        - name: includeArchived
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Children first, then everyone else, by name.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Person"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createPerson
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [people]
+      summary: Add a person
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePersonRequest"
+      responses:
+        "201":
+          description: The created person.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Person"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/people/{personId}:
+    parameters:
+      - name: personId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getPerson
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [people]
+      summary: One person
+      responses:
+        "200":
+          description: The person.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Person"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updatePerson
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [people]
+      summary: Update a person
+      description: Omitted fields are left alone.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePersonRequest"
+      responses:
+        "200":
+          description: The updated person.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Person"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: archivePerson
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [people]
+      summary: Archive a person
+      description: |
+        Archives rather than deletes. Items recorded against this person keep
+        their history (SPEC 7, "Data safety").
+      responses:
+        "204":
+          description: Archived.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: mk_session
+      description: |
+        The access JWT, set by the sign-in flow. `HttpOnly`, `SameSite=Lax`, and
+        `Secure` outside development. Cookie-authenticated mutations must also
+        echo the `mk_csrf` cookie in an `X-CSRF-Token` header.
+    bearerToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        The same access JWT as an `Authorization` header. This is the path a
+        mobile client takes; it is not subject to the CSRF check, because it is
+        not cookie-driven.
+
+  responses:
+    BadRequest:
+      description: The request was malformed.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: No valid session.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: Authenticated, but not allowed to do this.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: No such thing in this family.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
   schemas:
     HealthStatus:
       type: object
@@ -92,3 +610,212 @@ components:
         message:
           type: string
           description: Human-readable detail. Localised from the Go message catalogue (M2 onward).
+
+    FamilyRole:
+      type: string
+      enum: [owner, member]
+      description: |
+        Both roles see and edit everything (SPEC 3, "Concepts"). `owner`
+        additionally administers the family: settings, members and invites.
+
+    User:
+      type: object
+      required: [id, email, displayName, createdAt, lastSeenAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+        avatarUrl:
+          type: string
+        locale:
+          type: string
+          enum: [en, uk]
+          description: The stored preference, absent until the user chooses one (M2).
+        createdAt:
+          type: string
+          format: date-time
+        lastSeenAt:
+          type: string
+          format: date-time
+
+    Family:
+      type: object
+      required: [id, name, defaultCurrency, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        defaultCurrency:
+          type: string
+          description: ISO 4217 code. One currency per family in v1.
+          examples: [UAH]
+        createdAt:
+          type: string
+          format: date-time
+
+    Me:
+      type: object
+      required: [user, family, role]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        family:
+          $ref: "#/components/schemas/Family"
+        role:
+          $ref: "#/components/schemas/FamilyRole"
+
+    FamilyMember:
+      type: object
+      required: [userId, role, joinedAt, email, displayName]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        role:
+          $ref: "#/components/schemas/FamilyRole"
+        joinedAt:
+          type: string
+          format: date-time
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+        avatarUrl:
+          type: string
+        lastSeenAt:
+          type: string
+          format: date-time
+
+    UpdateFamilyRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        defaultCurrency:
+          type: string
+          minLength: 3
+          maxLength: 3
+
+    InviteStatus:
+      type: string
+      enum: [pending, accepted, revoked, expired]
+
+    FamilyInvite:
+      type: object
+      required: [id, status, createdAt, expiresAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/InviteStatus"
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        acceptedAt:
+          type: string
+          format: date-time
+
+    CreatedInvite:
+      type: object
+      required: [invite, url]
+      properties:
+        invite:
+          $ref: "#/components/schemas/FamilyInvite"
+        url:
+          type: string
+          description: |
+            The full link to share. Returned exactly once — only its hash is
+            stored, so it cannot be retrieved later.
+
+    InvitePreview:
+      type: object
+      required: [usable, familyName]
+      properties:
+        usable:
+          type: boolean
+        familyName:
+          type: string
+        status:
+          $ref: "#/components/schemas/InviteStatus"
+
+    Person:
+      type: object
+      required: [id, name, isChild, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        birthdate:
+          type: string
+          format: date
+        isChild:
+          type: boolean
+        avatarUrl:
+          type: string
+        userId:
+          type: string
+          format: uuid
+          description: Set when this person is also a member of the family.
+        archivedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreatePersonRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        birthdate:
+          type: string
+          format: date
+        isChild:
+          type: boolean
+          default: false
+        avatarUrl:
+          type: string
+        userId:
+          type: string
+          format: uuid
+
+    UpdatePersonRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        birthdate:
+          type: string
+          format: date
+        isChild:
+          type: boolean
+        avatarUrl:
+          type: string
+        userId:
+          type: string
+          format: uuid

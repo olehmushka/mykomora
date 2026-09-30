@@ -5,14 +5,41 @@ package api
 
 import (
 	"bytes"
+	"compress/flate"
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
+	"path"
+	"strings"
 	"time"
 
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-chi/chi/v5"
+	"github.com/oapi-codegen/runtime"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
+
+// Defines values for FamilyRole.
+const (
+	Member FamilyRole = "member"
+	Owner  FamilyRole = "owner"
+)
+
+// Valid indicates whether the value is a known member of the FamilyRole enum.
+func (e FamilyRole) Valid() bool {
+	switch e {
+	case Member:
+		return true
+	case Owner:
+		return true
+	default:
+		return false
+	}
+}
 
 // Defines values for HealthStatusStatus.
 const (
@@ -23,6 +50,30 @@ const (
 func (e HealthStatusStatus) Valid() bool {
 	switch e {
 	case HealthStatusStatusOk:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for InviteStatus.
+const (
+	Accepted InviteStatus = "accepted"
+	Expired  InviteStatus = "expired"
+	Pending  InviteStatus = "pending"
+	Revoked  InviteStatus = "revoked"
+)
+
+// Valid indicates whether the value is a known member of the InviteStatus enum.
+func (e InviteStatus) Valid() bool {
+	switch e {
+	case Accepted:
+		return true
+	case Expired:
+		return true
+	case Pending:
+		return true
+	case Revoked:
 		return true
 	default:
 		return false
@@ -44,6 +95,42 @@ func (e PingResultDatabase) Valid() bool {
 	}
 }
 
+// Defines values for UserLocale.
+const (
+	En UserLocale = "en"
+	Uk UserLocale = "uk"
+)
+
+// Valid indicates whether the value is a known member of the UserLocale enum.
+func (e UserLocale) Valid() bool {
+	switch e {
+	case En:
+		return true
+	case Uk:
+		return true
+	default:
+		return false
+	}
+}
+
+// CreatePersonRequest defines model for CreatePersonRequest.
+type CreatePersonRequest struct {
+	AvatarUrl *string             `json:"avatarUrl,omitempty"`
+	Birthdate *openapi_types.Date `json:"birthdate,omitempty"`
+	IsChild   *bool               `json:"isChild,omitempty"`
+	Name      string              `json:"name"`
+	UserId    *openapi_types.UUID `json:"userId,omitempty"`
+}
+
+// CreatedInvite defines model for CreatedInvite.
+type CreatedInvite struct {
+	Invite FamilyInvite `json:"invite"`
+
+	// Url The full link to share. Returned exactly once — only its hash is
+	// stored, so it cannot be retrieved later.
+	Url string `json:"url"`
+}
+
 // Error defines model for Error.
 type Error struct {
 	// Code Stable, machine-readable error code.
@@ -55,6 +142,45 @@ type Error struct {
 	Message string `json:"message"`
 }
 
+// Family defines model for Family.
+type Family struct {
+	CreatedAt time.Time `json:"createdAt"`
+
+	// DefaultCurrency ISO 4217 code. One currency per family in v1.
+	//
+	// Examples: UAH
+	DefaultCurrency string             `json:"defaultCurrency"`
+	Id              openapi_types.UUID `json:"id"`
+	Name            string             `json:"name"`
+}
+
+// FamilyInvite defines model for FamilyInvite.
+type FamilyInvite struct {
+	AcceptedAt *time.Time         `json:"acceptedAt,omitempty"`
+	CreatedAt  time.Time          `json:"createdAt"`
+	ExpiresAt  time.Time          `json:"expiresAt"`
+	Id         openapi_types.UUID `json:"id"`
+	Status     InviteStatus       `json:"status"`
+}
+
+// FamilyMember defines model for FamilyMember.
+type FamilyMember struct {
+	AvatarUrl   *string             `json:"avatarUrl,omitempty"`
+	DisplayName string              `json:"displayName"`
+	Email       openapi_types.Email `json:"email"`
+	JoinedAt    time.Time           `json:"joinedAt"`
+	LastSeenAt  *time.Time          `json:"lastSeenAt,omitempty"`
+
+	// Role Both roles see and edit everything (SPEC 3, "Concepts"). `owner`
+	// additionally administers the family: settings, members and invites.
+	Role   FamilyRole         `json:"role"`
+	UserId openapi_types.UUID `json:"userId"`
+}
+
+// FamilyRole Both roles see and edit everything (SPEC 3, "Concepts"). `owner`
+// additionally administers the family: settings, members and invites.
+type FamilyRole string
+
 // HealthStatus defines model for HealthStatus.
 type HealthStatus struct {
 	// Status Always `ok`; a non-200 status is the real signal.
@@ -63,6 +189,41 @@ type HealthStatus struct {
 
 // HealthStatusStatus Always `ok`; a non-200 status is the real signal.
 type HealthStatusStatus string
+
+// InvitePreview defines model for InvitePreview.
+type InvitePreview struct {
+	FamilyName string        `json:"familyName"`
+	Status     *InviteStatus `json:"status,omitempty"`
+	Usable     bool          `json:"usable"`
+}
+
+// InviteStatus defines model for InviteStatus.
+type InviteStatus string
+
+// Me defines model for Me.
+type Me struct {
+	Family Family `json:"family"`
+
+	// Role Both roles see and edit everything (SPEC 3, "Concepts"). `owner`
+	// additionally administers the family: settings, members and invites.
+	Role FamilyRole `json:"role"`
+	User User       `json:"user"`
+}
+
+// Person defines model for Person.
+type Person struct {
+	ArchivedAt *time.Time          `json:"archivedAt,omitempty"`
+	AvatarUrl  *string             `json:"avatarUrl,omitempty"`
+	Birthdate  *openapi_types.Date `json:"birthdate,omitempty"`
+	CreatedAt  time.Time           `json:"createdAt"`
+	Id         openapi_types.UUID  `json:"id"`
+	IsChild    bool                `json:"isChild"`
+	Name       string              `json:"name"`
+	UpdatedAt  time.Time           `json:"updatedAt"`
+
+	// UserId Set when this person is also a member of the family.
+	UserId *openapi_types.UUID `json:"userId,omitempty"`
+}
 
 // PingResult defines model for PingResult.
 type PingResult struct {
@@ -76,8 +237,141 @@ type PingResult struct {
 // PingResultDatabase Always `ok`; the 503 response covers the failure case.
 type PingResultDatabase string
 
+// UpdateFamilyRequest defines model for UpdateFamilyRequest.
+type UpdateFamilyRequest struct {
+	DefaultCurrency *string `json:"defaultCurrency,omitempty"`
+	Name            *string `json:"name,omitempty"`
+}
+
+// UpdatePersonRequest defines model for UpdatePersonRequest.
+type UpdatePersonRequest struct {
+	AvatarUrl *string             `json:"avatarUrl,omitempty"`
+	Birthdate *openapi_types.Date `json:"birthdate,omitempty"`
+	IsChild   *bool               `json:"isChild,omitempty"`
+	Name      *string             `json:"name,omitempty"`
+	UserId    *openapi_types.UUID `json:"userId,omitempty"`
+}
+
+// User defines model for User.
+type User struct {
+	AvatarUrl   *string             `json:"avatarUrl,omitempty"`
+	CreatedAt   time.Time           `json:"createdAt"`
+	DisplayName string              `json:"displayName"`
+	Email       openapi_types.Email `json:"email"`
+	Id          openapi_types.UUID  `json:"id"`
+	LastSeenAt  time.Time           `json:"lastSeenAt"`
+
+	// Locale The stored preference, absent until the user chooses one (M2).
+	Locale *UserLocale `json:"locale,omitempty"`
+}
+
+// UserLocale The stored preference, absent until the user chooses one (M2).
+type UserLocale string
+
+// BadRequest defines model for BadRequest.
+type BadRequest = Error
+
+// Forbidden defines model for Forbidden.
+type Forbidden = Error
+
+// NotFound defines model for NotFound.
+type NotFound = Error
+
+// Unauthorized defines model for Unauthorized.
+type Unauthorized = Error
+
+// HandleGoogleCallbackParams defines parameters for HandleGoogleCallback.
+type HandleGoogleCallbackParams struct {
+	Code  *string `form:"code,omitempty" json:"code,omitempty"`
+	State *string `form:"state,omitempty" json:"state,omitempty"`
+
+	// Error Set by Google when the user declines consent.
+	Error *string `form:"error,omitempty" json:"error,omitempty"`
+}
+
+// StartGoogleAuthParams defines parameters for StartGoogleAuth.
+type StartGoogleAuthParams struct {
+	// Invite An invite token from a `/join/{token}` link. Carried through the
+	// round trip so the callback can join that family instead of creating
+	// a new one.
+	Invite *string `form:"invite,omitempty" json:"invite,omitempty"`
+
+	// Next Where to land after signing in. Must be a path on this origin;
+	// anything else is ignored rather than rejected, so a tampered link
+	// cannot turn sign-in into an open redirect.
+	Next *string `form:"next,omitempty" json:"next,omitempty"`
+}
+
+// ListPeopleParams defines parameters for ListPeople.
+type ListPeopleParams struct {
+	IncludeArchived *bool `form:"includeArchived,omitempty" json:"includeArchived,omitempty"`
+}
+
+// UpdateFamilyJSONRequestBody defines body for UpdateFamily for application/json ContentType.
+type UpdateFamilyJSONRequestBody = UpdateFamilyRequest
+
+// CreatePersonJSONRequestBody defines body for CreatePerson for application/json ContentType.
+type CreatePersonJSONRequestBody = CreatePersonRequest
+
+// UpdatePersonJSONRequestBody defines body for UpdatePerson for application/json ContentType.
+type UpdatePersonJSONRequestBody = UpdatePersonRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// HandleGoogleCallback Complete the Google sign-in flow
+	// (GET /api/v1/auth/google/callback)
+	HandleGoogleCallback(w http.ResponseWriter, r *http.Request, params HandleGoogleCallbackParams)
+	// StartGoogleAuth Begin the Google sign-in flow
+	// (GET /api/v1/auth/google/start)
+	StartGoogleAuth(w http.ResponseWriter, r *http.Request, params StartGoogleAuthParams)
+	// Logout Sign out
+	// (POST /api/v1/auth/logout)
+	Logout(w http.ResponseWriter, r *http.Request)
+	// RefreshSession Rotate the session
+	// (POST /api/v1/auth/refresh)
+	RefreshSession(w http.ResponseWriter, r *http.Request)
+	// GetFamily The current family's settings
+	// (GET /api/v1/family)
+	GetFamily(w http.ResponseWriter, r *http.Request)
+	// UpdateFamily Update the current family's settings
+	// (PATCH /api/v1/family)
+	UpdateFamily(w http.ResponseWriter, r *http.Request)
+	// ListFamilyInvites Invites issued for the current family
+	// (GET /api/v1/family/invites)
+	ListFamilyInvites(w http.ResponseWriter, r *http.Request)
+	// CreateFamilyInvite Generate a single-use invite link
+	// (POST /api/v1/family/invites)
+	CreateFamilyInvite(w http.ResponseWriter, r *http.Request)
+	// RevokeFamilyInvite Revoke an unused invite
+	// (DELETE /api/v1/family/invites/{inviteId})
+	RevokeFamilyInvite(w http.ResponseWriter, r *http.Request, inviteId openapi_types.UUID)
+	// ListFamilyMembers Everyone in the current family
+	// (GET /api/v1/family/members)
+	ListFamilyMembers(w http.ResponseWriter, r *http.Request)
+	// RemoveFamilyMember Remove a member from the family
+	// (DELETE /api/v1/family/members/{userId})
+	RemoveFamilyMember(w http.ResponseWriter, r *http.Request, userId openapi_types.UUID)
+	// GetInvitePreview What an invite link leads to
+	// (GET /api/v1/invites/{token})
+	GetInvitePreview(w http.ResponseWriter, r *http.Request, token string)
+	// GetMe The signed-in user and their current family
+	// (GET /api/v1/me)
+	GetMe(w http.ResponseWriter, r *http.Request)
+	// ListPeople People the family tracks things for
+	// (GET /api/v1/people)
+	ListPeople(w http.ResponseWriter, r *http.Request, params ListPeopleParams)
+	// CreatePerson Add a person
+	// (POST /api/v1/people)
+	CreatePerson(w http.ResponseWriter, r *http.Request)
+	// ArchivePerson Archive a person
+	// (DELETE /api/v1/people/{personId})
+	ArchivePerson(w http.ResponseWriter, r *http.Request, personId openapi_types.UUID)
+	// GetPerson One person
+	// (GET /api/v1/people/{personId})
+	GetPerson(w http.ResponseWriter, r *http.Request, personId openapi_types.UUID)
+	// UpdatePerson Update a person
+	// (PATCH /api/v1/people/{personId})
+	UpdatePerson(w http.ResponseWriter, r *http.Request, personId openapi_types.UUID)
 	// GetPing Round-trip probe
 	// (GET /api/v1/ping)
 	GetPing(w http.ResponseWriter, r *http.Request)
@@ -89,6 +383,114 @@ type ServerInterface interface {
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
 
 type Unimplemented struct{}
+
+// HandleGoogleCallback Complete the Google sign-in flow
+// (GET /api/v1/auth/google/callback)
+func (_ Unimplemented) HandleGoogleCallback(w http.ResponseWriter, r *http.Request, params HandleGoogleCallbackParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// StartGoogleAuth Begin the Google sign-in flow
+// (GET /api/v1/auth/google/start)
+func (_ Unimplemented) StartGoogleAuth(w http.ResponseWriter, r *http.Request, params StartGoogleAuthParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Logout Sign out
+// (POST /api/v1/auth/logout)
+func (_ Unimplemented) Logout(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// RefreshSession Rotate the session
+// (POST /api/v1/auth/refresh)
+func (_ Unimplemented) RefreshSession(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetFamily The current family's settings
+// (GET /api/v1/family)
+func (_ Unimplemented) GetFamily(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateFamily Update the current family's settings
+// (PATCH /api/v1/family)
+func (_ Unimplemented) UpdateFamily(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListFamilyInvites Invites issued for the current family
+// (GET /api/v1/family/invites)
+func (_ Unimplemented) ListFamilyInvites(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateFamilyInvite Generate a single-use invite link
+// (POST /api/v1/family/invites)
+func (_ Unimplemented) CreateFamilyInvite(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// RevokeFamilyInvite Revoke an unused invite
+// (DELETE /api/v1/family/invites/{inviteId})
+func (_ Unimplemented) RevokeFamilyInvite(w http.ResponseWriter, r *http.Request, inviteId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListFamilyMembers Everyone in the current family
+// (GET /api/v1/family/members)
+func (_ Unimplemented) ListFamilyMembers(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// RemoveFamilyMember Remove a member from the family
+// (DELETE /api/v1/family/members/{userId})
+func (_ Unimplemented) RemoveFamilyMember(w http.ResponseWriter, r *http.Request, userId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetInvitePreview What an invite link leads to
+// (GET /api/v1/invites/{token})
+func (_ Unimplemented) GetInvitePreview(w http.ResponseWriter, r *http.Request, token string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetMe The signed-in user and their current family
+// (GET /api/v1/me)
+func (_ Unimplemented) GetMe(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListPeople People the family tracks things for
+// (GET /api/v1/people)
+func (_ Unimplemented) ListPeople(w http.ResponseWriter, r *http.Request, params ListPeopleParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreatePerson Add a person
+// (POST /api/v1/people)
+func (_ Unimplemented) CreatePerson(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ArchivePerson Archive a person
+// (DELETE /api/v1/people/{personId})
+func (_ Unimplemented) ArchivePerson(w http.ResponseWriter, r *http.Request, personId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetPerson One person
+// (GET /api/v1/people/{personId})
+func (_ Unimplemented) GetPerson(w http.ResponseWriter, r *http.Request, personId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdatePerson Update a person
+// (PATCH /api/v1/people/{personId})
+func (_ Unimplemented) UpdatePerson(w http.ResponseWriter, r *http.Request, personId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
 
 // GetPing Round-trip probe
 // (GET /api/v1/ping)
@@ -110,6 +512,426 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// HandleGoogleCallback operation middleware
+func (siw *ServerInterfaceWrapper) HandleGoogleCallback(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params HandleGoogleCallbackParams
+
+	// ------------- Optional query parameter "code" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "code", r.URL.Query(), &params.Code, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "code"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "code", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "state" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "state", r.URL.Query(), &params.State, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "state"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "state", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "error" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "error", r.URL.Query(), &params.Error, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "error"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "error", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.HandleGoogleCallback(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// StartGoogleAuth operation middleware
+func (siw *ServerInterfaceWrapper) StartGoogleAuth(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params StartGoogleAuthParams
+
+	// ------------- Optional query parameter "invite" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "invite", r.URL.Query(), &params.Invite, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "invite"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "invite", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "next" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "next", r.URL.Query(), &params.Next, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "next"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "next", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.StartGoogleAuth(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// Logout operation middleware
+func (siw *ServerInterfaceWrapper) Logout(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.Logout(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RefreshSession operation middleware
+func (siw *ServerInterfaceWrapper) RefreshSession(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RefreshSession(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetFamily operation middleware
+func (siw *ServerInterfaceWrapper) GetFamily(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetFamily(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateFamily operation middleware
+func (siw *ServerInterfaceWrapper) UpdateFamily(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateFamily(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListFamilyInvites operation middleware
+func (siw *ServerInterfaceWrapper) ListFamilyInvites(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListFamilyInvites(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateFamilyInvite operation middleware
+func (siw *ServerInterfaceWrapper) CreateFamilyInvite(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateFamilyInvite(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RevokeFamilyInvite operation middleware
+func (siw *ServerInterfaceWrapper) RevokeFamilyInvite(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "inviteId" -------------
+	var inviteId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "inviteId", chi.URLParam(r, "inviteId"), &inviteId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "inviteId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RevokeFamilyInvite(w, r, inviteId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListFamilyMembers operation middleware
+func (siw *ServerInterfaceWrapper) ListFamilyMembers(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListFamilyMembers(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RemoveFamilyMember operation middleware
+func (siw *ServerInterfaceWrapper) RemoveFamilyMember(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "userId" -------------
+	var userId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", chi.URLParam(r, "userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RemoveFamilyMember(w, r, userId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetInvitePreview operation middleware
+func (siw *ServerInterfaceWrapper) GetInvitePreview(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "token" -------------
+	var token string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "token", chi.URLParam(r, "token"), &token, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "token", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetInvitePreview(w, r, token)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetMe operation middleware
+func (siw *ServerInterfaceWrapper) GetMe(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetMe(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListPeople operation middleware
+func (siw *ServerInterfaceWrapper) ListPeople(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListPeopleParams
+
+	// ------------- Optional query parameter "includeArchived" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "includeArchived", r.URL.Query(), &params.IncludeArchived, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "includeArchived"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "includeArchived", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListPeople(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreatePerson operation middleware
+func (siw *ServerInterfaceWrapper) CreatePerson(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreatePerson(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ArchivePerson operation middleware
+func (siw *ServerInterfaceWrapper) ArchivePerson(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "personId" -------------
+	var personId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "personId", chi.URLParam(r, "personId"), &personId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "personId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ArchivePerson(w, r, personId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetPerson operation middleware
+func (siw *ServerInterfaceWrapper) GetPerson(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "personId" -------------
+	var personId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "personId", chi.URLParam(r, "personId"), &personId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "personId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetPerson(w, r, personId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdatePerson operation middleware
+func (siw *ServerInterfaceWrapper) UpdatePerson(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "personId" -------------
+	var personId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "personId", chi.URLParam(r, "personId"), &personId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "personId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdatePerson(w, r, personId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // GetPing operation middleware
 func (siw *ServerInterfaceWrapper) GetPing(w http.ResponseWriter, r *http.Request) {
@@ -258,8 +1080,892 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/ping", wrapper.GetPing)
 	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/auth/google/start", wrapper.StartGoogleAuth)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/auth/google/callback", wrapper.HandleGoogleCallback)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/auth/refresh", wrapper.RefreshSession)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/auth/logout", wrapper.Logout)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/me", wrapper.GetMe)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/family", wrapper.GetFamily)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/api/v1/family", wrapper.UpdateFamily)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/family/members", wrapper.ListFamilyMembers)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/api/v1/family/members/{userId}", wrapper.RemoveFamilyMember)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/family/invites", wrapper.ListFamilyInvites)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/family/invites", wrapper.CreateFamilyInvite)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/api/v1/family/invites/{inviteId}", wrapper.RevokeFamilyInvite)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/invites/{token}", wrapper.GetInvitePreview)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/people", wrapper.ListPeople)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/people", wrapper.CreatePerson)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/api/v1/people/{personId}", wrapper.ArchivePerson)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/people/{personId}", wrapper.GetPerson)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/api/v1/people/{personId}", wrapper.UpdatePerson)
+	})
 
 	return r
+}
+
+type BadRequestJSONResponse Error
+
+type ForbiddenJSONResponse Error
+
+type NotFoundJSONResponse Error
+
+type UnauthorizedJSONResponse Error
+
+type HandleGoogleCallbackRequestObject struct {
+	Params HandleGoogleCallbackParams
+}
+
+type HandleGoogleCallbackResponseObject interface {
+	VisitHandleGoogleCallbackResponse(w http.ResponseWriter) error
+}
+
+type HandleGoogleCallback302ResponseHeaders struct {
+	Location string
+}
+
+type HandleGoogleCallback302Response struct {
+	Headers HandleGoogleCallback302ResponseHeaders
+}
+
+func (response HandleGoogleCallback302Response) VisitHandleGoogleCallbackResponse(w http.ResponseWriter) error {
+	w.Header().Set("Location", fmt.Sprint(response.Headers.Location))
+	w.WriteHeader(302)
+	return nil
+}
+
+type HandleGoogleCallback400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response HandleGoogleCallback400JSONResponse) VisitHandleGoogleCallbackResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type StartGoogleAuthRequestObject struct {
+	Params StartGoogleAuthParams
+}
+
+type StartGoogleAuthResponseObject interface {
+	VisitStartGoogleAuthResponse(w http.ResponseWriter) error
+}
+
+type StartGoogleAuth302ResponseHeaders struct {
+	Location string
+}
+
+type StartGoogleAuth302Response struct {
+	Headers StartGoogleAuth302ResponseHeaders
+}
+
+func (response StartGoogleAuth302Response) VisitStartGoogleAuthResponse(w http.ResponseWriter) error {
+	w.Header().Set("Location", fmt.Sprint(response.Headers.Location))
+	w.WriteHeader(302)
+	return nil
+}
+
+type StartGoogleAuth503JSONResponse Error
+
+func (response StartGoogleAuth503JSONResponse) VisitStartGoogleAuthResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type LogoutRequestObject struct {
+}
+
+type LogoutResponseObject interface {
+	VisitLogoutResponse(w http.ResponseWriter) error
+}
+
+type Logout204Response struct {
+}
+
+func (response Logout204Response) VisitLogoutResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type Logout401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response Logout401JSONResponse) VisitLogoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RefreshSessionRequestObject struct {
+}
+
+type RefreshSessionResponseObject interface {
+	VisitRefreshSessionResponse(w http.ResponseWriter) error
+}
+
+type RefreshSession204Response struct {
+}
+
+func (response RefreshSession204Response) VisitRefreshSessionResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type RefreshSession401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response RefreshSession401JSONResponse) VisitRefreshSessionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetFamilyRequestObject struct {
+}
+
+type GetFamilyResponseObject interface {
+	VisitGetFamilyResponse(w http.ResponseWriter) error
+}
+
+type GetFamily200JSONResponse Family
+
+func (response GetFamily200JSONResponse) VisitGetFamilyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetFamily401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetFamily401JSONResponse) VisitGetFamilyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetFamily404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetFamily404JSONResponse) VisitGetFamilyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateFamilyRequestObject struct {
+	Body *UpdateFamilyJSONRequestBody
+}
+
+type UpdateFamilyResponseObject interface {
+	VisitUpdateFamilyResponse(w http.ResponseWriter) error
+}
+
+type UpdateFamily200JSONResponse Family
+
+func (response UpdateFamily200JSONResponse) VisitUpdateFamilyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateFamily400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateFamily400JSONResponse) VisitUpdateFamilyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateFamily401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdateFamily401JSONResponse) VisitUpdateFamilyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateFamily403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response UpdateFamily403JSONResponse) VisitUpdateFamilyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateFamily404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateFamily404JSONResponse) VisitUpdateFamilyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFamilyInvitesRequestObject struct {
+}
+
+type ListFamilyInvitesResponseObject interface {
+	VisitListFamilyInvitesResponse(w http.ResponseWriter) error
+}
+
+type ListFamilyInvites200JSONResponse []FamilyInvite
+
+func (response ListFamilyInvites200JSONResponse) VisitListFamilyInvitesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFamilyInvites401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListFamilyInvites401JSONResponse) VisitListFamilyInvitesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFamilyInvites403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ListFamilyInvites403JSONResponse) VisitListFamilyInvitesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateFamilyInviteRequestObject struct {
+}
+
+type CreateFamilyInviteResponseObject interface {
+	VisitCreateFamilyInviteResponse(w http.ResponseWriter) error
+}
+
+type CreateFamilyInvite201JSONResponse CreatedInvite
+
+func (response CreateFamilyInvite201JSONResponse) VisitCreateFamilyInviteResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateFamilyInvite401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreateFamilyInvite401JSONResponse) VisitCreateFamilyInviteResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateFamilyInvite403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response CreateFamilyInvite403JSONResponse) VisitCreateFamilyInviteResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevokeFamilyInviteRequestObject struct {
+	InviteId openapi_types.UUID `json:"inviteId"`
+}
+
+type RevokeFamilyInviteResponseObject interface {
+	VisitRevokeFamilyInviteResponse(w http.ResponseWriter) error
+}
+
+type RevokeFamilyInvite204Response struct {
+}
+
+func (response RevokeFamilyInvite204Response) VisitRevokeFamilyInviteResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type RevokeFamilyInvite401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response RevokeFamilyInvite401JSONResponse) VisitRevokeFamilyInviteResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevokeFamilyInvite403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response RevokeFamilyInvite403JSONResponse) VisitRevokeFamilyInviteResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevokeFamilyInvite404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response RevokeFamilyInvite404JSONResponse) VisitRevokeFamilyInviteResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFamilyMembersRequestObject struct {
+}
+
+type ListFamilyMembersResponseObject interface {
+	VisitListFamilyMembersResponse(w http.ResponseWriter) error
+}
+
+type ListFamilyMembers200JSONResponse []FamilyMember
+
+func (response ListFamilyMembers200JSONResponse) VisitListFamilyMembersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFamilyMembers401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListFamilyMembers401JSONResponse) VisitListFamilyMembersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveFamilyMemberRequestObject struct {
+	UserId openapi_types.UUID `json:"userId"`
+}
+
+type RemoveFamilyMemberResponseObject interface {
+	VisitRemoveFamilyMemberResponse(w http.ResponseWriter) error
+}
+
+type RemoveFamilyMember204Response struct {
+}
+
+func (response RemoveFamilyMember204Response) VisitRemoveFamilyMemberResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type RemoveFamilyMember401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response RemoveFamilyMember401JSONResponse) VisitRemoveFamilyMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveFamilyMember403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response RemoveFamilyMember403JSONResponse) VisitRemoveFamilyMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveFamilyMember404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response RemoveFamilyMember404JSONResponse) VisitRemoveFamilyMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetInvitePreviewRequestObject struct {
+	Token string `json:"token"`
+}
+
+type GetInvitePreviewResponseObject interface {
+	VisitGetInvitePreviewResponse(w http.ResponseWriter) error
+}
+
+type GetInvitePreview200JSONResponse InvitePreview
+
+func (response GetInvitePreview200JSONResponse) VisitGetInvitePreviewResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetInvitePreview404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetInvitePreview404JSONResponse) VisitGetInvitePreviewResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMeRequestObject struct {
+}
+
+type GetMeResponseObject interface {
+	VisitGetMeResponse(w http.ResponseWriter) error
+}
+
+type GetMe200JSONResponse Me
+
+func (response GetMe200JSONResponse) VisitGetMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMe401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetMe401JSONResponse) VisitGetMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPeopleRequestObject struct {
+	Params ListPeopleParams
+}
+
+type ListPeopleResponseObject interface {
+	VisitListPeopleResponse(w http.ResponseWriter) error
+}
+
+type ListPeople200JSONResponse []Person
+
+func (response ListPeople200JSONResponse) VisitListPeopleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPeople401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListPeople401JSONResponse) VisitListPeopleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreatePersonRequestObject struct {
+	Body *CreatePersonJSONRequestBody
+}
+
+type CreatePersonResponseObject interface {
+	VisitCreatePersonResponse(w http.ResponseWriter) error
+}
+
+type CreatePerson201JSONResponse Person
+
+func (response CreatePerson201JSONResponse) VisitCreatePersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreatePerson400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreatePerson400JSONResponse) VisitCreatePersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreatePerson401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreatePerson401JSONResponse) VisitCreatePersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ArchivePersonRequestObject struct {
+	PersonId openapi_types.UUID `json:"personId"`
+}
+
+type ArchivePersonResponseObject interface {
+	VisitArchivePersonResponse(w http.ResponseWriter) error
+}
+
+type ArchivePerson204Response struct {
+}
+
+func (response ArchivePerson204Response) VisitArchivePersonResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type ArchivePerson401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ArchivePerson401JSONResponse) VisitArchivePersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ArchivePerson404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ArchivePerson404JSONResponse) VisitArchivePersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPersonRequestObject struct {
+	PersonId openapi_types.UUID `json:"personId"`
+}
+
+type GetPersonResponseObject interface {
+	VisitGetPersonResponse(w http.ResponseWriter) error
+}
+
+type GetPerson200JSONResponse Person
+
+func (response GetPerson200JSONResponse) VisitGetPersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPerson401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetPerson401JSONResponse) VisitGetPersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPerson404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetPerson404JSONResponse) VisitGetPersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdatePersonRequestObject struct {
+	PersonId openapi_types.UUID `json:"personId"`
+	Body     *UpdatePersonJSONRequestBody
+}
+
+type UpdatePersonResponseObject interface {
+	VisitUpdatePersonResponse(w http.ResponseWriter) error
+}
+
+type UpdatePerson200JSONResponse Person
+
+func (response UpdatePerson200JSONResponse) VisitUpdatePersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdatePerson400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdatePerson400JSONResponse) VisitUpdatePersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdatePerson401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdatePerson401JSONResponse) VisitUpdatePersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdatePerson404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdatePerson404JSONResponse) VisitUpdatePersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 type GetPingRequestObject struct {
@@ -320,6 +2026,60 @@ func (response GetHealthz200JSONResponse) VisitGetHealthzResponse(w http.Respons
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// HandleGoogleCallback Complete the Google sign-in flow
+	// (GET /api/v1/auth/google/callback)
+	HandleGoogleCallback(ctx context.Context, request HandleGoogleCallbackRequestObject) (HandleGoogleCallbackResponseObject, error)
+	// StartGoogleAuth Begin the Google sign-in flow
+	// (GET /api/v1/auth/google/start)
+	StartGoogleAuth(ctx context.Context, request StartGoogleAuthRequestObject) (StartGoogleAuthResponseObject, error)
+	// Logout Sign out
+	// (POST /api/v1/auth/logout)
+	Logout(ctx context.Context, request LogoutRequestObject) (LogoutResponseObject, error)
+	// RefreshSession Rotate the session
+	// (POST /api/v1/auth/refresh)
+	RefreshSession(ctx context.Context, request RefreshSessionRequestObject) (RefreshSessionResponseObject, error)
+	// GetFamily The current family's settings
+	// (GET /api/v1/family)
+	GetFamily(ctx context.Context, request GetFamilyRequestObject) (GetFamilyResponseObject, error)
+	// UpdateFamily Update the current family's settings
+	// (PATCH /api/v1/family)
+	UpdateFamily(ctx context.Context, request UpdateFamilyRequestObject) (UpdateFamilyResponseObject, error)
+	// ListFamilyInvites Invites issued for the current family
+	// (GET /api/v1/family/invites)
+	ListFamilyInvites(ctx context.Context, request ListFamilyInvitesRequestObject) (ListFamilyInvitesResponseObject, error)
+	// CreateFamilyInvite Generate a single-use invite link
+	// (POST /api/v1/family/invites)
+	CreateFamilyInvite(ctx context.Context, request CreateFamilyInviteRequestObject) (CreateFamilyInviteResponseObject, error)
+	// RevokeFamilyInvite Revoke an unused invite
+	// (DELETE /api/v1/family/invites/{inviteId})
+	RevokeFamilyInvite(ctx context.Context, request RevokeFamilyInviteRequestObject) (RevokeFamilyInviteResponseObject, error)
+	// ListFamilyMembers Everyone in the current family
+	// (GET /api/v1/family/members)
+	ListFamilyMembers(ctx context.Context, request ListFamilyMembersRequestObject) (ListFamilyMembersResponseObject, error)
+	// RemoveFamilyMember Remove a member from the family
+	// (DELETE /api/v1/family/members/{userId})
+	RemoveFamilyMember(ctx context.Context, request RemoveFamilyMemberRequestObject) (RemoveFamilyMemberResponseObject, error)
+	// GetInvitePreview What an invite link leads to
+	// (GET /api/v1/invites/{token})
+	GetInvitePreview(ctx context.Context, request GetInvitePreviewRequestObject) (GetInvitePreviewResponseObject, error)
+	// GetMe The signed-in user and their current family
+	// (GET /api/v1/me)
+	GetMe(ctx context.Context, request GetMeRequestObject) (GetMeResponseObject, error)
+	// ListPeople People the family tracks things for
+	// (GET /api/v1/people)
+	ListPeople(ctx context.Context, request ListPeopleRequestObject) (ListPeopleResponseObject, error)
+	// CreatePerson Add a person
+	// (POST /api/v1/people)
+	CreatePerson(ctx context.Context, request CreatePersonRequestObject) (CreatePersonResponseObject, error)
+	// ArchivePerson Archive a person
+	// (DELETE /api/v1/people/{personId})
+	ArchivePerson(ctx context.Context, request ArchivePersonRequestObject) (ArchivePersonResponseObject, error)
+	// GetPerson One person
+	// (GET /api/v1/people/{personId})
+	GetPerson(ctx context.Context, request GetPersonRequestObject) (GetPersonResponseObject, error)
+	// UpdatePerson Update a person
+	// (PATCH /api/v1/people/{personId})
+	UpdatePerson(ctx context.Context, request UpdatePersonRequestObject) (UpdatePersonResponseObject, error)
 	// GetPing Round-trip probe
 	// (GET /api/v1/ping)
 	GetPing(ctx context.Context, request GetPingRequestObject) (GetPingResponseObject, error)
@@ -365,6 +2125,477 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// HandleGoogleCallback operation middleware
+func (sh *strictHandler) HandleGoogleCallback(w http.ResponseWriter, r *http.Request, params HandleGoogleCallbackParams) {
+	var request HandleGoogleCallbackRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.HandleGoogleCallback(ctx, request.(HandleGoogleCallbackRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "HandleGoogleCallback")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(HandleGoogleCallbackResponseObject); ok {
+		if err := validResponse.VisitHandleGoogleCallbackResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// StartGoogleAuth operation middleware
+func (sh *strictHandler) StartGoogleAuth(w http.ResponseWriter, r *http.Request, params StartGoogleAuthParams) {
+	var request StartGoogleAuthRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.StartGoogleAuth(ctx, request.(StartGoogleAuthRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "StartGoogleAuth")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(StartGoogleAuthResponseObject); ok {
+		if err := validResponse.VisitStartGoogleAuthResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// Logout operation middleware
+func (sh *strictHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	var request LogoutRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.Logout(ctx, request.(LogoutRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "Logout")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(LogoutResponseObject); ok {
+		if err := validResponse.VisitLogoutResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RefreshSession operation middleware
+func (sh *strictHandler) RefreshSession(w http.ResponseWriter, r *http.Request) {
+	var request RefreshSessionRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RefreshSession(ctx, request.(RefreshSessionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RefreshSession")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RefreshSessionResponseObject); ok {
+		if err := validResponse.VisitRefreshSessionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetFamily operation middleware
+func (sh *strictHandler) GetFamily(w http.ResponseWriter, r *http.Request) {
+	var request GetFamilyRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetFamily(ctx, request.(GetFamilyRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetFamily")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetFamilyResponseObject); ok {
+		if err := validResponse.VisitGetFamilyResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateFamily operation middleware
+func (sh *strictHandler) UpdateFamily(w http.ResponseWriter, r *http.Request) {
+	var request UpdateFamilyRequestObject
+
+	var body UpdateFamilyJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateFamily(ctx, request.(UpdateFamilyRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateFamily")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateFamilyResponseObject); ok {
+		if err := validResponse.VisitUpdateFamilyResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListFamilyInvites operation middleware
+func (sh *strictHandler) ListFamilyInvites(w http.ResponseWriter, r *http.Request) {
+	var request ListFamilyInvitesRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListFamilyInvites(ctx, request.(ListFamilyInvitesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListFamilyInvites")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListFamilyInvitesResponseObject); ok {
+		if err := validResponse.VisitListFamilyInvitesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateFamilyInvite operation middleware
+func (sh *strictHandler) CreateFamilyInvite(w http.ResponseWriter, r *http.Request) {
+	var request CreateFamilyInviteRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateFamilyInvite(ctx, request.(CreateFamilyInviteRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateFamilyInvite")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateFamilyInviteResponseObject); ok {
+		if err := validResponse.VisitCreateFamilyInviteResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RevokeFamilyInvite operation middleware
+func (sh *strictHandler) RevokeFamilyInvite(w http.ResponseWriter, r *http.Request, inviteId openapi_types.UUID) {
+	var request RevokeFamilyInviteRequestObject
+
+	request.InviteId = inviteId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RevokeFamilyInvite(ctx, request.(RevokeFamilyInviteRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RevokeFamilyInvite")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RevokeFamilyInviteResponseObject); ok {
+		if err := validResponse.VisitRevokeFamilyInviteResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListFamilyMembers operation middleware
+func (sh *strictHandler) ListFamilyMembers(w http.ResponseWriter, r *http.Request) {
+	var request ListFamilyMembersRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListFamilyMembers(ctx, request.(ListFamilyMembersRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListFamilyMembers")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListFamilyMembersResponseObject); ok {
+		if err := validResponse.VisitListFamilyMembersResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RemoveFamilyMember operation middleware
+func (sh *strictHandler) RemoveFamilyMember(w http.ResponseWriter, r *http.Request, userId openapi_types.UUID) {
+	var request RemoveFamilyMemberRequestObject
+
+	request.UserId = userId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RemoveFamilyMember(ctx, request.(RemoveFamilyMemberRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RemoveFamilyMember")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RemoveFamilyMemberResponseObject); ok {
+		if err := validResponse.VisitRemoveFamilyMemberResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetInvitePreview operation middleware
+func (sh *strictHandler) GetInvitePreview(w http.ResponseWriter, r *http.Request, token string) {
+	var request GetInvitePreviewRequestObject
+
+	request.Token = token
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetInvitePreview(ctx, request.(GetInvitePreviewRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetInvitePreview")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetInvitePreviewResponseObject); ok {
+		if err := validResponse.VisitGetInvitePreviewResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetMe operation middleware
+func (sh *strictHandler) GetMe(w http.ResponseWriter, r *http.Request) {
+	var request GetMeRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetMe(ctx, request.(GetMeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetMe")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetMeResponseObject); ok {
+		if err := validResponse.VisitGetMeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListPeople operation middleware
+func (sh *strictHandler) ListPeople(w http.ResponseWriter, r *http.Request, params ListPeopleParams) {
+	var request ListPeopleRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListPeople(ctx, request.(ListPeopleRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListPeople")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListPeopleResponseObject); ok {
+		if err := validResponse.VisitListPeopleResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreatePerson operation middleware
+func (sh *strictHandler) CreatePerson(w http.ResponseWriter, r *http.Request) {
+	var request CreatePersonRequestObject
+
+	var body CreatePersonJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreatePerson(ctx, request.(CreatePersonRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreatePerson")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreatePersonResponseObject); ok {
+		if err := validResponse.VisitCreatePersonResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ArchivePerson operation middleware
+func (sh *strictHandler) ArchivePerson(w http.ResponseWriter, r *http.Request, personId openapi_types.UUID) {
+	var request ArchivePersonRequestObject
+
+	request.PersonId = personId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ArchivePerson(ctx, request.(ArchivePersonRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ArchivePerson")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ArchivePersonResponseObject); ok {
+		if err := validResponse.VisitArchivePersonResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetPerson operation middleware
+func (sh *strictHandler) GetPerson(w http.ResponseWriter, r *http.Request, personId openapi_types.UUID) {
+	var request GetPersonRequestObject
+
+	request.PersonId = personId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetPerson(ctx, request.(GetPersonRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetPerson")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetPersonResponseObject); ok {
+		if err := validResponse.VisitGetPersonResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdatePerson operation middleware
+func (sh *strictHandler) UpdatePerson(w http.ResponseWriter, r *http.Request, personId openapi_types.UUID) {
+	var request UpdatePersonRequestObject
+
+	request.PersonId = personId
+
+	var body UpdatePersonJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdatePerson(ctx, request.(UpdatePersonRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdatePerson")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdatePersonResponseObject); ok {
+		if err := validResponse.VisitUpdatePersonResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // GetPing operation middleware
@@ -413,4 +2644,175 @@ func (sh *strictHandler) GetHealthz(w http.ResponseWriter, r *http.Request) {
 	} else if response != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
 	}
+}
+
+// Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
+// Stored as a slice of fixed-width chunks rather than one concatenated
+// const string: with thousands of chunks the chained `+` fold is several
+// times slower for the Go compiler than parsing a slice literal.
+var swaggerSpec = []string{
+	"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",
+}
+
+// decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,
+// after base64-decoding and flate-decompressing the embedded blob.
+func decodeSpec() ([]byte, error) {
+	encoded := strings.Join(swaggerSpec, "")
+	compressed, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		return nil, fmt.Errorf("error base64 decoding spec: %w", err)
+	}
+	zr := flate.NewReader(bytes.NewReader(compressed))
+	var buf bytes.Buffer
+	if _, err := buf.ReadFrom(zr); err != nil {
+		return nil, fmt.Errorf("read flate: %w", err)
+	}
+	if err := zr.Close(); err != nil {
+		return nil, fmt.Errorf("close flate reader: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
+var rawSpec = decodeSpecCached()
+
+// a naive cache of the decoded OpenAPI spec
+func decodeSpecCached() func() ([]byte, error) {
+	data, err := decodeSpec()
+	return func() ([]byte, error) {
+		return data, err
+	}
+}
+
+// Constructs a synthetic filesystem for resolving external references when loading openapi specifications.
+func PathToRawSpec(pathToFile string) map[string]func() ([]byte, error) {
+	res := make(map[string]func() ([]byte, error))
+	if len(pathToFile) > 0 {
+		res[pathToFile] = rawSpec
+	}
+
+	return res
+}
+
+// GetSpec returns the OpenAPI specification corresponding to the generated
+// code in this file. External references in the spec are resolved through
+// PathToRawSpec; externally-referenced files must be embedded in their
+// corresponding Go packages (via the import-mapping feature). URL-based
+// external refs are not supported.
+func GetSpec() (swagger *openapi3.T, err error) {
+	resolvePath := PathToRawSpec("")
+
+	loader := openapi3.NewLoader()
+	loader.IsExternalRefsAllowed = true
+	loader.ReadFromURIFunc = func(loader *openapi3.Loader, url *url.URL) ([]byte, error) {
+		pathToFile := url.String()
+		pathToFile = path.Clean(pathToFile)
+		getSpec, ok := resolvePath[pathToFile]
+		if !ok {
+			err1 := fmt.Errorf("path not found: %s", pathToFile)
+			return nil, err1
+		}
+		return getSpec()
+	}
+	var specData []byte
+	specData, err = rawSpec()
+	if err != nil {
+		return
+	}
+	swagger, err = loader.LoadFromData(specData)
+	if err != nil {
+		return
+	}
+	return
+}
+
+// GetSpecJSON returns the raw JSON bytes of the embedded OpenAPI
+// specification: decompressed but not unmarshaled. External references
+// are not resolved here; the bytes are the spec exactly as embedded by
+// codegen. The result is cached at package init time, so repeated calls
+// are cheap.
+func GetSpecJSON() ([]byte, error) {
+	return rawSpec()
+}
+
+// GetSwagger returns the OpenAPI specification corresponding to the
+// generated code in this file.
+//
+// Deprecated: GetSwagger predates kin-openapi renaming openapi3.Swagger
+// to openapi3.T. Use [GetSpec] instead. This wrapper is retained for
+// backwards compatibility.
+func GetSwagger() (*openapi3.T, error) {
+	return GetSpec()
 }

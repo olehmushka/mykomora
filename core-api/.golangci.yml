@@ -37,6 +37,16 @@ linters:
       disabled-checks:
         # Conflicts with the `if err := ...; err != nil` idiom used throughout.
         - ifElseChain
+      settings:
+        # The default is 80 bytes, which this codebase trips constantly and
+        # never meaningfully: config.Config is a read-only snapshot passed once
+        # per construction, and a database row is a value on a path that has
+        # just done I/O. Raised rather than disabled, so a genuinely large copy
+        # in a genuinely hot loop still gets caught.
+        hugeParam:
+          sizeThreshold: 512
+        rangeValCopy:
+          sizeThreshold: 512
 
     revive:
       rules:
@@ -67,6 +77,16 @@ linters:
           - dupl
           - gosec
           - gocyclo
+
+      # G124 wants Secure, HttpOnly and SameSite provably set. This file is the
+      # one place that builds cookies, and two of its decisions are deliberate
+      # and cannot satisfy the rule: Secure comes from configuration, because a
+      # developer's stack is plain HTTP, and the CSRF cookie is readable by
+      # script on purpose — that is what makes double-submit work. Both are
+      # argued in comments at the point of decision.
+      - path: internal/auth/cookies\.go$
+        linters:
+          - gosec
 
 formatters:
   enable:

@@ -4,9 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-M0 (walking skeleton) has landed: both services are scaffolded, the local stack runs, and CI
-enforces lint, tests, codegen drift and migration reversibility. No domain code exists yet — the
-first real tables and endpoints arrive in M1.
+M1 (identity and family) has landed on top of the M0 walking skeleton. core-api performs the
+Google OAuth2 exchange and issues its own tokens; `users`, `families`, `family_members`,
+`family_invites`, `refresh_tokens` and `people` exist; the web app has sign-in, family settings,
+invites and people. There are no items yet — those are M3, after M2's places and taxonomy.
 
 The domain is settled and written down. Treat these as the source of truth and read them before
 proposing domain changes:
@@ -14,7 +15,7 @@ proposing domain changes:
 - `docs/SPEC.md` — problem, concepts, data model, category/trait taxonomy, architecture, NFRs
 - `docs/MILESTONES.md` — M0-M10 delivery plan with a "Done when" acceptance sentence each
 
-Two constraints from the spec that are easy to violate and expensive to undo:
+Three constraints that are easy to violate and expensive to undo:
 
 - **core-api owns identity.** The web app is a thin client. Auth must never migrate into Next.js,
   or the planned mobile client inherits a rewrite.
@@ -23,6 +24,16 @@ Two constraints from the spec that are easy to violate and expensive to undo:
   carries a `family-scoped` vet rule that fails any query not mentioning `family_id` unless its
   name is in the rule's explicit allowlist. Widening that allowlist is a visible diff; do it only
   for queries that genuinely touch no tenant data.
+
+  Two queries read and write the `families` row itself, which has no `family_id` column because
+  its own id *is* the tenant key. They scope through `family_members` rather than take an
+  exemption: the caller proves membership instead of asserting it.
+
+- **Authentication has the same shape.** `publicOperations` in
+  `core-api/internal/auth/middleware.go` lists, by generated operation ID, the handful of
+  endpoints served without a session. Anything absent from it requires one. The list is kept in
+  step with the `security: []` declarations in `openapi.yaml` by a test, so the contract and the
+  code cannot disagree about what is public — widening either one is a visible diff.
 
 ## Commands
 
@@ -55,7 +66,8 @@ Four paths are generated and committed. CI regenerates them and fails on any dif
 | `web/src/lib/api/schema.d.ts` | `core-api/api/openapi.yaml` | `openapi-typescript` |
 
 To change the HTTP contract: edit `openapi.yaml`, run `make generate`, then implement the new
-method on the generated strict interface. To change a query: edit the `.sql` file, run
+method on the generated strict interface — in whichever `internal/` package owns that slice of
+the domain, and add the package to the embedded struct in `internal/httpapi`. To change a query: edit the `.sql` file, run
 `make generate`. Never edit the output.
 
 Go dev tools (`oapi-codegen`, `sqlc`, `goose`, `air`) are pinned as `tool` directives in
@@ -87,6 +99,8 @@ mykomora is planned as two services in this repo:
 - Linting: `golangci-lint`, strict/extensive set — govet, staticcheck, errcheck, unused, gofmt/goimports, revive, plus gosec (security), gocyclo (complexity limits), gocritic, dupl. The actual `.golangci.yml` gets written when core-api is scaffolded.
 - Project layout: standard Go layout — `cmd/` for entrypoints, `internal/` for private application code, `pkg/` only for code meant to be imported externally.
 - Error handling: wrap with `fmt.Errorf("...: %w", err)`, inspect with `errors.Is`/`errors.As`; use package-level sentinel errors (`var ErrNotFound = errors.New(...)`) for expected/handled cases.
+- Handler packages declare their own narrow `Store` interface listing only the queries they use, and take that rather than `db.Querier`. The generated interface grows with every query in the repo; a handler that can reach any query is a handler that can reach an unscoped one.
+- `internal/pgconv` converts between `pgtype` and plain Go; `internal/apimap` converts database rows into the generated API types. Both exist so the translation is written once.
 - Imports: three groups via `goimports -local <module path>` — stdlib, third-party, then this module's own packages, blank-line separated.
 
 ### TypeScript / Next.js (web)

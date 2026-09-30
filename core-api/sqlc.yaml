@@ -32,10 +32,21 @@ rules:
   #
   # The allowlist is intentionally in this file rather than in a magic comment:
   # widening it is a diff a reviewer cannot miss.
+  #
+  # Everything on it is justified where the query is written. In short: `users`
+  # is the only global table in the schema, so identity resolution genuinely
+  # runs before a tenant exists; and reuse detection revokes an account's
+  # tokens across every family it belongs to, on purpose.
   - name: family-scoped
     message: >-
       query is not family-scoped: it must filter or insert on family_id
       (see SPEC.md "Tenancy invariant"). If it genuinely touches no tenant data,
       add its name to the allowlist in the family-scoped rule in sqlc.yaml.
     rule: >-
-      !query.sql.contains("family_id") && !(query.name in ["GetServerTime"])
+      !query.sql.contains("family_id") && !(query.name in [
+        "GetServerTime",
+        "UpsertUserByGoogleSub",
+        "GetUserByID",
+        "TouchUserLastSeen",
+        "RevokeAllUserRefreshTokens"
+      ])
