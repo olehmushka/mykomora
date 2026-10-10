@@ -16,7 +16,15 @@ type Querier interface {
 	// the same link cannot both win. No row means expired, revoked or already used.
 	AcceptInvite(ctx context.Context, arg AcceptInviteParams) (AcceptInviteRow, error)
 	AddFamilyMember(ctx context.Context, arg AddFamilyMemberParams) (FamilyMember, error)
+	ArchiveCategory(ctx context.Context, arg ArchiveCategoryParams) (int64, error)
+	ArchiveLocation(ctx context.Context, arg ArchiveLocationParams) (int64, error)
 	ArchivePerson(ctx context.Context, arg ArchivePersonParams) (int64, error)
+	ArchiveRoom(ctx context.Context, arg ArchiveRoomParams) (int64, error)
+	ArchiveTraitDef(ctx context.Context, arg ArchiveTraitDefParams) (int64, error)
+	// Guarded so a family cannot point parent_id at a category it cannot see:
+	// the FK alone only proves the row exists, not that it is this family's own
+	// or a built-in.
+	CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error)
 	// Families and membership.
 	//
 	// `families` is the awkward table for the tenancy invariant: its own id *is*
@@ -37,6 +45,10 @@ type Querier interface {
 	// Only the SHA-256 of the token is stored. A database dump therefore yields no
 	// usable invite links.
 	CreateFamilyInvite(ctx context.Context, arg CreateFamilyInviteParams) (CreateFamilyInviteRow, error)
+	// Locations: one of the family's physical places (SPEC 3, "Concepts").
+	//
+	// Scoped directly on family_id, same shape as people.sql.
+	CreateLocation(ctx context.Context, arg CreateLocationParams) (Location, error)
 	// People: anyone the family tracks things for (SPEC 3, "Concepts").
 	//
 	// Archived rather than deleted, because items recorded against a person must
@@ -52,6 +64,23 @@ type Querier interface {
 	// Tokens are stored as SHA-256 digests. The raw value exists only in the
 	// client's cookie.
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (CreateRefreshTokenRow, error)
+	// Rooms: inside a location (SPEC 4, "Places").
+	//
+	// `rooms` has no family_id column of its own — like `families`, its tenant
+	// key lives one hop away. Every query here scopes through `locations` rather
+	// than taking a vet-rule exemption (CLAUDE.md, "Every query is family-scoped"),
+	// replicating the pattern families.sql established for GetFamily/UpdateFamily.
+	// Get this join wrong and a room leaks across families with no complaint from
+	// the vet rule, which only checks for the literal text "family_id" — not that
+	// it actually constrains the right row.
+	// SELECT ... WHERE EXISTS, not a plain INSERT: the row is only written if the
+	// location is actually this family's, which is what proves the room may be
+	// created here at all.
+	CreateRoom(ctx context.Context, arg CreateRoomParams) (Room, error)
+	// Guarded by EXISTS against categories so a custom field can only attach to a
+	// category this family can actually see (its own, or a built-in).
+	CreateTraitDef(ctx context.Context, arg CreateTraitDefParams) (TraitDef, error)
+	GetCategory(ctx context.Context, arg GetCategoryParams) (Category, error)
 	// Scoped through family_members rather than by primary key alone.
 	//
 	// `families` is the one tenant table with no family_id column of its own — its
@@ -73,10 +102,12 @@ type Querier interface {
 	// and nothing else about it: an invite link must be enough to see who invited
 	// you, and never enough to see their inventory.
 	GetInviteByTokenHash(ctx context.Context, tokenHash []byte) (GetInviteByTokenHashRow, error)
+	GetLocation(ctx context.Context, arg GetLocationParams) (Location, error)
 	GetPerson(ctx context.Context, arg GetPersonParams) (Person, error)
 	// `rotated_to` is what makes reuse detectable: a non-NULL value means this
 	// token was already exchanged, and the presenter should not still have it.
 	GetRefreshTokenByHash(ctx context.Context, tokenHash []byte) (GetRefreshTokenByHashRow, error)
+	GetRoom(ctx context.Context, arg GetRoomParams) (Room, error)
 	// Operational queries. No tenant data lives here.
 	// Round-trip probe: proves the generated code, the pool and Postgres all agree.
 	//
@@ -84,14 +115,36 @@ type Querier interface {
 	// It is allowlisted by name in sqlc.yaml's `family-scoped` vet rule, so adding
 	// another unscoped query requires an obvious, reviewable change to that list.
 	GetServerTime(ctx context.Context) (pgtype.Timestamptz, error)
+	GetTraitDef(ctx context.Context, arg GetTraitDefParams) (TraitDef, error)
 	// TENANCY: pre-tenant. Resolves the principal carried by an access token; the
 	// caller then scopes everything that follows by the token's tenant claim.
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
+	// Categories: the built-in taxonomy plus each family's own (SPEC 4,
+	// "Taxonomy").
+	//
+	// family_id NULL means built-in — its label is resolved from the Go message
+	// catalogue via name_i18n_key. family_id set means family-defined — its label
+	// is name_custom. Reads return both; writes can only ever touch a family's
+	// own rows, because `family_id = sqlc.arg(family_id)` never matches a NULL
+	// row. Built-ins exist solely via the seed migration (00006) — there is no
+	// create/update/archive path for them.
+	ListCategories(ctx context.Context, arg ListCategoriesParams) ([]Category, error)
 	ListFamilyInvites(ctx context.Context, familyID pgtype.UUID) ([]ListFamilyInvitesRow, error)
 	ListFamilyMembers(ctx context.Context, familyID pgtype.UUID) ([]ListFamilyMembersRow, error)
+	ListLocations(ctx context.Context, arg ListLocationsParams) ([]Location, error)
 	// `include_archived` is a parameter rather than a second query so the list and
 	// its archived variant cannot drift apart.
 	ListPeople(ctx context.Context, arg ListPeopleParams) ([]Person, error)
+	ListRoomsByLocation(ctx context.Context, arg ListRoomsByLocationParams) ([]Room, error)
+	// Trait definitions: the typed, category-specific fields a category carries
+	// (SPEC 4, "Taxonomy").
+	//
+	// Same family_id-nullable shape as categories.sql: built-in rows (family_id
+	// NULL) come from the seed migration; a custom field is a family-defined row
+	// that may attach to either a built-in or a family-defined category — "one
+	// code path, one validator, one renderer" applies per field, not per category.
+	// Driven by a category id list so GET /taxonomy issues one query, not N+1.
+	ListTraitDefsForCategories(ctx context.Context, arg ListTraitDefsForCategoriesParams) ([]TraitDef, error)
 	// Owners are deliberately not removable through this path: demoting or
 	// removing the last owner would leave the family unadministrable, and there is
 	// no role-change endpoint in M1. Zero affected rows is the caller's signal.
@@ -114,15 +167,24 @@ type Querier interface {
 	RotateRefreshToken(ctx context.Context, arg RotateRefreshTokenParams) (int64, error)
 	// TENANCY: pre-tenant. Presence is a property of the account, not of a tenant.
 	TouchUserLastSeen(ctx context.Context, id pgtype.UUID) error
+	UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (Category, error)
 	// Partial update: an argument left NULL leaves its column alone, so the caller
 	// does not have to read-modify-write the whole row.
 	//
 	// Membership-scoped for the same reason as GetFamily above.
 	UpdateFamily(ctx context.Context, arg UpdateFamilyParams) (Family, error)
+	// Partial update; a NULL argument leaves its column untouched.
+	UpdateLocation(ctx context.Context, arg UpdateLocationParams) (Location, error)
 	// Partial update; a NULL argument leaves its column untouched. `birthdate`,
 	// `user_id` and `avatar_url` are therefore not clearable through this path,
 	// which is the right trade while nothing in the UI clears them.
 	UpdatePerson(ctx context.Context, arg UpdatePersonParams) (Person, error)
+	UpdateRoom(ctx context.Context, arg UpdateRoomParams) (Room, error)
+	UpdateTraitDef(ctx context.Context, arg UpdateTraitDefParams) (TraitDef, error)
+	// TENANCY: pre-tenant, same reasoning as every other query in this file — a
+	// locale preference belongs to the account, not to any one family it is a
+	// member of.
+	UpdateUserLocale(ctx context.Context, arg UpdateUserLocaleParams) (User, error)
 	// Identity. `users` is the one global table in the schema: a Google account
 	// exists before it belongs to any family, so the queries here run *before* a
 	// tenant is known and cannot be scoped by one.

@@ -1,0 +1,78 @@
+{
+  "AppShell": {
+    "inventory": "Інвентар",
+    "people": "Люди",
+    "family": "Сім'я",
+    "locations": "Місця",
+    "taxonomy": "Категорії"
+  },
+  "LocaleSwitcher": {
+    "label": "Мова",
+    "english": "Англійська",
+    "ukrainian": "Українська"
+  },
+  "Locations": {
+    "heading": "Місця",
+    "empty": "Поки немає жодного місця.",
+    "addHeading": "Додати місце",
+    "nameLabel": "Назва",
+    "kindLabel": "Тип",
+    "addressLabel": "Адреса",
+    "optionalHint": "(необов'язково)",
+    "addButton": "Додати місце",
+    "savingButton": "Зберігаємо…",
+    "archiveButton": "Архівувати",
+    "roomsLink": "Кімнати",
+    "kindHome": "Квартира",
+    "kindStorage": "Склад",
+    "kindGarage": "Гараж",
+    "kindRelative": "У родичів",
+    "kindOther": "Інше"
+  },
+  "LocationDetail": {
+    "backLink": "Усі місця",
+    "roomsHeading": "Кімнати",
+    "noRooms": "Поки немає жодної кімнати.",
+    "addRoomHeading": "Додати кімнату",
+    "roomNameLabel": "Назва",
+    "addButton": "Додати кімнату",
+    "savingButton": "Зберігаємо…",
+    "archiveButton": "Архівувати"
+  },
+  "Taxonomy": {
+    "heading": "Категорії",
+    "empty": "Поки немає жодної категорії.",
+    "builtinBadge": "Вбудована",
+    "customBadge": "Власна",
+    "addCategoryHeading": "Додати власну категорію",
+    "slugLabel": "Ключ",
+    "nameLabel": "Назва",
+    "addButton": "Додати категорію",
+    "savingButton": "Зберігаємо…",
+    "viewLink": "Переглянути поля ({count})",
+    "archiveButton": "Архівувати"
+  },
+  "CategoryDetail": {
+    "backLink": "Усі категорії",
+    "traitsHeading": "Поля",
+    "noTraits": "Поки немає жодного поля.",
+    "addFieldHeading": "Додати власне поле",
+    "keyLabel": "Ключ",
+    "labelLabel": "Назва поля",
+    "typeLabel": "Тип",
+    "requiredLabel": "Обов'язкове",
+    "filterableLabel": "Для фільтра",
+    "addButton": "Додати поле",
+    "savingButton": "Зберігаємо…",
+    "archiveButton": "Архівувати",
+    "typeText": "Текст",
+    "typeNumber": "Число",
+    "typeInteger": "Ціле число",
+    "typeBool": "Так / ні",
+    "typeDate": "Дата",
+    "typeEnum": "Вибір",
+    "typeSize": "Розмір",
+    "enumOptionsLabel": "Варіанти",
+    "enumOptionsHint": "(через кому)"
+  }
+}

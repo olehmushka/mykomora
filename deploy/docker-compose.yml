@@ -37,7 +37,10 @@ services:
       target: dev
     environment:
       DATABASE_URL: ${DATABASE_URL}
-    command: ["go", "tool", "goose", "-dir", "db/migrations", "postgres", "${DATABASE_URL}", "up"]
+    # cmd/migrate, not the stock goose CLI: db/migrations' Go-function
+    # migration only registers with a process that imports that package,
+    # which the CLI never does (core-api/cmd/migrate/main.go).
+    command: ["go", "run", "./cmd/migrate", "up"]
     depends_on:
       postgres:
         condition: service_healthy

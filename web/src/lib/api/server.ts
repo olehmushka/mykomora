@@ -9,10 +9,11 @@
  * can call with a string, and that split is what lets the wrapper be tested
  * without a Next runtime.
  */
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 import { apiRequest, type ApiResult, type RequestOptions } from "@/lib/api/client";
 import { CSRF_COOKIE, SESSION_COOKIE } from "@/lib/api/cookies";
+import { NEXT_LOCALE_COOKIE, resolveLocale } from "@/i18n/locale";
 
 type ServerRequestOptions = Omit<RequestOptions, "cookieHeader" | "csrfToken">;
 
@@ -31,13 +32,17 @@ export async function callApi<T>(
   path: string,
   options: ServerRequestOptions = {},
 ): Promise<ApiResult<T>> {
-  const jar = await cookies();
+  const [jar, requestHeaders] = await Promise.all([cookies(), headers()]);
   const method = options.method ?? "GET";
 
   return apiRequest<T>(path, {
     ...options,
     cookieHeader: jar.toString(),
     csrfToken: method === "GET" ? undefined : jar.get(CSRF_COOKIE)?.value,
+    acceptLanguage: resolveLocale(
+      jar.get(NEXT_LOCALE_COOKIE)?.value,
+      requestHeaders.get("accept-language") ?? undefined,
+    ),
   });
 }
 

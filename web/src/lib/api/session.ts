@@ -20,6 +20,15 @@ export function logout() {
   return callApi<void>("/api/v1/auth/logout", { method: "POST" });
 }
 
+export type UpdateMeRequest = components["schemas"]["UpdateMeRequest"];
+
+/** Persists a preference against the account. Locale is the only one so far. */
+export function updateMe(body: UpdateMeRequest) {
+  type Ok = operations["updateMe"]["responses"][200]["content"]["application/json"];
+
+  return callApi<Ok>("/api/v1/me", { method: "PATCH", body });
+}
+
 /**
  * The session, or a redirect to sign-in.
  *

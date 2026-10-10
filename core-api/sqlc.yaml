@@ -48,5 +48,6 @@ rules:
         "UpsertUserByGoogleSub",
         "GetUserByID",
         "TouchUserLastSeen",
-        "RevokeAllUserRefreshTokens"
+        "RevokeAllUserRefreshTokens",
+        "UpdateUserLocale"
       ])

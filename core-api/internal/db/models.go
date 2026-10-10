@@ -54,6 +54,203 @@ func (ns NullFamilyRole) Value() (driver.Value, error) {
 	return string(ns.FamilyRole), nil
 }
 
+type LocationKind string
+
+const (
+	LocationKindHome     LocationKind = "home"
+	LocationKindStorage  LocationKind = "storage"
+	LocationKindGarage   LocationKind = "garage"
+	LocationKindRelative LocationKind = "relative"
+	LocationKindOther    LocationKind = "other"
+)
+
+func (e *LocationKind) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = LocationKind(s)
+	case string:
+		*e = LocationKind(s)
+	default:
+		return fmt.Errorf("unsupported scan type for LocationKind: %T", src)
+	}
+	return nil
+}
+
+type NullLocationKind struct {
+	LocationKind LocationKind `json:"location_kind"`
+	Valid        bool         `json:"valid"` // Valid is true if LocationKind is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullLocationKind) Scan(value interface{}) error {
+	if value == nil {
+		ns.LocationKind, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.LocationKind.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullLocationKind) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.LocationKind), nil
+}
+
+type SizeSystem string
+
+const (
+	SizeSystemKidsCm     SizeSystem = "kids_cm"
+	SizeSystemKidsEu     SizeSystem = "kids_eu"
+	SizeSystemIntlLetter SizeSystem = "intl_letter"
+	SizeSystemEuAdult    SizeSystem = "eu_adult"
+	SizeSystemShoeEu     SizeSystem = "shoe_eu"
+	SizeSystemShoeUk     SizeSystem = "shoe_uk"
+	SizeSystemShoeUs     SizeSystem = "shoe_us"
+	SizeSystemOneSize    SizeSystem = "one_size"
+)
+
+func (e *SizeSystem) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = SizeSystem(s)
+	case string:
+		*e = SizeSystem(s)
+	default:
+		return fmt.Errorf("unsupported scan type for SizeSystem: %T", src)
+	}
+	return nil
+}
+
+type NullSizeSystem struct {
+	SizeSystem SizeSystem `json:"size_system"`
+	Valid      bool       `json:"valid"` // Valid is true if SizeSystem is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullSizeSystem) Scan(value interface{}) error {
+	if value == nil {
+		ns.SizeSystem, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.SizeSystem.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullSizeSystem) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.SizeSystem), nil
+}
+
+type SizeType string
+
+const (
+	SizeTypeClothing SizeType = "clothing"
+	SizeTypeShoe     SizeType = "shoe"
+	SizeTypeHead     SizeType = "head"
+)
+
+func (e *SizeType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = SizeType(s)
+	case string:
+		*e = SizeType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for SizeType: %T", src)
+	}
+	return nil
+}
+
+type NullSizeType struct {
+	SizeType SizeType `json:"size_type"`
+	Valid    bool     `json:"valid"` // Valid is true if SizeType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullSizeType) Scan(value interface{}) error {
+	if value == nil {
+		ns.SizeType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.SizeType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullSizeType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.SizeType), nil
+}
+
+type TraitDataType string
+
+const (
+	TraitDataTypeText    TraitDataType = "text"
+	TraitDataTypeNumber  TraitDataType = "number"
+	TraitDataTypeInteger TraitDataType = "integer"
+	TraitDataTypeBool    TraitDataType = "bool"
+	TraitDataTypeDate    TraitDataType = "date"
+	TraitDataTypeEnum    TraitDataType = "enum"
+	TraitDataTypeSize    TraitDataType = "size"
+)
+
+func (e *TraitDataType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = TraitDataType(s)
+	case string:
+		*e = TraitDataType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for TraitDataType: %T", src)
+	}
+	return nil
+}
+
+type NullTraitDataType struct {
+	TraitDataType TraitDataType `json:"trait_data_type"`
+	Valid         bool          `json:"valid"` // Valid is true if TraitDataType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullTraitDataType) Scan(value interface{}) error {
+	if value == nil {
+		ns.TraitDataType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.TraitDataType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullTraitDataType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.TraitDataType), nil
+}
+
+type Category struct {
+	ID          pgtype.UUID        `json:"id"`
+	FamilyID    pgtype.UUID        `json:"family_id"`
+	ParentID    pgtype.UUID        `json:"parent_id"`
+	Slug        string             `json:"slug"`
+	Icon        pgtype.Text        `json:"icon"`
+	NameI18nKey pgtype.Text        `json:"name_i18n_key"`
+	NameCustom  pgtype.Text        `json:"name_custom"`
+	SortOrder   int32              `json:"sort_order"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	ArchivedAt  pgtype.Timestamptz `json:"archived_at"`
+}
+
 type Family struct {
 	ID              pgtype.UUID        `json:"id"`
 	Name            string             `json:"name"`
@@ -80,6 +277,18 @@ type FamilyMember struct {
 	JoinedAt pgtype.Timestamptz `json:"joined_at"`
 }
 
+type Location struct {
+	ID         pgtype.UUID        `json:"id"`
+	FamilyID   pgtype.UUID        `json:"family_id"`
+	Name       string             `json:"name"`
+	Kind       LocationKind       `json:"kind"`
+	Address    pgtype.Text        `json:"address"`
+	SortOrder  int32              `json:"sort_order"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+	ArchivedAt pgtype.Timestamptz `json:"archived_at"`
+}
+
 type Person struct {
 	ID         pgtype.UUID        `json:"id"`
 	FamilyID   pgtype.UUID        `json:"family_id"`
@@ -104,6 +313,43 @@ type RefreshToken struct {
 	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
 	UserAgent pgtype.Text        `json:"user_agent"`
 	Ip        *netip.Addr        `json:"ip"`
+}
+
+type Room struct {
+	ID         pgtype.UUID        `json:"id"`
+	LocationID pgtype.UUID        `json:"location_id"`
+	Name       string             `json:"name"`
+	SortOrder  int32              `json:"sort_order"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+	ArchivedAt pgtype.Timestamptz `json:"archived_at"`
+}
+
+type SizeLookup struct {
+	ID       pgtype.UUID    `json:"id"`
+	System   SizeSystem     `json:"system"`
+	SizeType SizeType       `json:"size_type"`
+	Value    string         `json:"value"`
+	NormMin  pgtype.Numeric `json:"norm_min"`
+	NormMax  pgtype.Numeric `json:"norm_max"`
+}
+
+type TraitDef struct {
+	ID           pgtype.UUID        `json:"id"`
+	CategoryID   pgtype.UUID        `json:"category_id"`
+	FamilyID     pgtype.UUID        `json:"family_id"`
+	Key          string             `json:"key"`
+	DataType     TraitDataType      `json:"data_type"`
+	Unit         pgtype.Text        `json:"unit"`
+	EnumOptions  []byte             `json:"enum_options"`
+	LabelI18nKey pgtype.Text        `json:"label_i18n_key"`
+	LabelCustom  pgtype.Text        `json:"label_custom"`
+	Required     bool               `json:"required"`
+	Filterable   bool               `json:"filterable"`
+	SortOrder    int32              `json:"sort_order"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	ArchivedAt   pgtype.Timestamptz `json:"archived_at"`
 }
 
 type User struct {

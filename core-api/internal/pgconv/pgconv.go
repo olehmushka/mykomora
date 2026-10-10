@@ -108,6 +108,11 @@ func ToTimePtr(v pgtype.Timestamptz) *time.Time {
 	return &t
 }
 
+// Int4 wraps a present int32 for a nullable (sqlc.narg) query parameter.
+func Int4(v int32) pgtype.Int4 {
+	return pgtype.Int4{Int32: v, Valid: true}
+}
+
 // Date wraps an optional calendar date; nil becomes SQL NULL.
 func Date(t *time.Time) pgtype.Date {
 	if t == nil {

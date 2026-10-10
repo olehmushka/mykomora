@@ -1,0 +1,78 @@
+{
+  "AppShell": {
+    "inventory": "Inventory",
+    "people": "People",
+    "family": "Family",
+    "locations": "Locations",
+    "taxonomy": "Categories"
+  },
+  "LocaleSwitcher": {
+    "label": "Language",
+    "english": "English",
+    "ukrainian": "Ukrainian"
+  },
+  "Locations": {
+    "heading": "Locations",
+    "empty": "No locations yet.",
+    "addHeading": "Add a location",
+    "nameLabel": "Name",
+    "kindLabel": "Kind",
+    "addressLabel": "Address",
+    "optionalHint": "(optional)",
+    "addButton": "Add location",
+    "savingButton": "Saving…",
+    "archiveButton": "Archive",
+    "roomsLink": "Rooms",
+    "kindHome": "Home",
+    "kindStorage": "Storage",
+    "kindGarage": "Garage",
+    "kindRelative": "Relative's place",
+    "kindOther": "Other"
+  },
+  "LocationDetail": {
+    "backLink": "All locations",
+    "roomsHeading": "Rooms",
+    "noRooms": "No rooms yet.",
+    "addRoomHeading": "Add a room",
+    "roomNameLabel": "Name",
+    "addButton": "Add room",
+    "savingButton": "Saving…",
+    "archiveButton": "Archive"
+  },
+  "Taxonomy": {
+    "heading": "Categories",
+    "empty": "No categories yet.",
+    "builtinBadge": "Built-in",
+    "customBadge": "Custom",
+    "addCategoryHeading": "Add a family category",
+    "slugLabel": "Key",
+    "nameLabel": "Name",
+    "addButton": "Add category",
+    "savingButton": "Saving…",
+    "viewLink": "View fields ({count})",
+    "archiveButton": "Archive"
+  },
+  "CategoryDetail": {
+    "backLink": "All categories",
+    "traitsHeading": "Fields",
+    "noTraits": "No fields yet.",
+    "addFieldHeading": "Add a custom field",
+    "keyLabel": "Key",
+    "labelLabel": "Label",
+    "typeLabel": "Type",
+    "requiredLabel": "Required",
+    "filterableLabel": "Filterable",
+    "addButton": "Add field",
+    "savingButton": "Saving…",
+    "archiveButton": "Archive",
+    "typeText": "Text",
+    "typeNumber": "Number",
+    "typeInteger": "Whole number",
+    "typeBool": "Yes / no",
+    "typeDate": "Date",
+    "typeEnum": "Choice",
+    "typeSize": "Size",
+    "enumOptionsLabel": "Options",
+    "enumOptionsHint": "(comma-separated)"
+  }
+}
