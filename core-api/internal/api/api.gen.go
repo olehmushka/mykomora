@@ -80,6 +80,96 @@ func (e InviteStatus) Valid() bool {
 	}
 }
 
+// Defines values for ItemCondition.
+const (
+	Good    ItemCondition = "good"
+	LikeNew ItemCondition = "like_new"
+	New     ItemCondition = "new"
+	Poor    ItemCondition = "poor"
+	Worn    ItemCondition = "worn"
+)
+
+// Valid indicates whether the value is a known member of the ItemCondition enum.
+func (e ItemCondition) Valid() bool {
+	switch e {
+	case Good:
+		return true
+	case LikeNew:
+		return true
+	case New:
+		return true
+	case Poor:
+		return true
+	case Worn:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ItemSeason.
+const (
+	AllSeason ItemSeason = "all_season"
+	Demi      ItemSeason = "demi"
+	Summer    ItemSeason = "summer"
+	Winter    ItemSeason = "winter"
+)
+
+// Valid indicates whether the value is a known member of the ItemSeason enum.
+func (e ItemSeason) Valid() bool {
+	switch e {
+	case AllSeason:
+		return true
+	case Demi:
+		return true
+	case Summer:
+		return true
+	case Winter:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ItemStatus.
+const (
+	Consumed   ItemStatus = "consumed"
+	Discarded  ItemStatus = "discarded"
+	GivenAway  ItemStatus = "given_away"
+	InUse      ItemStatus = "in_use"
+	Lent       ItemStatus = "lent"
+	Lost       ItemStatus = "lost"
+	Sold       ItemStatus = "sold"
+	Stored     ItemStatus = "stored"
+	ToGiveAway ItemStatus = "to_give_away"
+)
+
+// Valid indicates whether the value is a known member of the ItemStatus enum.
+func (e ItemStatus) Valid() bool {
+	switch e {
+	case Consumed:
+		return true
+	case Discarded:
+		return true
+	case GivenAway:
+		return true
+	case InUse:
+		return true
+	case Lent:
+		return true
+	case Lost:
+		return true
+	case Sold:
+		return true
+	case Stored:
+		return true
+	case ToGiveAway:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for LocationKind.
 const (
 	Garage   LocationKind = "garage"
@@ -116,6 +206,42 @@ const (
 func (e PingResultDatabase) Valid() bool {
 	switch e {
 	case PingResultDatabaseOk:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SizeSystem.
+const (
+	EuAdult    SizeSystem = "eu_adult"
+	IntlLetter SizeSystem = "intl_letter"
+	KidsCm     SizeSystem = "kids_cm"
+	KidsEu     SizeSystem = "kids_eu"
+	OneSize    SizeSystem = "one_size"
+	ShoeEu     SizeSystem = "shoe_eu"
+	ShoeUk     SizeSystem = "shoe_uk"
+	ShoeUs     SizeSystem = "shoe_us"
+)
+
+// Valid indicates whether the value is a known member of the SizeSystem enum.
+func (e SizeSystem) Valid() bool {
+	switch e {
+	case EuAdult:
+		return true
+	case IntlLetter:
+		return true
+	case KidsCm:
+		return true
+	case KidsEu:
+		return true
+	case OneSize:
+		return true
+	case ShoeEu:
+		return true
+	case ShoeUk:
+		return true
+	case ShoeUs:
 		return true
 	default:
 		return false
@@ -191,6 +317,11 @@ func (e UserLocale) Valid() bool {
 	}
 }
 
+// AttachItemTagRequest defines model for AttachItemTagRequest.
+type AttachItemTagRequest struct {
+	TagId openapi_types.UUID `json:"tagId"`
+}
+
 // Category defines model for Category.
 type Category struct {
 	ArchivedAt *time.Time         `json:"archivedAt,omitempty"`
@@ -220,6 +351,48 @@ type CreateCategoryRequest struct {
 	SortOrder *int32 `json:"sortOrder,omitempty"`
 }
 
+// CreateItemRequest Exactly one of `locationId` or `parentItemId` must be given — a new
+// item is either placed directly or created inside an existing
+// container. `status`, if given, must not be a terminal one; an item
+// is always created active.
+type CreateItemRequest struct {
+	Brand            *string             `json:"brand,omitempty"`
+	CategoryId       openapi_types.UUID  `json:"categoryId"`
+	Condition        *ItemCondition      `json:"condition,omitempty"`
+	ExpiresAt        *openapi_types.Date `json:"expiresAt,omitempty"`
+	ForPersonId      *openapi_types.UUID `json:"forPersonId,omitempty"`
+	IsContainer      bool                `json:"isContainer"`
+	LocationId       *openapi_types.UUID `json:"locationId,omitempty"`
+	MinQuantity      *float32            `json:"minQuantity,omitempty"`
+	Name             string              `json:"name"`
+	Notes            *string             `json:"notes,omitempty"`
+	OpenedAt         *openapi_types.Date `json:"openedAt,omitempty"`
+	PaoMonths        *int32              `json:"paoMonths,omitempty"`
+	ParentItemId     *openapi_types.UUID `json:"parentItemId,omitempty"`
+	PurchaseCurrency *string             `json:"purchaseCurrency,omitempty"`
+	PurchaseDate     *openapi_types.Date `json:"purchaseDate,omitempty"`
+	PurchasePrice    *float32            `json:"purchasePrice,omitempty"`
+	Quantity         float32             `json:"quantity"`
+	RoomId           *openapi_types.UUID `json:"roomId,omitempty"`
+	Season           *ItemSeason         `json:"season,omitempty"`
+	SerialNumber     *string             `json:"serialNumber,omitempty"`
+
+	// SizeSystem Shared with M2's size normalisation table (SPEC 4, "Size normalisation").
+	SizeSystem *SizeSystem `json:"sizeSystem,omitempty"`
+	SizeValue  *string     `json:"sizeValue,omitempty"`
+	Spot       *string     `json:"spot,omitempty"`
+
+	// Status Wire values match the stored enum verbatim, including the
+	// underscores, rather than camelCasing them: a mismatch there would
+	// mean a response could carry a status string the schema does not
+	// admit.
+	Status        *ItemStatus             `json:"status,omitempty"`
+	TagIds        *[]openapi_types.UUID   `json:"tagIds,omitempty"`
+	Traits        *map[string]interface{} `json:"traits,omitempty"`
+	Unit          *string                 `json:"unit,omitempty"`
+	WarrantyUntil *openapi_types.Date     `json:"warrantyUntil,omitempty"`
+}
+
 // CreateLocationRequest defines model for CreateLocationRequest.
 type CreateLocationRequest struct {
 	Address   *string      `json:"address,omitempty"`
@@ -241,6 +414,12 @@ type CreatePersonRequest struct {
 type CreateRoomRequest struct {
 	Name      string `json:"name"`
 	SortOrder *int32 `json:"sortOrder,omitempty"`
+}
+
+// CreateTagRequest defines model for CreateTagRequest.
+type CreateTagRequest struct {
+	Color *string `json:"color,omitempty"`
+	Name  string  `json:"name"`
 }
 
 // CreateTraitDefRequest defines model for CreateTraitDefRequest.
@@ -337,6 +516,83 @@ type InvitePreview struct {
 // InviteStatus defines model for InviteStatus.
 type InviteStatus string
 
+// Item defines model for Item.
+type Item struct {
+	ArchivedAt *time.Time         `json:"archivedAt,omitempty"`
+	Brand      *string            `json:"brand,omitempty"`
+	CategoryId openapi_types.UUID `json:"categoryId"`
+	Condition  *ItemCondition     `json:"condition,omitempty"`
+	CreatedAt  time.Time          `json:"createdAt"`
+	CreatedBy  openapi_types.UUID `json:"createdBy"`
+
+	// EffectiveLocationId This item's own locationId when it has no parent; otherwise its
+	// root container's. Always resolvable (SPEC 4, "Containment").
+	EffectiveLocationId openapi_types.UUID  `json:"effectiveLocationId"`
+	EffectiveRoomId     *openapi_types.UUID `json:"effectiveRoomId,omitempty"`
+	EffectiveSpot       *string             `json:"effectiveSpot,omitempty"`
+	ExpiresAt           *openapi_types.Date `json:"expiresAt,omitempty"`
+	ForPersonId         *openapi_types.UUID `json:"forPersonId,omitempty"`
+	Id                  openapi_types.UUID  `json:"id"`
+	IsContainer         bool                `json:"isContainer"`
+
+	// LocationId This item's own place. Cosmetic once `parentItemId` is set — see `effectiveLocationId`.
+	LocationId       openapi_types.UUID  `json:"locationId"`
+	MinQuantity      *float32            `json:"minQuantity,omitempty"`
+	Name             string              `json:"name"`
+	Notes            *string             `json:"notes,omitempty"`
+	OpenedAt         *openapi_types.Date `json:"openedAt,omitempty"`
+	PaoMonths        *int32              `json:"paoMonths,omitempty"`
+	ParentItemId     *openapi_types.UUID `json:"parentItemId,omitempty"`
+	PurchaseCurrency *string             `json:"purchaseCurrency,omitempty"`
+	PurchaseDate     *openapi_types.Date `json:"purchaseDate,omitempty"`
+	PurchasePrice    *float32            `json:"purchasePrice,omitempty"`
+	Quantity         float32             `json:"quantity"`
+	RoomId           *openapi_types.UUID `json:"roomId,omitempty"`
+	Season           *ItemSeason         `json:"season,omitempty"`
+	SerialNumber     *string             `json:"serialNumber,omitempty"`
+
+	// SizeSystem Shared with M2's size normalisation table (SPEC 4, "Size normalisation").
+	SizeSystem *SizeSystem `json:"sizeSystem,omitempty"`
+	SizeValue  *string     `json:"sizeValue,omitempty"`
+	Spot       *string     `json:"spot,omitempty"`
+
+	// Status Wire values match the stored enum verbatim, including the
+	// underscores, rather than camelCasing them: a mismatch there would
+	// mean a response could carry a status string the schema does not
+	// admit.
+	Status ItemStatus `json:"status"`
+
+	// Traits Long-tail fields and family-defined custom fields only — never a hot-column key.
+	Traits        map[string]interface{} `json:"traits"`
+	Unit          *string                `json:"unit,omitempty"`
+	UpdatedAt     time.Time              `json:"updatedAt"`
+	WarrantyUntil *openapi_types.Date    `json:"warrantyUntil,omitempty"`
+}
+
+// ItemCondition defines model for ItemCondition.
+type ItemCondition string
+
+// ItemEvent defines model for ItemEvent.
+type ItemEvent struct {
+	ActorUserId openapi_types.UUID     `json:"actorUserId"`
+	CreatedAt   time.Time              `json:"createdAt"`
+	Id          openapi_types.UUID     `json:"id"`
+	ItemId      openapi_types.UUID     `json:"itemId"`
+	Payload     map[string]interface{} `json:"payload"`
+
+	// Type `created`, `updated`, `moved`, `status_changed` or `archived` in this milestone; later milestones add more.
+	Type string `json:"type"`
+}
+
+// ItemSeason defines model for ItemSeason.
+type ItemSeason string
+
+// ItemStatus Wire values match the stored enum verbatim, including the
+// underscores, rather than camelCasing them: a mismatch there would
+// mean a response could carry a status string the schema does not
+// admit.
+type ItemStatus string
+
 // Location defines model for Location.
 type Location struct {
 	Address    *string            `json:"address,omitempty"`
@@ -360,6 +616,14 @@ type Me struct {
 	// additionally administers the family: settings, members and invites.
 	Role FamilyRole `json:"role"`
 	User User       `json:"user"`
+}
+
+// MoveItemRequest Exactly one of `locationId` or `parentItemId` must be given.
+type MoveItemRequest struct {
+	LocationId   *openapi_types.UUID `json:"locationId,omitempty"`
+	ParentItemId *openapi_types.UUID `json:"parentItemId,omitempty"`
+	RoomId       *openapi_types.UUID `json:"roomId,omitempty"`
+	Spot         *string             `json:"spot,omitempty"`
 }
 
 // Person defines model for Person.
@@ -398,6 +662,25 @@ type Room struct {
 	Name       string             `json:"name"`
 	SortOrder  int32              `json:"sortOrder"`
 	UpdatedAt  time.Time          `json:"updatedAt"`
+}
+
+// SetItemStatusRequest defines model for SetItemStatusRequest.
+type SetItemStatusRequest struct {
+	// Status Wire values match the stored enum verbatim, including the
+	// underscores, rather than camelCasing them: a mismatch there would
+	// mean a response could carry a status string the schema does not
+	// admit.
+	Status ItemStatus `json:"status"`
+}
+
+// SizeSystem Shared with M2's size normalisation table (SPEC 4, "Size normalisation").
+type SizeSystem string
+
+// Tag defines model for Tag.
+type Tag struct {
+	Color *string            `json:"color,omitempty"`
+	Id    openapi_types.UUID `json:"id"`
+	Name  string             `json:"name"`
 }
 
 // Taxonomy defines model for Taxonomy.
@@ -441,6 +724,34 @@ type UpdateFamilyRequest struct {
 	Name            *string `json:"name,omitempty"`
 }
 
+// UpdateItemRequest Omitted fields are left alone. Place and status are not here on
+// purpose — see `/items/{itemId}/move` and `/items/{itemId}/status`.
+type UpdateItemRequest struct {
+	Brand            *string             `json:"brand,omitempty"`
+	CategoryId       *openapi_types.UUID `json:"categoryId,omitempty"`
+	Condition        *ItemCondition      `json:"condition,omitempty"`
+	ExpiresAt        *openapi_types.Date `json:"expiresAt,omitempty"`
+	ForPersonId      *openapi_types.UUID `json:"forPersonId,omitempty"`
+	MinQuantity      *float32            `json:"minQuantity,omitempty"`
+	Name             *string             `json:"name,omitempty"`
+	Notes            *string             `json:"notes,omitempty"`
+	OpenedAt         *openapi_types.Date `json:"openedAt,omitempty"`
+	PaoMonths        *int32              `json:"paoMonths,omitempty"`
+	PurchaseCurrency *string             `json:"purchaseCurrency,omitempty"`
+	PurchaseDate     *openapi_types.Date `json:"purchaseDate,omitempty"`
+	PurchasePrice    *float32            `json:"purchasePrice,omitempty"`
+	Quantity         *float32            `json:"quantity,omitempty"`
+	Season           *ItemSeason         `json:"season,omitempty"`
+	SerialNumber     *string             `json:"serialNumber,omitempty"`
+
+	// SizeSystem Shared with M2's size normalisation table (SPEC 4, "Size normalisation").
+	SizeSystem    *SizeSystem             `json:"sizeSystem,omitempty"`
+	SizeValue     *string                 `json:"sizeValue,omitempty"`
+	Traits        *map[string]interface{} `json:"traits,omitempty"`
+	Unit          *string                 `json:"unit,omitempty"`
+	WarrantyUntil *openapi_types.Date     `json:"warrantyUntil,omitempty"`
+}
+
 // UpdateLocationRequest defines model for UpdateLocationRequest.
 type UpdateLocationRequest struct {
 	Address   *string       `json:"address,omitempty"`
@@ -470,6 +781,12 @@ type UpdatePersonRequest struct {
 type UpdateRoomRequest struct {
 	Name      *string `json:"name,omitempty"`
 	SortOrder *int32  `json:"sortOrder,omitempty"`
+}
+
+// UpdateTagRequest defines model for UpdateTagRequest.
+type UpdateTagRequest struct {
+	Color *string `json:"color,omitempty"`
+	Name  *string `json:"name,omitempty"`
 }
 
 // UpdateTraitDefRequest defines model for UpdateTraitDefRequest.
@@ -530,6 +847,22 @@ type StartGoogleAuthParams struct {
 	Next *string `form:"next,omitempty" json:"next,omitempty"`
 }
 
+// ListItemsParams defines parameters for ListItems.
+type ListItemsParams struct {
+	LocationId      *openapi_types.UUID `form:"locationId,omitempty" json:"locationId,omitempty"`
+	RoomId          *openapi_types.UUID `form:"roomId,omitempty" json:"roomId,omitempty"`
+	CategoryId      *openapi_types.UUID `form:"categoryId,omitempty" json:"categoryId,omitempty"`
+	IncludeArchived *bool               `form:"includeArchived,omitempty" json:"includeArchived,omitempty"`
+	Limit           *int32              `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset          *int32              `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
+// ListItemEventsParams defines parameters for ListItemEvents.
+type ListItemEventsParams struct {
+	Limit  *int32 `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset *int32 `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
 // ListLocationsParams defines parameters for ListLocations.
 type ListLocationsParams struct {
 	IncludeArchived *bool `form:"includeArchived,omitempty" json:"includeArchived,omitempty"`
@@ -562,6 +895,21 @@ type CreateTraitDefJSONRequestBody = CreateTraitDefRequest
 // UpdateFamilyJSONRequestBody defines body for UpdateFamily for application/json ContentType.
 type UpdateFamilyJSONRequestBody = UpdateFamilyRequest
 
+// CreateItemJSONRequestBody defines body for CreateItem for application/json ContentType.
+type CreateItemJSONRequestBody = CreateItemRequest
+
+// UpdateItemJSONRequestBody defines body for UpdateItem for application/json ContentType.
+type UpdateItemJSONRequestBody = UpdateItemRequest
+
+// MoveItemJSONRequestBody defines body for MoveItem for application/json ContentType.
+type MoveItemJSONRequestBody = MoveItemRequest
+
+// SetItemStatusJSONRequestBody defines body for SetItemStatus for application/json ContentType.
+type SetItemStatusJSONRequestBody = SetItemStatusRequest
+
+// AttachItemTagJSONRequestBody defines body for AttachItemTag for application/json ContentType.
+type AttachItemTagJSONRequestBody = AttachItemTagRequest
+
 // CreateLocationJSONRequestBody defines body for CreateLocation for application/json ContentType.
 type CreateLocationJSONRequestBody = CreateLocationRequest
 
@@ -582,6 +930,12 @@ type UpdatePersonJSONRequestBody = UpdatePersonRequest
 
 // UpdateRoomJSONRequestBody defines body for UpdateRoom for application/json ContentType.
 type UpdateRoomJSONRequestBody = UpdateRoomRequest
+
+// CreateTagJSONRequestBody defines body for CreateTag for application/json ContentType.
+type CreateTagJSONRequestBody = CreateTagRequest
+
+// UpdateTagJSONRequestBody defines body for UpdateTag for application/json ContentType.
+type UpdateTagJSONRequestBody = UpdateTagRequest
 
 // UpdateTraitDefJSONRequestBody defines body for UpdateTraitDef for application/json ContentType.
 type UpdateTraitDefJSONRequestBody = UpdateTraitDefRequest
@@ -636,6 +990,42 @@ type ServerInterface interface {
 	// GetInvitePreview What an invite link leads to
 	// (GET /api/v1/invites/{token})
 	GetInvitePreview(w http.ResponseWriter, r *http.Request, token string)
+	// ListItems The family's root items
+	// (GET /api/v1/items)
+	ListItems(w http.ResponseWriter, r *http.Request, params ListItemsParams)
+	// CreateItem Add an item
+	// (POST /api/v1/items)
+	CreateItem(w http.ResponseWriter, r *http.Request)
+	// ArchiveItem Archive an item
+	// (DELETE /api/v1/items/{itemId})
+	ArchiveItem(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID)
+	// GetItem One item
+	// (GET /api/v1/items/{itemId})
+	GetItem(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID)
+	// UpdateItem Update an item
+	// (PATCH /api/v1/items/{itemId})
+	UpdateItem(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID)
+	// ListItemContents An item's direct contents
+	// (GET /api/v1/items/{itemId}/contents)
+	ListItemContents(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID)
+	// ListItemEvents An item's history
+	// (GET /api/v1/items/{itemId}/events)
+	ListItemEvents(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID, params ListItemEventsParams)
+	// MoveItem Move an item to a place or into a container
+	// (POST /api/v1/items/{itemId}/move)
+	MoveItem(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID)
+	// SetItemStatus Change an item's lifecycle status
+	// (POST /api/v1/items/{itemId}/status)
+	SetItemStatus(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID)
+	// ListItemTags An item's attached tags
+	// (GET /api/v1/items/{itemId}/tags)
+	ListItemTags(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID)
+	// AttachItemTag Attach a tag to an item
+	// (POST /api/v1/items/{itemId}/tags)
+	AttachItemTag(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID)
+	// DetachItemTag Detach a tag from an item
+	// (DELETE /api/v1/items/{itemId}/tags/{tagId})
+	DetachItemTag(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID, tagId openapi_types.UUID)
 	// ListLocations The family's locations
 	// (GET /api/v1/locations)
 	ListLocations(w http.ResponseWriter, r *http.Request, params ListLocationsParams)
@@ -690,6 +1080,18 @@ type ServerInterface interface {
 	// UpdateRoom Update a room
 	// (PATCH /api/v1/rooms/{roomId})
 	UpdateRoom(w http.ResponseWriter, r *http.Request, roomId openapi_types.UUID)
+	// ListTags The family's tags
+	// (GET /api/v1/tags)
+	ListTags(w http.ResponseWriter, r *http.Request)
+	// CreateTag Add a tag
+	// (POST /api/v1/tags)
+	CreateTag(w http.ResponseWriter, r *http.Request)
+	// DeleteTag Delete a tag
+	// (DELETE /api/v1/tags/{tagId})
+	DeleteTag(w http.ResponseWriter, r *http.Request, tagId openapi_types.UUID)
+	// UpdateTag Rename or recolor a tag
+	// (PATCH /api/v1/tags/{tagId})
+	UpdateTag(w http.ResponseWriter, r *http.Request, tagId openapi_types.UUID)
 	// GetTaxonomy The localised category tree and its trait schema
 	// (GET /api/v1/taxonomy)
 	GetTaxonomy(w http.ResponseWriter, r *http.Request, params GetTaxonomyParams)
@@ -804,6 +1206,78 @@ func (_ Unimplemented) GetInvitePreview(w http.ResponseWriter, r *http.Request, 
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// ListItems The family's root items
+// (GET /api/v1/items)
+func (_ Unimplemented) ListItems(w http.ResponseWriter, r *http.Request, params ListItemsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateItem Add an item
+// (POST /api/v1/items)
+func (_ Unimplemented) CreateItem(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ArchiveItem Archive an item
+// (DELETE /api/v1/items/{itemId})
+func (_ Unimplemented) ArchiveItem(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetItem One item
+// (GET /api/v1/items/{itemId})
+func (_ Unimplemented) GetItem(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateItem Update an item
+// (PATCH /api/v1/items/{itemId})
+func (_ Unimplemented) UpdateItem(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListItemContents An item's direct contents
+// (GET /api/v1/items/{itemId}/contents)
+func (_ Unimplemented) ListItemContents(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListItemEvents An item's history
+// (GET /api/v1/items/{itemId}/events)
+func (_ Unimplemented) ListItemEvents(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID, params ListItemEventsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// MoveItem Move an item to a place or into a container
+// (POST /api/v1/items/{itemId}/move)
+func (_ Unimplemented) MoveItem(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// SetItemStatus Change an item's lifecycle status
+// (POST /api/v1/items/{itemId}/status)
+func (_ Unimplemented) SetItemStatus(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListItemTags An item's attached tags
+// (GET /api/v1/items/{itemId}/tags)
+func (_ Unimplemented) ListItemTags(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// AttachItemTag Attach a tag to an item
+// (POST /api/v1/items/{itemId}/tags)
+func (_ Unimplemented) AttachItemTag(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DetachItemTag Detach a tag from an item
+// (DELETE /api/v1/items/{itemId}/tags/{tagId})
+func (_ Unimplemented) DetachItemTag(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID, tagId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // ListLocations The family's locations
 // (GET /api/v1/locations)
 func (_ Unimplemented) ListLocations(w http.ResponseWriter, r *http.Request, params ListLocationsParams) {
@@ -909,6 +1383,30 @@ func (_ Unimplemented) GetRoom(w http.ResponseWriter, r *http.Request, roomId op
 // UpdateRoom Update a room
 // (PATCH /api/v1/rooms/{roomId})
 func (_ Unimplemented) UpdateRoom(w http.ResponseWriter, r *http.Request, roomId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListTags The family's tags
+// (GET /api/v1/tags)
+func (_ Unimplemented) ListTags(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateTag Add a tag
+// (POST /api/v1/tags)
+func (_ Unimplemented) CreateTag(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeleteTag Delete a tag
+// (DELETE /api/v1/tags/{tagId})
+func (_ Unimplemented) DeleteTag(w http.ResponseWriter, r *http.Request, tagId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateTag Rename or recolor a tag
+// (PATCH /api/v1/tags/{tagId})
+func (_ Unimplemented) UpdateTag(w http.ResponseWriter, r *http.Request, tagId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1309,6 +1807,416 @@ func (siw *ServerInterfaceWrapper) GetInvitePreview(w http.ResponseWriter, r *ht
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetInvitePreview(w, r, token)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListItems operation middleware
+func (siw *ServerInterfaceWrapper) ListItems(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListItemsParams
+
+	// ------------- Optional query parameter "locationId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "locationId", r.URL.Query(), &params.LocationId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "locationId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "locationId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "roomId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "roomId", r.URL.Query(), &params.RoomId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "roomId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "roomId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "categoryId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "categoryId", r.URL.Query(), &params.CategoryId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "categoryId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "categoryId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "includeArchived" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "includeArchived", r.URL.Query(), &params.IncludeArchived, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "includeArchived"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "includeArchived", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", r.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "offset"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListItems(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateItem operation middleware
+func (siw *ServerInterfaceWrapper) CreateItem(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateItem(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ArchiveItem operation middleware
+func (siw *ServerInterfaceWrapper) ArchiveItem(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "itemId" -------------
+	var itemId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "itemId", chi.URLParam(r, "itemId"), &itemId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "itemId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ArchiveItem(w, r, itemId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetItem operation middleware
+func (siw *ServerInterfaceWrapper) GetItem(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "itemId" -------------
+	var itemId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "itemId", chi.URLParam(r, "itemId"), &itemId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "itemId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetItem(w, r, itemId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateItem operation middleware
+func (siw *ServerInterfaceWrapper) UpdateItem(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "itemId" -------------
+	var itemId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "itemId", chi.URLParam(r, "itemId"), &itemId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "itemId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateItem(w, r, itemId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListItemContents operation middleware
+func (siw *ServerInterfaceWrapper) ListItemContents(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "itemId" -------------
+	var itemId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "itemId", chi.URLParam(r, "itemId"), &itemId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "itemId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListItemContents(w, r, itemId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListItemEvents operation middleware
+func (siw *ServerInterfaceWrapper) ListItemEvents(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "itemId" -------------
+	var itemId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "itemId", chi.URLParam(r, "itemId"), &itemId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "itemId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListItemEventsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", r.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "offset"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListItemEvents(w, r, itemId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// MoveItem operation middleware
+func (siw *ServerInterfaceWrapper) MoveItem(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "itemId" -------------
+	var itemId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "itemId", chi.URLParam(r, "itemId"), &itemId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "itemId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.MoveItem(w, r, itemId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetItemStatus operation middleware
+func (siw *ServerInterfaceWrapper) SetItemStatus(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "itemId" -------------
+	var itemId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "itemId", chi.URLParam(r, "itemId"), &itemId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "itemId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetItemStatus(w, r, itemId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListItemTags operation middleware
+func (siw *ServerInterfaceWrapper) ListItemTags(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "itemId" -------------
+	var itemId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "itemId", chi.URLParam(r, "itemId"), &itemId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "itemId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListItemTags(w, r, itemId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AttachItemTag operation middleware
+func (siw *ServerInterfaceWrapper) AttachItemTag(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "itemId" -------------
+	var itemId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "itemId", chi.URLParam(r, "itemId"), &itemId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "itemId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AttachItemTag(w, r, itemId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DetachItemTag operation middleware
+func (siw *ServerInterfaceWrapper) DetachItemTag(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "itemId" -------------
+	var itemId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "itemId", chi.URLParam(r, "itemId"), &itemId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "itemId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "tagId" -------------
+	var tagId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "tagId", chi.URLParam(r, "tagId"), &tagId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "tagId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DetachItemTag(w, r, itemId, tagId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1756,6 +2664,86 @@ func (siw *ServerInterfaceWrapper) UpdateRoom(w http.ResponseWriter, r *http.Req
 	handler.ServeHTTP(w, r)
 }
 
+// ListTags operation middleware
+func (siw *ServerInterfaceWrapper) ListTags(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListTags(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateTag operation middleware
+func (siw *ServerInterfaceWrapper) CreateTag(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateTag(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteTag operation middleware
+func (siw *ServerInterfaceWrapper) DeleteTag(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "tagId" -------------
+	var tagId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "tagId", chi.URLParam(r, "tagId"), &tagId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "tagId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteTag(w, r, tagId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateTag operation middleware
+func (siw *ServerInterfaceWrapper) UpdateTag(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "tagId" -------------
+	var tagId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "tagId", chi.URLParam(r, "tagId"), &tagId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "tagId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateTag(w, r, tagId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetTaxonomy operation middleware
 func (siw *ServerInterfaceWrapper) GetTaxonomy(w http.ResponseWriter, r *http.Request) {
 
@@ -2089,6 +3077,54 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Patch(options.BaseURL+"/api/v1/trait-defs/{traitDefId}", wrapper.UpdateTraitDef)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/items", wrapper.ListItems)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/items", wrapper.CreateItem)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/api/v1/items/{itemId}", wrapper.ArchiveItem)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/items/{itemId}", wrapper.GetItem)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/api/v1/items/{itemId}", wrapper.UpdateItem)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/items/{itemId}/move", wrapper.MoveItem)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/items/{itemId}/status", wrapper.SetItemStatus)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/items/{itemId}/contents", wrapper.ListItemContents)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/items/{itemId}/events", wrapper.ListItemEvents)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/items/{itemId}/tags", wrapper.ListItemTags)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/items/{itemId}/tags", wrapper.AttachItemTag)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/api/v1/items/{itemId}/tags/{tagId}", wrapper.DetachItemTag)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/tags", wrapper.ListTags)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/tags", wrapper.CreateTag)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/api/v1/tags/{tagId}", wrapper.DeleteTag)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/api/v1/tags/{tagId}", wrapper.UpdateTag)
 	})
 
 	return r
@@ -2857,6 +3893,650 @@ func (response GetInvitePreview200JSONResponse) VisitGetInvitePreviewResponse(w 
 type GetInvitePreview404JSONResponse struct{ NotFoundJSONResponse }
 
 func (response GetInvitePreview404JSONResponse) VisitGetInvitePreviewResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListItemsRequestObject struct {
+	Params ListItemsParams
+}
+
+type ListItemsResponseObject interface {
+	VisitListItemsResponse(w http.ResponseWriter) error
+}
+
+type ListItems200JSONResponse []Item
+
+func (response ListItems200JSONResponse) VisitListItemsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListItems401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListItems401JSONResponse) VisitListItemsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateItemRequestObject struct {
+	Body *CreateItemJSONRequestBody
+}
+
+type CreateItemResponseObject interface {
+	VisitCreateItemResponse(w http.ResponseWriter) error
+}
+
+type CreateItem201JSONResponse Item
+
+func (response CreateItem201JSONResponse) VisitCreateItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateItem400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateItem400JSONResponse) VisitCreateItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateItem401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreateItem401JSONResponse) VisitCreateItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateItem404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response CreateItem404JSONResponse) VisitCreateItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ArchiveItemRequestObject struct {
+	ItemId openapi_types.UUID `json:"itemId"`
+}
+
+type ArchiveItemResponseObject interface {
+	VisitArchiveItemResponse(w http.ResponseWriter) error
+}
+
+type ArchiveItem204Response struct {
+}
+
+func (response ArchiveItem204Response) VisitArchiveItemResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type ArchiveItem401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ArchiveItem401JSONResponse) VisitArchiveItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ArchiveItem404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ArchiveItem404JSONResponse) VisitArchiveItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetItemRequestObject struct {
+	ItemId openapi_types.UUID `json:"itemId"`
+}
+
+type GetItemResponseObject interface {
+	VisitGetItemResponse(w http.ResponseWriter) error
+}
+
+type GetItem200JSONResponse Item
+
+func (response GetItem200JSONResponse) VisitGetItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetItem401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetItem401JSONResponse) VisitGetItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetItem404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetItem404JSONResponse) VisitGetItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateItemRequestObject struct {
+	ItemId openapi_types.UUID `json:"itemId"`
+	Body   *UpdateItemJSONRequestBody
+}
+
+type UpdateItemResponseObject interface {
+	VisitUpdateItemResponse(w http.ResponseWriter) error
+}
+
+type UpdateItem200JSONResponse Item
+
+func (response UpdateItem200JSONResponse) VisitUpdateItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateItem400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateItem400JSONResponse) VisitUpdateItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateItem401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdateItem401JSONResponse) VisitUpdateItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateItem404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateItem404JSONResponse) VisitUpdateItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListItemContentsRequestObject struct {
+	ItemId openapi_types.UUID `json:"itemId"`
+}
+
+type ListItemContentsResponseObject interface {
+	VisitListItemContentsResponse(w http.ResponseWriter) error
+}
+
+type ListItemContents200JSONResponse []Item
+
+func (response ListItemContents200JSONResponse) VisitListItemContentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListItemContents401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListItemContents401JSONResponse) VisitListItemContentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListItemContents404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ListItemContents404JSONResponse) VisitListItemContentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListItemEventsRequestObject struct {
+	ItemId openapi_types.UUID `json:"itemId"`
+	Params ListItemEventsParams
+}
+
+type ListItemEventsResponseObject interface {
+	VisitListItemEventsResponse(w http.ResponseWriter) error
+}
+
+type ListItemEvents200JSONResponse []ItemEvent
+
+func (response ListItemEvents200JSONResponse) VisitListItemEventsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListItemEvents401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListItemEvents401JSONResponse) VisitListItemEventsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListItemEvents404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ListItemEvents404JSONResponse) VisitListItemEventsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MoveItemRequestObject struct {
+	ItemId openapi_types.UUID `json:"itemId"`
+	Body   *MoveItemJSONRequestBody
+}
+
+type MoveItemResponseObject interface {
+	VisitMoveItemResponse(w http.ResponseWriter) error
+}
+
+type MoveItem200JSONResponse Item
+
+func (response MoveItem200JSONResponse) VisitMoveItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MoveItem400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response MoveItem400JSONResponse) VisitMoveItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MoveItem401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response MoveItem401JSONResponse) VisitMoveItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MoveItem404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response MoveItem404JSONResponse) VisitMoveItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetItemStatusRequestObject struct {
+	ItemId openapi_types.UUID `json:"itemId"`
+	Body   *SetItemStatusJSONRequestBody
+}
+
+type SetItemStatusResponseObject interface {
+	VisitSetItemStatusResponse(w http.ResponseWriter) error
+}
+
+type SetItemStatus200JSONResponse Item
+
+func (response SetItemStatus200JSONResponse) VisitSetItemStatusResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetItemStatus400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response SetItemStatus400JSONResponse) VisitSetItemStatusResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetItemStatus401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response SetItemStatus401JSONResponse) VisitSetItemStatusResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetItemStatus404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response SetItemStatus404JSONResponse) VisitSetItemStatusResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListItemTagsRequestObject struct {
+	ItemId openapi_types.UUID `json:"itemId"`
+}
+
+type ListItemTagsResponseObject interface {
+	VisitListItemTagsResponse(w http.ResponseWriter) error
+}
+
+type ListItemTags200JSONResponse []Tag
+
+func (response ListItemTags200JSONResponse) VisitListItemTagsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListItemTags401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListItemTags401JSONResponse) VisitListItemTagsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListItemTags404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ListItemTags404JSONResponse) VisitListItemTagsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AttachItemTagRequestObject struct {
+	ItemId openapi_types.UUID `json:"itemId"`
+	Body   *AttachItemTagJSONRequestBody
+}
+
+type AttachItemTagResponseObject interface {
+	VisitAttachItemTagResponse(w http.ResponseWriter) error
+}
+
+type AttachItemTag204Response struct {
+}
+
+func (response AttachItemTag204Response) VisitAttachItemTagResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type AttachItemTag400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AttachItemTag400JSONResponse) VisitAttachItemTagResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AttachItemTag401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response AttachItemTag401JSONResponse) VisitAttachItemTagResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AttachItemTag404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response AttachItemTag404JSONResponse) VisitAttachItemTagResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DetachItemTagRequestObject struct {
+	ItemId openapi_types.UUID `json:"itemId"`
+	TagId  openapi_types.UUID `json:"tagId"`
+}
+
+type DetachItemTagResponseObject interface {
+	VisitDetachItemTagResponse(w http.ResponseWriter) error
+}
+
+type DetachItemTag204Response struct {
+}
+
+func (response DetachItemTag204Response) VisitDetachItemTagResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DetachItemTag401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response DetachItemTag401JSONResponse) VisitDetachItemTagResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DetachItemTag404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response DetachItemTag404JSONResponse) VisitDetachItemTagResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3753,6 +5433,200 @@ func (response UpdateRoom404JSONResponse) VisitUpdateRoomResponse(w http.Respons
 	return err
 }
 
+type ListTagsRequestObject struct {
+}
+
+type ListTagsResponseObject interface {
+	VisitListTagsResponse(w http.ResponseWriter) error
+}
+
+type ListTags200JSONResponse []Tag
+
+func (response ListTags200JSONResponse) VisitListTagsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListTags401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListTags401JSONResponse) VisitListTagsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateTagRequestObject struct {
+	Body *CreateTagJSONRequestBody
+}
+
+type CreateTagResponseObject interface {
+	VisitCreateTagResponse(w http.ResponseWriter) error
+}
+
+type CreateTag201JSONResponse Tag
+
+func (response CreateTag201JSONResponse) VisitCreateTagResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateTag400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateTag400JSONResponse) VisitCreateTagResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateTag401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreateTag401JSONResponse) VisitCreateTagResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteTagRequestObject struct {
+	TagId openapi_types.UUID `json:"tagId"`
+}
+
+type DeleteTagResponseObject interface {
+	VisitDeleteTagResponse(w http.ResponseWriter) error
+}
+
+type DeleteTag204Response struct {
+}
+
+func (response DeleteTag204Response) VisitDeleteTagResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteTag401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response DeleteTag401JSONResponse) VisitDeleteTagResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteTag404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response DeleteTag404JSONResponse) VisitDeleteTagResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateTagRequestObject struct {
+	TagId openapi_types.UUID `json:"tagId"`
+	Body  *UpdateTagJSONRequestBody
+}
+
+type UpdateTagResponseObject interface {
+	VisitUpdateTagResponse(w http.ResponseWriter) error
+}
+
+type UpdateTag200JSONResponse Tag
+
+func (response UpdateTag200JSONResponse) VisitUpdateTagResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateTag400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateTag400JSONResponse) VisitUpdateTagResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateTag401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdateTag401JSONResponse) VisitUpdateTagResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateTag404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateTag404JSONResponse) VisitUpdateTagResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetTaxonomyRequestObject struct {
 	Params GetTaxonomyParams
 }
@@ -3991,6 +5865,42 @@ type StrictServerInterface interface {
 	// GetInvitePreview What an invite link leads to
 	// (GET /api/v1/invites/{token})
 	GetInvitePreview(ctx context.Context, request GetInvitePreviewRequestObject) (GetInvitePreviewResponseObject, error)
+	// ListItems The family's root items
+	// (GET /api/v1/items)
+	ListItems(ctx context.Context, request ListItemsRequestObject) (ListItemsResponseObject, error)
+	// CreateItem Add an item
+	// (POST /api/v1/items)
+	CreateItem(ctx context.Context, request CreateItemRequestObject) (CreateItemResponseObject, error)
+	// ArchiveItem Archive an item
+	// (DELETE /api/v1/items/{itemId})
+	ArchiveItem(ctx context.Context, request ArchiveItemRequestObject) (ArchiveItemResponseObject, error)
+	// GetItem One item
+	// (GET /api/v1/items/{itemId})
+	GetItem(ctx context.Context, request GetItemRequestObject) (GetItemResponseObject, error)
+	// UpdateItem Update an item
+	// (PATCH /api/v1/items/{itemId})
+	UpdateItem(ctx context.Context, request UpdateItemRequestObject) (UpdateItemResponseObject, error)
+	// ListItemContents An item's direct contents
+	// (GET /api/v1/items/{itemId}/contents)
+	ListItemContents(ctx context.Context, request ListItemContentsRequestObject) (ListItemContentsResponseObject, error)
+	// ListItemEvents An item's history
+	// (GET /api/v1/items/{itemId}/events)
+	ListItemEvents(ctx context.Context, request ListItemEventsRequestObject) (ListItemEventsResponseObject, error)
+	// MoveItem Move an item to a place or into a container
+	// (POST /api/v1/items/{itemId}/move)
+	MoveItem(ctx context.Context, request MoveItemRequestObject) (MoveItemResponseObject, error)
+	// SetItemStatus Change an item's lifecycle status
+	// (POST /api/v1/items/{itemId}/status)
+	SetItemStatus(ctx context.Context, request SetItemStatusRequestObject) (SetItemStatusResponseObject, error)
+	// ListItemTags An item's attached tags
+	// (GET /api/v1/items/{itemId}/tags)
+	ListItemTags(ctx context.Context, request ListItemTagsRequestObject) (ListItemTagsResponseObject, error)
+	// AttachItemTag Attach a tag to an item
+	// (POST /api/v1/items/{itemId}/tags)
+	AttachItemTag(ctx context.Context, request AttachItemTagRequestObject) (AttachItemTagResponseObject, error)
+	// DetachItemTag Detach a tag from an item
+	// (DELETE /api/v1/items/{itemId}/tags/{tagId})
+	DetachItemTag(ctx context.Context, request DetachItemTagRequestObject) (DetachItemTagResponseObject, error)
 	// ListLocations The family's locations
 	// (GET /api/v1/locations)
 	ListLocations(ctx context.Context, request ListLocationsRequestObject) (ListLocationsResponseObject, error)
@@ -4045,6 +5955,18 @@ type StrictServerInterface interface {
 	// UpdateRoom Update a room
 	// (PATCH /api/v1/rooms/{roomId})
 	UpdateRoom(ctx context.Context, request UpdateRoomRequestObject) (UpdateRoomResponseObject, error)
+	// ListTags The family's tags
+	// (GET /api/v1/tags)
+	ListTags(ctx context.Context, request ListTagsRequestObject) (ListTagsResponseObject, error)
+	// CreateTag Add a tag
+	// (POST /api/v1/tags)
+	CreateTag(ctx context.Context, request CreateTagRequestObject) (CreateTagResponseObject, error)
+	// DeleteTag Delete a tag
+	// (DELETE /api/v1/tags/{tagId})
+	DeleteTag(ctx context.Context, request DeleteTagRequestObject) (DeleteTagResponseObject, error)
+	// UpdateTag Rename or recolor a tag
+	// (PATCH /api/v1/tags/{tagId})
+	UpdateTag(ctx context.Context, request UpdateTagRequestObject) (UpdateTagResponseObject, error)
 	// GetTaxonomy The localised category tree and its trait schema
 	// (GET /api/v1/taxonomy)
 	GetTaxonomy(ctx context.Context, request GetTaxonomyRequestObject) (GetTaxonomyResponseObject, error)
@@ -4519,6 +6441,353 @@ func (sh *strictHandler) GetInvitePreview(w http.ResponseWriter, r *http.Request
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetInvitePreviewResponseObject); ok {
 		if err := validResponse.VisitGetInvitePreviewResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListItems operation middleware
+func (sh *strictHandler) ListItems(w http.ResponseWriter, r *http.Request, params ListItemsParams) {
+	var request ListItemsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListItems(ctx, request.(ListItemsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListItems")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListItemsResponseObject); ok {
+		if err := validResponse.VisitListItemsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateItem operation middleware
+func (sh *strictHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
+	var request CreateItemRequestObject
+
+	var body CreateItemJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateItem(ctx, request.(CreateItemRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateItem")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateItemResponseObject); ok {
+		if err := validResponse.VisitCreateItemResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ArchiveItem operation middleware
+func (sh *strictHandler) ArchiveItem(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID) {
+	var request ArchiveItemRequestObject
+
+	request.ItemId = itemId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ArchiveItem(ctx, request.(ArchiveItemRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ArchiveItem")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ArchiveItemResponseObject); ok {
+		if err := validResponse.VisitArchiveItemResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetItem operation middleware
+func (sh *strictHandler) GetItem(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID) {
+	var request GetItemRequestObject
+
+	request.ItemId = itemId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetItem(ctx, request.(GetItemRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetItem")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetItemResponseObject); ok {
+		if err := validResponse.VisitGetItemResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateItem operation middleware
+func (sh *strictHandler) UpdateItem(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID) {
+	var request UpdateItemRequestObject
+
+	request.ItemId = itemId
+
+	var body UpdateItemJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateItem(ctx, request.(UpdateItemRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateItem")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateItemResponseObject); ok {
+		if err := validResponse.VisitUpdateItemResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListItemContents operation middleware
+func (sh *strictHandler) ListItemContents(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID) {
+	var request ListItemContentsRequestObject
+
+	request.ItemId = itemId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListItemContents(ctx, request.(ListItemContentsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListItemContents")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListItemContentsResponseObject); ok {
+		if err := validResponse.VisitListItemContentsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListItemEvents operation middleware
+func (sh *strictHandler) ListItemEvents(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID, params ListItemEventsParams) {
+	var request ListItemEventsRequestObject
+
+	request.ItemId = itemId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListItemEvents(ctx, request.(ListItemEventsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListItemEvents")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListItemEventsResponseObject); ok {
+		if err := validResponse.VisitListItemEventsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// MoveItem operation middleware
+func (sh *strictHandler) MoveItem(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID) {
+	var request MoveItemRequestObject
+
+	request.ItemId = itemId
+
+	var body MoveItemJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.MoveItem(ctx, request.(MoveItemRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "MoveItem")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(MoveItemResponseObject); ok {
+		if err := validResponse.VisitMoveItemResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SetItemStatus operation middleware
+func (sh *strictHandler) SetItemStatus(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID) {
+	var request SetItemStatusRequestObject
+
+	request.ItemId = itemId
+
+	var body SetItemStatusJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SetItemStatus(ctx, request.(SetItemStatusRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SetItemStatus")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SetItemStatusResponseObject); ok {
+		if err := validResponse.VisitSetItemStatusResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListItemTags operation middleware
+func (sh *strictHandler) ListItemTags(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID) {
+	var request ListItemTagsRequestObject
+
+	request.ItemId = itemId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListItemTags(ctx, request.(ListItemTagsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListItemTags")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListItemTagsResponseObject); ok {
+		if err := validResponse.VisitListItemTagsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AttachItemTag operation middleware
+func (sh *strictHandler) AttachItemTag(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID) {
+	var request AttachItemTagRequestObject
+
+	request.ItemId = itemId
+
+	var body AttachItemTagJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AttachItemTag(ctx, request.(AttachItemTagRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AttachItemTag")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AttachItemTagResponseObject); ok {
+		if err := validResponse.VisitAttachItemTagResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DetachItemTag operation middleware
+func (sh *strictHandler) DetachItemTag(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID, tagId openapi_types.UUID) {
+	var request DetachItemTagRequestObject
+
+	request.ItemId = itemId
+	request.TagId = tagId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DetachItemTag(ctx, request.(DetachItemTagRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DetachItemTag")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DetachItemTagResponseObject); ok {
+		if err := validResponse.VisitDetachItemTagResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -5034,6 +7303,120 @@ func (sh *strictHandler) UpdateRoom(w http.ResponseWriter, r *http.Request, room
 	}
 }
 
+// ListTags operation middleware
+func (sh *strictHandler) ListTags(w http.ResponseWriter, r *http.Request) {
+	var request ListTagsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListTags(ctx, request.(ListTagsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListTags")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListTagsResponseObject); ok {
+		if err := validResponse.VisitListTagsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateTag operation middleware
+func (sh *strictHandler) CreateTag(w http.ResponseWriter, r *http.Request) {
+	var request CreateTagRequestObject
+
+	var body CreateTagJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateTag(ctx, request.(CreateTagRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateTag")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateTagResponseObject); ok {
+		if err := validResponse.VisitCreateTagResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteTag operation middleware
+func (sh *strictHandler) DeleteTag(w http.ResponseWriter, r *http.Request, tagId openapi_types.UUID) {
+	var request DeleteTagRequestObject
+
+	request.TagId = tagId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteTag(ctx, request.(DeleteTagRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteTag")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteTagResponseObject); ok {
+		if err := validResponse.VisitDeleteTagResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateTag operation middleware
+func (sh *strictHandler) UpdateTag(w http.ResponseWriter, r *http.Request, tagId openapi_types.UUID) {
+	var request UpdateTagRequestObject
+
+	request.TagId = tagId
+
+	var body UpdateTagJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateTag(ctx, request.(UpdateTagRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateTag")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateTagResponseObject); ok {
+		if err := validResponse.VisitUpdateTagResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetTaxonomy operation middleware
 func (sh *strictHandler) GetTaxonomy(w http.ResponseWriter, r *http.Request, params GetTaxonomyParams) {
 	var request GetTaxonomyRequestObject
@@ -5148,109 +7531,145 @@ func (sh *strictHandler) GetHealthz(w http.ResponseWriter, r *http.Request) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"5H3rbiM3lvCrHNT3AZkEZdl9mZ2BG/uj4/Rt0hfDdiYLRI2IqjpSMabIGpIlWdMwMD/3AeYp9rHyJItD",
-	"sm5SlSS3LTvd+yOI264iD8/9xlOfokTNciVRWhMdf4o0mlxJg+4f37P0DP9RoLH0r0RJi9L9yPJc8IRZ",
-	"ruThb0ZJ+p1JMpwx+un/a5xEx9H/O6yXPvR/NYcvtFY6ur6+jqMUTaJ5TotEx9FFhqD9ZrBgBmZMTJSe",
-	"YTqIruPopdJjnqYo9w/I88JmKC2timkM48KCVBaYEGqBKVgFqQKbceMAe6/sS1XIdP9wvVdgiiSjreUU",
-	"uHQwwITNuFg6UH6SrLCZ0vyfeD/gzJngKRg0his5iOiZ8BqtesIsTpVe0s+5Vjlqyz1bMZ1kfI7pcwcb",
-	"UZnZ6DhKmcUDy2cYxZFd5hgdR8ZqLqd0uCTjItWe/tzizGwDvNr+ulqNac3cv3niUbC2C09bEBUFT7uA",
-	"4eb7ggvL3SJttFhdICwyDORJAhSQsBnCRKsZ2AzBIKYw41PtSAKa2Qw12IxJYBVJq43HSglkknaWbIbr",
-	"m56hUWKOqeeKSo6+MSBUwgQ+A4lz1MBAswXBxISaFgiX2NymPl/ONEr7ZjdkGFFMO5FplLYfdIq6tQyX",
-	"9snjeh0uLU5ROyppxr0S2onAF/T4DzhZJ/B1HBEGuCY5+CVyYDsoA/6aoDWJWYHQYLeP1eJq/BsmlnY7",
-	"0cgslgzW0JBtNu/lMgLipDBWzejPM3b1FuXUZtHxo8dHcTTjsvr3XdGmzS5v1QJ1wgyCQGtRmxhSPuXW",
-	"xFDIFLVJlEYDSkO2zDOUhpikAeZ/PN0KZYv2KU5YIWx0fBRv54MV4jXoFlDWT5G3yqu4XoqwNNVoTCdR",
-	"LrlX4ptYrtzgR3q2IY03JOGdISdwswO9Hy2nqM0mpMyZZfonLTrRMubaZqSZ11R1t2I8IcFpnWvChMFN",
-	"uuyG2CsM6p3YvwtZ/Vg6U2rWi6M/BKH7YS9VYS/8KbPswr27i04tH76OI5TF7IPTG6bL7HgIY2AyBSXF",
-	"EmbIJJfTSSFibwXLnYEbGLrlhhGpk0rFryFt1VhPuLCo2Vjgbmx1icsHUXmCjVF8tlqvqb3LGT+fseKo",
-	"kNx2IH6F4wiLcc037eP1c2L6Rs65VxYrxrD6/Sb+e+lcn7AGweq10nqkMCmEAMHlJfnjJmMaB3CGttAS",
-	"U8ArllixBCUThN//9W/PmtwayJjJgJuhNFY5xjUKuIWESXLxx+Q5Wc2RXCnBLOrBUG7VK+FkHtguzHgX",
-	"eg0jiUo7XLlzS5wew4wlGZd4oJGl9BtAWgXoJWJNvGKzXNBCvzgijZnBXwvJ5owLJyofO3hshsawacem",
-	"r4sZk/VWKVrGxQDI3AluMK0d11cKwioNN/JP7x6Dkgum028HW9Hljl3D0oUwzwUdGPMsdpOwIcjGSaE1",
-	"yqRDMbw5/wBPHz/6i8csfJAISXgYctTBGSfHev5oFfE/PX/diecdo4jSqGxhr7R2W1dPEzdQ0o/IPpFk",
-	"SYL5DfH5GSTAq5xrNDd5ZUcEGstssTVO8Mc/9892xwb+b83TNcHux+w7nI1R39SlSrnJBVu+7yZ/HOGM",
-	"cdFCgP9NBwZ+U1zejBqCGXuOKG/yjlZiR819Rk/ewkcL74UtG+eLKxw0sddPmTMlOvTc98pmQEsbisCd",
-	"14Ipt0DB8dLnVf50fvriBJ7EMIxOyH7k1gyjbwcwUguJejSULE05LceEWAJLZ1xyQw6FU49eWxyDQWu5",
-	"nJoYZo5FjNvLWwrjjQq5QnRkt65TiI6XuvTJa2TCZucVt7eZrZaClTyWWLClgZG6HD0DBlLJg8dHR+Af",
-	"J3fMZwqYAMOnkolBE6jLDkBWIzO/bxcNvMidapxzXKxD7LHUy/+fI9bEcqWLuOourfGYezBugtF/iBrr",
-	"JW5ylClBGlcKlPgV5+rS/eT1RtpJyDJ+vFlk+lnpspvr6R2V7m3i5FuniIo8vdmxNhhTd5B2Kqip/+ut",
-	"upijdcIGc2TK55es0uTdxNGUhR80Cmb5nH5UNuuR9HfYJy276d/P19bb3vjJdISl7sVSkEqt3YUun4K4",
-	"m0zwXeYr9icmjUxIf+ZjPbdxU/5umtqVQAJtIw+dOwKQ1mfCKGDBLoGaNOwWWYCb2eumPJUnvokYnXI5",
-	"PUPjoteunAWFNVssG4H/56MnUBauIFHz2hxzUWgKVQxuNW9xJNVifTPvbFsg/AMzoDFX2mIK4yWcKmOn",
-	"Gk3sKkTjpdv0+ekbyLVK0JgWQnfXUgRHXJ+/C3FnymcZ7qCwsjcREEFHvrlVOPRARqIBfGfVYHcev2BX",
-	"SqpZVzzrKwhlhuR2Va3VMLteuxOoVqKvYcAsXtGRZOG80bjCa+z0l2dLLEUpjgz/Z3euoarO3A2ThmPv",
-	"yEp3le783CTlusa/88LihKNI76qqGFKm3SnN/Zcbm7nPLbnOO8tvOvw32CruyXhGjddaZO4rInZJ209O",
-	"QTxQwfBm+LvuBT/4jL0lhvVMWwPQJy0wn2xQ/zc6XT+0X2Qt8BbUeYe9J/VC2VTyKMlq9cT4PRs8TBXx",
-	"QaqGPRjYe4XwFuTfWgHcZqDurnp1Ww3eeUhz8zTr51QL7i4zu6uP/Bnp2Fqe1+tivq4FucYJkh7GGNjY",
-	"UPxSSMuFM9ckCpBkShk0oKSr33zbDI82qoc1I9qVmG37x41DrltH4g9MCs3t8pxUqyftGJlGfaEufceX",
-	"/+fLEj1/+/ki6uofNOQOsYRCL/jbzxcUrjEJo+ehLc7p6xFkyFLUA7ggPyrkQXNmM2BDOVNjLhASwV3M",
-	"xy7RPANu6TEK8UzhoAar3Fsn52cvIckwuYxhjAkrDPqHh66emCh1yfEg1XyO0md9nfVw4uFOVJM3szZ3",
-	"suK76U7cq900rg8Yg8Eq7jR8Kg+4hIlQiwGMXlubf5BiOYphdM5meM4t/udbdjVy1fqhHJ0T1nEEqrCG",
-	"pwgpzlGofIbSDsDvf8CavZAwK6xDoYFZYazLJAwlJplHxmh2+Wti9GQUzk3eIWH/vw4ITQeOlhXyHTLI",
-	"zY38w2WQdRzNLn8NOKiRw3L+Iy59FyKXE7WOl5dlmW6O0iq9pCg8UHhCBA1kNlxOBYJRhU7QJT90YTOY",
-	"KO3+/Pri4nQoEyWtZok9hlcKMiZTUSbwCRwDTCNMUaJ2SHHeN7ew4DaDkWI5P0hUilOUo3go3VsZwgLH",
-	"gam+MWGZ8EKOkt5xv3MHGg3gRcqthzfHBCZcGxsPJZECNJZbD+C987IJwgNXxqiBcsXMoRzK775LlMYD",
-	"lnNQC2mAp0ROuxx89x0QL30g2XgMeJVkTE4xhjc/HFiiFMxR80noGfUc43/PjSmYTBCYEJCxPEcJGWoc",
-	"uPXonCzPXaLJdapWopQxS3heMJ2aoUw0OkiYMM8oOClsoRHa0leQfrIZmiDYKNNccWkD6hh4GaoAk8Yi",
-	"S4mqnqdCoUXwBKVPIwUWO9Uq1xwtC3E0t8Jx3vJSzZRmUKIsiqM5auM57GjweHBEjweKRcfRk8GjwVEU",
-	"R6Q8nNY6ZDk/nD86JLE5nCo1FXiYMCHGLLmkv0/RrrPu35ngpO8NjIxlFkfApowO4zjAHyWuKGTCb1P0",
-	"WDj98eRFPJSeWuGvb34Aj5JyoVcOlG9IZ/x4HoNjpCI3qK2pLMIAng+lY7VKk7gNpCprWBnPwat1U8WT",
-	"TixmpCZr08KtGUpX1iLS+iZhX/qC3xSXJvBCKbGOagM4xwBMkH6SQ0dFt4XGlGtMrAHCJXAZNDDLc09l",
-	"8guqbFP02kmtP/ZJSQDXO8lmaFGb6PiXT17//KNAvazVT2hPqJuj1yxg93uOdNteXM/QjpeBOGVoH3CY",
-	"YiK4RAOJkmS+B6W6XNnWdYVs3PZj3O7pf3L0uCNZzKfSxfPPKkz7JvMGmuG5DDVSVqaTE0b/kdX7/V//",
-	"HkoPND0RoI5hooRQC/+SsUyga9ohEwRFybQphFjMr+IS1BW9Y0/wAEfJmTmbBv4nC+OQMCqVXhRH3si4",
-	"4zZLbrXrYnWBm5BGhubp0VFfDFgh9LBxQ6LpyUTHv3yMI1PMZqRjjqMTNcsFWgw9NI7gTXtNpo5NXVMJ",
-	"6Y7oIy3WpU2MZdr2qpJXwQB4QQq6vdIqwRSRxgjaHXXsPUYDY2UzZ7GH0jhmiMFkStsDwefOoHg11JZF",
-	"q8JhBvBegUE9R31AzsRQuk3BNTORMeBy7lJGXcJ6Tmfy6xDE63K6kv2XpTbxSs4ZYAajQ1Iuh5/cL69H",
-	"js8GcMK0Jg6zmVbFNCMEDKVWBeFC8xyM56tSSTuOpnW6dJSzLKT/uJwOJQOJC3KfG77MinBWnWE3UAo/",
-	"ky0lxApCNZtY1I5TvDgO4B15XmMkGSSXVYV0oNJ8yuUzcjiCkKIwHvNT6UKCZjZQI3mxof+NgWWzHOkZ",
-	"wtlQhm44W2hZManTBEwCGb+KAfpPLn0W+ZZa6SzsU/PZN5VCBJNoRDm4K2n/89GT/d+ZWZH8EFQkSk74",
-	"tCAClORMMRdq6VzxjXrle5yGHOxnKRWhpqrwyQJlbBcB5qo07blGwjtxEk40mqz0MWQKiUCmW9a7csHW",
-	"pP2t33OF/o+PnvZaJVVY71yurO0ccbd1A3Plqu5G1NOjR9tVeOva1AqyP63GY798JJFtRae/fLxu0YSg",
-	"Bn/ELegPiOzH/4uW01fiPYRXFLR4JeQDwnI5yBnXHmFKNNx20GhJHsqsvfOpnZr2Id+pJ7C31f4lpwQz",
-	"Zsgoa2TpEsZI8q+sizIoqPJhPkXaNsOJPfa9VCs8Mkah5NSpTWfImSWYVSGth8v1zsTAEq2MCSuEekWH",
-	"vTjza59XUeJ2TjrzEFPItGixD8XP+2GdFk/4/ZsCspE72oXBbt5w9QYS9fphwCturO92nnPWURNy5XKN",
-	"XvO4KIzAcpYkxMCzLoy3LzyFkgga+71Kl3emNbtvVV23c06kyq/XKP7o7oCo6qvdN1RDWqu61xd45Yae",
-	"4gNppudpWgVuBylOuGycpMGQtqxY9zDl4ae6cHbtOZOcW/qpzTfPfam3xTjbRDW8k36uFNJLT7e/VN3b",
-	"vQu8epBvitvueJSEsRGONiuU/R7NtprGR5ekSLJ1dH+YcevSWBxF6nWiwIkFJsi1hecwXtEzS+cj+wLv",
-	"jNY8HkrurARIFRDwK0+rnJpvjiAXboxgEpW71pkuLdOuku5Jy3SXYnfSMkf3pmVCQ8lDaJkHEB9PkrvX",
-	"TIfuNi8t583ofQpbp8l2BqSUohkjb6oWryAuHgffGFALeQwMEleSC+0e3AzlMFIyJAAJ+thVcOY+h6i0",
-	"/6dGmaJGPYz8HRZ62feo5agpwAsw+Gb3pzEMqy6lYfRtvwdQNfXs0wNYLWXeswdQXyvf7AE4pH7dgun9",
-	"hRYHWkW/2VUw69blkK5qM9UrtC+r1uF96dqyMbqbmo3xGV8GTRwLhpbUSleU100aBAmo915Gt+VfSNTG",
-	"RQsD2OwG9JjqBvH2ZajbTUf3bKY3s05ppFssdF+a4Mn2l+qROQ9o1O1N2XVNexyGW1O9Se8WHxNhXM7B",
-	"5SNmBsU8RPpk/XR5Q7i6FGwz5DrcierIVXFjm3cozW0V1U49vquXoFf6fDuZMWTEBTc2BokLNNbXjQf3",
-	"xmS355mAZFdixjqCaPNPj47rdLjWWMPdGPepsPWr4nE1VKk837F7leKb6uo49N0cN5lahIprvwPVIu0+",
-	"0xity/gbeYZOnYgi5XLqsN2+VP8FcU9Z/AIW2jwOXDtOKRjy8kbq5vCT/2FLhsNnyFfIuj3SKNe+bZyx",
-	"Q+bTJ1cHX7Ot8Wf0NeXCYNltsBu9Q3NDr5Na24B34cn7swHhfvmONiBc6fI2QImUbECjdeNW5uD2RHox",
-	"R72k4DSUH7Zr9V5aHX7y3bwrktmr+8N8Gv+L5qyPmZq3asPcuJj6uJ0l10rggS/EVD1IsETrbIBbpNKd",
-	"zFi/DyxUIVIQyOboi86hllzI8s64a8btrm8QXC0O2EWn1Hfn961RHNq+co1CZ6yvSVZXbHbi1sqE+F6E",
-	"Xs/1tBgLntSto7Yyyhjyqb4Xy9fslmgH8KZ0Yk2Tq74xIF3rq0xhkWEo9NfujrFcCPAX353vG+7nhF6B",
-	"oWRjVdh2/inoM9PFoa/Qtq/478KfDhkb2XM7O95dbNeGf6OHRBGLdQ2Xz72FcWgsccvg8dFRaOb0fxqB",
-	"n9vkx4ZKP7nnuEVdg66vDfAqF0w6+MPj5Z3Vwa35vsXQP7uaq2y6Q6ScUgNWbeHm8ibkZhP5tnpqpzY7",
-	"73NiWexp9YpsG391a77YyQJXrSQ7WN/q8CGEcDGl0haUTlE/nM29aAq0aFCopHcuWIKmFUF1hS0VLvaZ",
-	"9129sXXPed+a3pvzviUav8DKr6jJuMYAXQJ/+Km+Bb1LnbfFJl91nXcTJuPeZHc/fo7ujY1X2PdLQPsH",
-	"iVsQvt35aF3nv/86ek8Cfc96tfsm7D0n0bcxZJlGfwC9+pC17lvp4kOt1GyzP3bmnvhKfDE37WQHP8wd",
-	"+k59sAeq8Dn6gpq4av4fSPdt8BEdjfbpHzavX9+zb+j5b7NfSCT7v9AOQOf0bQA7qjB/l7rPJ3qH+/SG",
-	"3vUWP8r0Y/31igeM0XyS54BLf/kr3NThuj9JGnqGe90RN7q3uvbqSp31nXAwCiZM93klgST78kfqSRX3",
-	"7ImEEXYbvRB3E/JLiuwadfY2F/kWsgbVzcaW8xxVLnCjS3HqH/lKfIowknAHr+IkfAskXMT212exLGeg",
-	"S/WNly4D+3BqxBOnkcIFq1lyafznggxM3DXRSk97Um7L+wQc7dOqt8fK3LNdL3lgs2X3l12/wHxPXpJv",
-	"jexrgn/4yT+8pagW5Nm0bhP6h80A3pDcgcaEXO60cY29HkB5iZi7SQZcQ8aNrbtQ/xLDMPqBWQaGTdD2",
-	"NaIGCBqc+VUnmvpJ2J9m6sPN0T3JTUtevpQE0yZEbw+xSuH5IyWX9qq8u2aC3bM7t5kJS4fu3pX3QyaV",
-	"dlP4xG19JekXV6gTHgav+K+slB9ldLcEf//XvxtjZsJwnBjMP0QCzgWMq6G4YZqDGxhQVayhnGob3NNE",
-	"qORyAC+uuPHzBHKtfMcEWKVEkjEuASkeUkOJMn3mm+60u+4oFaRqRk+Ezw711KpP/bj2/XFiPcW4hxvL",
-	"UwOTZoE6GKN7uXPe2j7laahKExiDLXdWC5keuCkJuVbjZjuVWRqLszZbuZTV4Sf6327Voiph9FUbcO1P",
-	"eYMqUTdeju4lmdVIYn0phrsfwdvNtmfWP5LR3mMWdX2I5T0b7E2MV5rrrz+LWhnrPsZt6FTbGB3eaa67",
-	"hgD8/t//0/w0sDe0MUg0LsElU98cxjX4T4maeCiRJZnvYeLWtb/7+c7+c6gDeMvGKDwLV3+rWuKq6c9D",
-	"+dx9EOXgLZPTgk39h8FSrfIcU3iF6s3pM/fdnVQl5vDdm7cvzi8+vH9xPpilFOq9uGDTg4QlGabHYMjm",
-	"u4k8ozeTg/dK4sE7ErMR+QhTtMBg9OTo6ciPzZIq9LFlzIDv1Ex7fIFqGnu3fvCzZGoN0do8eqhmtQro",
-	"vkxFeaHTasSVkTiE1vZO6zM9/878Z5o3j8h50mWc33vUQwPzYLhMvA835XOUQCA8bIJdVF+ya6HKf5WJ",
-	"HE9idAjH33arsb5WfPjJhtuiu7k8rfuzX7Xb07w0+vnTD2rs7slGv7EGLtFPMSQn2Y3mdHpuwq8wBWbD",
-	"xC8ln1UXxsDNSo6HsoRIojExlBOWueDWr1iXn/2kPCce/ZMP9ny7untQ9D37ANtuV1eXKr/+29WVI7Bd",
-	"Vkj5ZO4jcP/sdQXOQpD9+OgImAGh5DRMZSq/RuM6wVHPKVCGHxT6BnOriiRrheaDLrv5Omy/R95ofeau",
-	"L7dYH4UJPsfNIexbMj/0eH8A697W8+5Rg66K2hyMDH+qxun60XRi+W348qsf4Xx86Fp2RKaMPf7r0V8f",
-	"Resj/jpWLa+gnLA03bLiUURsFA6yFnOUZGOiMS7XdfwrsCiZtI7MMf27MdzZVcDrWaYeOx0TS/10ubia",
-	"xOYmgYUBwX72nCpsYyVXZ1xfx93S9dBwa1BMHIhkiDd/OLFeeFJ+7mx9OqSrym2qgw3gvbL1CDRmqnse",
-	"g2ZG12XOuqnnh2C71JZr1CHoF35wo98lz5aGJ/4TkRqby3ovvxsl232TuJ4XQn9uD0xpbFPpjuuP1/8b",
-	"AAD//w==",
+	"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",
+	"FhPBfwjtHfw95lqvGyuem8GXD1/+fwAAAP//",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

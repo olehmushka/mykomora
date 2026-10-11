@@ -1,10 +1,12 @@
 {
   "AppShell": {
     "inventory": "Inventory",
+    "items": "Items",
     "people": "People",
     "family": "Family",
     "locations": "Locations",
-    "taxonomy": "Categories"
+    "taxonomy": "Categories",
+    "tags": "Tags"
   },
   "LocaleSwitcher": {
     "label": "Language",
@@ -37,7 +39,8 @@
     "roomNameLabel": "Name",
     "addButton": "Add room",
     "savingButton": "Saving…",
-    "archiveButton": "Archive"
+    "archiveButton": "Archive",
+    "itemsLink": "Items"
   },
   "Taxonomy": {
     "heading": "Categories",
@@ -74,5 +77,139 @@
     "typeSize": "Size",
     "enumOptionsLabel": "Options",
     "enumOptionsHint": "(comma-separated)"
+  },
+  "Items": {
+    "heading": "Items",
+    "headingInLocation": "Items in {location}",
+    "headingInRoom": "Items in {room}",
+    "addButton": "Add item",
+    "empty": "No items here yet.",
+    "containerBadge": "Container",
+    "status": {
+      "in_use": "In use",
+      "stored": "Stored",
+      "lent": "Lent out",
+      "to_give_away": "To give away",
+      "consumed": "Consumed",
+      "given_away": "Given away",
+      "sold": "Sold",
+      "discarded": "Discarded",
+      "lost": "Lost"
+    }
+  },
+  "ItemForm": {
+    "heading": "Add an item",
+    "backLink": "All items",
+    "noCategories": "No categories are set up yet.",
+    "noLocations": "No locations are set up yet.",
+    "addLocationLink": "Add a location first",
+    "locationLabel": "Location",
+    "roomLabel": "Room",
+    "noRoom": "No specific room",
+    "spotLabel": "Spot",
+    "optionalHint": "(optional)",
+    "nameLabel": "Name",
+    "categoryLabel": "Category",
+    "isContainerLabel": "This is a container (it can hold other items)",
+    "quantityLabel": "Quantity",
+    "unitLabel": "Unit",
+    "minQuantityLabel": "Minimum quantity",
+    "seasonLabel": "Season",
+    "season": {
+      "summer": "Summer",
+      "winter": "Winter",
+      "demi": "Demi-season",
+      "all_season": "All-season"
+    },
+    "conditionLabel": "Condition",
+    "condition": {
+      "new": "New",
+      "like_new": "Like new",
+      "good": "Good",
+      "worn": "Worn",
+      "poor": "Poor"
+    },
+    "sizeSystemLabel": "Size system",
+    "sizeValueLabel": "Size",
+    "forPersonLabel": "For",
+    "expiresAtLabel": "Expires",
+    "openedAtLabel": "Opened",
+    "paoMonthsLabel": "Period after opening (months)",
+    "serialNumberLabel": "Serial number",
+    "warrantyUntilLabel": "Warranty until",
+    "categoryFieldsHeading": "Fields for this category",
+    "brandLabel": "Brand",
+    "purchaseDateLabel": "Purchase date",
+    "purchasePriceLabel": "Purchase price",
+    "notesLabel": "Notes",
+    "tagsLabel": "Tags",
+    "savingButton": "Saving…",
+    "addButton": "Add item",
+    "insideContainer": "Inside: {name}"
+  },
+  "ItemDetail": {
+    "backLink": "All items",
+    "insideContainer": "Inside",
+    "containerBadge": "Container",
+    "categoryLabel": "Category",
+    "quantityLabel": "Quantity",
+    "brandLabel": "Brand",
+    "sizeLabel": "Size",
+    "notesLabel": "Notes",
+    "statusHeading": "Status",
+    "archivedNotice": "This item is archived. Its status can no longer change.",
+    "archiveButton": "Archive",
+    "moveHeading": "Move",
+    "moveToPlace": "To a place",
+    "moveIntoContainer": "Into a container",
+    "locationLabel": "Location",
+    "roomLabel": "Room",
+    "noRoom": "No specific room",
+    "spotLabel": "Spot",
+    "optionalHint": "(optional)",
+    "containerLabel": "Container",
+    "chooseContainer": "Choose a container",
+    "savingButton": "Saving…",
+    "moveButton": "Move",
+    "changeStatusButton": "Change status",
+    "status": {
+      "in_use": "In use",
+      "stored": "Stored",
+      "lent": "Lent out",
+      "to_give_away": "To give away",
+      "consumed": "Consumed",
+      "given_away": "Given away",
+      "sold": "Sold",
+      "discarded": "Discarded",
+      "lost": "Lost"
+    },
+    "contentsHeading": "Contents",
+    "noContents": "Nothing inside yet.",
+    "addInsideButton": "Add item inside",
+    "tagsHeading": "Tags",
+    "noTags": "No tags yet.",
+    "chooseTag": "Choose a tag",
+    "attachTagButton": "Attach",
+    "manageTagsLink": "Manage tags",
+    "eventsHeading": "History",
+    "event": {
+      "created": "Created",
+      "updated": "Updated",
+      "moved": "Moved",
+      "status_changed": "Status changed",
+      "archived": "Archived"
+    }
+  },
+  "Tags": {
+    "heading": "Tags",
+    "addHeading": "Add a tag",
+    "nameLabel": "Name",
+    "colorLabel": "Color",
+    "optionalHint": "(optional)",
+    "addButton": "Add tag",
+    "savingButton": "Saving…",
+    "saveButton": "Save",
+    "deleteButton": "Delete",
+    "empty": "No tags yet."
   }
 }

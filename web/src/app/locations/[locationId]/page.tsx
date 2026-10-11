@@ -64,15 +64,24 @@ export default async function LocationDetailPage(props: PageProps<"/locations/[l
               >
                 <p className="truncate text-sm font-medium">{room.name}</p>
 
-                <form action={archiveInThisLocation}>
-                  <input type="hidden" name="roomId" value={room.id} />
-                  <button
-                    type="submit"
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={`/items?locationId=${encodeURIComponent(locationId)}&roomId=${encodeURIComponent(room.id)}`}
                     className="inline-flex min-h-11 items-center rounded-md border border-border px-3 text-sm hover:bg-border/60"
                   >
-                    {t("archiveButton")}
-                  </button>
-                </form>
+                    {t("itemsLink")}
+                  </Link>
+
+                  <form action={archiveInThisLocation}>
+                    <input type="hidden" name="roomId" value={room.id} />
+                    <button
+                      type="submit"
+                      className="inline-flex min-h-11 items-center rounded-md border border-border px-3 text-sm hover:bg-border/60"
+                    >
+                      {t("archiveButton")}
+                    </button>
+                  </form>
+                </div>
               </li>
             ))}
           </ul>

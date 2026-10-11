@@ -1,22 +1,19 @@
 import Link from "next/link";
 
 import { AppShell } from "@/components/app-shell";
-import { Notice } from "@/components/notice";
 import { listFamilyMembers } from "@/lib/api/family";
+import { listItems } from "@/lib/api/items";
 import { requireMe } from "@/lib/api/session";
 
 /**
- * The inventory, which in M1 is empty on purpose.
+ * The inventory landing page.
  *
- * The milestone's acceptance sentence is that two Google accounts share one
- * family and both see the same (empty) inventory — so this page's job is to
- * make the sharing visible and be honest that items arrive in M3. An empty
- * inventory is a normal state of this application, not a failure, and it is
- * rendered as one.
+ * As of M3, items are real: this page's job is a quick count and the two
+ * doors into the catalogue, not the catalogue itself — that's /items.
  */
 export default async function Home() {
   const me = await requireMe("/");
-  const members = await listFamilyMembers();
+  const [members, items] = await Promise.all([listFamilyMembers(), listItems()]);
 
   return (
     <AppShell me={me}>
@@ -31,11 +28,25 @@ export default async function Home() {
           Inventory
         </h2>
 
-        <div className="mt-3">
-          <Notice title="Nothing here yet">
-            Items arrive in M3. Until then, this family exists, everyone in it sees the same (empty)
-            inventory, and you can record the people you will be tracking things for.
-          </Notice>
+        <p className="mt-3 text-sm">
+          {items.ok
+            ? `${items.data.length} ${items.data.length === 1 ? "item" : "items"} recorded at the top level.`
+            : "The item count is unavailable right now."}
+        </p>
+
+        <div className="mt-3 flex flex-wrap gap-3">
+          <Link
+            href="/items"
+            className="inline-flex min-h-11 items-center rounded-md border border-border px-4 text-sm font-medium hover:bg-border/60"
+          >
+            Browse items
+          </Link>
+          <Link
+            href="/items/new"
+            className="inline-flex min-h-11 items-center rounded-md border border-border px-4 text-sm font-medium hover:bg-border/60"
+          >
+            Add item
+          </Link>
         </div>
       </section>
 

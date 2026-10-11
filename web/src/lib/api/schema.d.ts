@@ -529,6 +529,225 @@ export interface paths {
         patch: operations["updateTraitDef"];
         trace?: never;
     };
+    "/api/v1/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The family's root items
+         * @description Items with a parent are reached through their container's own
+         *     `/contents`, not this list: a nested item's place columns are
+         *     cosmetic (SPEC 4, "Containment").
+         */
+        get: operations["listItems"];
+        put?: never;
+        /** Add an item */
+        post: operations["createItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        /** One item */
+        get: operations["getItem"];
+        put?: never;
+        post?: never;
+        /** Archive an item */
+        delete: operations["archiveItem"];
+        options?: never;
+        head?: never;
+        /**
+         * Update an item
+         * @description Omitted fields are left alone. Place and status are deliberately not
+         *     part of this request — use `/move` and `/status` so their own
+         *     events stay unambiguous.
+         */
+        patch: operations["updateItem"];
+        trace?: never;
+    };
+    "/api/v1/items/{itemId}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move an item to a place or into a container
+         * @description Exactly one of `locationId` or `parentItemId` must be given. Moving
+         *     a container moves its contents with it — one row, one event (SPEC
+         *     4, "Containment").
+         */
+        post: operations["moveItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items/{itemId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change an item's lifecycle status
+         * @description `inUse`/`stored`/`lent`/`toGiveAway` move freely among themselves.
+         *     `consumed`/`givenAway`/`sold`/`discarded`/`lost` are terminal: once
+         *     set, the item is archived and no further status change is accepted.
+         */
+        post: operations["setItemStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items/{itemId}/contents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * An item's direct contents
+         * @description Direct children only; drill into a nested container's own `/contents` to go deeper.
+         */
+        get: operations["listItemContents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items/{itemId}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        /** An item's history */
+        get: operations["listItemEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items/{itemId}/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        /** An item's attached tags */
+        get: operations["listItemTags"];
+        put?: never;
+        /** Attach a tag to an item */
+        post: operations["attachItemTag"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items/{itemId}/tags/{tagId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+                tagId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Detach a tag from an item */
+        delete: operations["detachItemTag"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The family's tags */
+        get: operations["listTags"];
+        put?: never;
+        /** Add a tag */
+        post: operations["createTag"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tags/{tagId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tagId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a tag
+         * @description A hard delete — tags carry no history to preserve (SPEC 4, "Items").
+         */
+        delete: operations["deleteTag"];
+        options?: never;
+        head?: never;
+        /** Rename or recolor a tag */
+        patch: operations["updateTag"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -835,6 +1054,219 @@ export interface components {
             icon?: string;
             /** Format: int32 */
             sortOrder?: number;
+        };
+        /**
+         * @description Wire values match the stored enum verbatim, including the
+         *     underscores, rather than camelCasing them: a mismatch there would
+         *     mean a response could carry a status string the schema does not
+         *     admit.
+         * @enum {string}
+         */
+        ItemStatus: "in_use" | "stored" | "lent" | "to_give_away" | "consumed" | "given_away" | "sold" | "discarded" | "lost";
+        /** @enum {string} */
+        ItemCondition: "new" | "like_new" | "good" | "worn" | "poor";
+        /** @enum {string} */
+        ItemSeason: "summer" | "winter" | "demi" | "all_season";
+        /**
+         * @description Shared with M2's size normalisation table (SPEC 4, "Size normalisation").
+         * @enum {string}
+         */
+        SizeSystem: "kids_cm" | "kids_eu" | "intl_letter" | "eu_adult" | "shoe_eu" | "shoe_uk" | "shoe_us" | "one_size";
+        Item: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: uuid */
+            categoryId: string;
+            /**
+             * Format: uuid
+             * @description This item's own place. Cosmetic once `parentItemId` is set — see `effectiveLocationId`.
+             */
+            locationId: string;
+            /** Format: uuid */
+            roomId?: string;
+            spot?: string;
+            /** Format: uuid */
+            parentItemId?: string;
+            isContainer: boolean;
+            status: components["schemas"]["ItemStatus"];
+            quantity: number;
+            unit?: string;
+            minQuantity?: number;
+            /** Format: date */
+            expiresAt?: string;
+            /** Format: date */
+            openedAt?: string;
+            /** Format: int32 */
+            paoMonths?: number;
+            brand?: string;
+            condition?: components["schemas"]["ItemCondition"];
+            season?: components["schemas"]["ItemSeason"];
+            sizeSystem?: components["schemas"]["SizeSystem"];
+            sizeValue?: string;
+            /** Format: uuid */
+            forPersonId?: string;
+            serialNumber?: string;
+            /** Format: date */
+            warrantyUntil?: string;
+            /** Format: date */
+            purchaseDate?: string;
+            purchasePrice?: number;
+            purchaseCurrency?: string;
+            notes?: string;
+            /** @description Long-tail fields and family-defined custom fields only — never a hot-column key. */
+            traits: {
+                [key: string]: unknown;
+            };
+            /**
+             * Format: uuid
+             * @description This item's own locationId when it has no parent; otherwise its
+             *     root container's. Always resolvable (SPEC 4, "Containment").
+             */
+            effectiveLocationId: string;
+            /** Format: uuid */
+            effectiveRoomId?: string;
+            effectiveSpot?: string;
+            /** Format: uuid */
+            createdBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: date-time */
+            archivedAt?: string;
+        };
+        /**
+         * @description Exactly one of `locationId` or `parentItemId` must be given — a new
+         *     item is either placed directly or created inside an existing
+         *     container. `status`, if given, must not be a terminal one; an item
+         *     is always created active.
+         */
+        CreateItemRequest: {
+            name: string;
+            /** Format: uuid */
+            categoryId: string;
+            /** Format: uuid */
+            locationId?: string;
+            /** Format: uuid */
+            roomId?: string;
+            spot?: string;
+            /** Format: uuid */
+            parentItemId?: string;
+            /** @default false */
+            isContainer: boolean;
+            status?: components["schemas"]["ItemStatus"];
+            /** @default 1 */
+            quantity: number;
+            unit?: string;
+            minQuantity?: number;
+            /** Format: date */
+            expiresAt?: string;
+            /** Format: date */
+            openedAt?: string;
+            /** Format: int32 */
+            paoMonths?: number;
+            brand?: string;
+            condition?: components["schemas"]["ItemCondition"];
+            season?: components["schemas"]["ItemSeason"];
+            sizeSystem?: components["schemas"]["SizeSystem"];
+            sizeValue?: string;
+            /** Format: uuid */
+            forPersonId?: string;
+            serialNumber?: string;
+            /** Format: date */
+            warrantyUntil?: string;
+            /** Format: date */
+            purchaseDate?: string;
+            purchasePrice?: number;
+            purchaseCurrency?: string;
+            notes?: string;
+            traits?: {
+                [key: string]: unknown;
+            };
+            tagIds?: string[];
+        };
+        /**
+         * @description Omitted fields are left alone. Place and status are not here on
+         *     purpose — see `/items/{itemId}/move` and `/items/{itemId}/status`.
+         */
+        UpdateItemRequest: {
+            name?: string;
+            /** Format: uuid */
+            categoryId?: string;
+            quantity?: number;
+            unit?: string;
+            minQuantity?: number;
+            /** Format: date */
+            expiresAt?: string;
+            /** Format: date */
+            openedAt?: string;
+            /** Format: int32 */
+            paoMonths?: number;
+            brand?: string;
+            condition?: components["schemas"]["ItemCondition"];
+            season?: components["schemas"]["ItemSeason"];
+            sizeSystem?: components["schemas"]["SizeSystem"];
+            sizeValue?: string;
+            /** Format: uuid */
+            forPersonId?: string;
+            serialNumber?: string;
+            /** Format: date */
+            warrantyUntil?: string;
+            /** Format: date */
+            purchaseDate?: string;
+            purchasePrice?: number;
+            purchaseCurrency?: string;
+            notes?: string;
+            traits?: {
+                [key: string]: unknown;
+            };
+        };
+        /** @description Exactly one of `locationId` or `parentItemId` must be given. */
+        MoveItemRequest: {
+            /** Format: uuid */
+            locationId?: string;
+            /** Format: uuid */
+            roomId?: string;
+            spot?: string;
+            /** Format: uuid */
+            parentItemId?: string;
+        };
+        SetItemStatusRequest: {
+            status: components["schemas"]["ItemStatus"];
+        };
+        ItemEvent: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            itemId: string;
+            /** Format: uuid */
+            actorUserId: string;
+            /** @description `created`, `updated`, `moved`, `status_changed` or `archived` in this milestone; later milestones add more. */
+            type: string;
+            payload: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            createdAt: string;
+        };
+        Tag: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            color?: string;
+        };
+        CreateTagRequest: {
+            name: string;
+            color?: string;
+        };
+        UpdateTagRequest: {
+            name?: string;
+            color?: string;
+        };
+        AttachItemTagRequest: {
+            /** Format: uuid */
+            tagId: string;
         };
     };
     responses: {
@@ -1830,6 +2262,417 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TraitDef"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listItems: {
+        parameters: {
+            query?: {
+                locationId?: string;
+                roomId?: string;
+                categoryId?: string;
+                includeArchived?: boolean;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Root items, most recently created first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Item"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    createItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateItemRequest"];
+            };
+        };
+        responses: {
+            /** @description The created item. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Item"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The item. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Item"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    archiveItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Archived. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateItemRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated item. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Item"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    moveItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MoveItemRequest"];
+            };
+        };
+        responses: {
+            /** @description The item at its new place. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Item"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    setItemStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetItemStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description The item at its new status. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Item"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listItemContents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The item's direct children. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Item"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listItemEvents: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Events, most recent first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemEvent"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listItemTags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tags, alphabetically. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tag"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    attachItemTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttachItemTagRequest"];
+            };
+        };
+        responses: {
+            /** @description Attached (or already was). */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    detachItemTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+                tagId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Detached (or already wasn't attached). */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listTags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tags, alphabetically. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tag"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    createTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTagRequest"];
+            };
+        };
+        responses: {
+            /** @description The created tag. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tag"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    deleteTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tagId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tagId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTagRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated tag. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tag"];
                 };
             };
             400: components["responses"]["BadRequest"];

@@ -17,10 +17,15 @@ type Querier interface {
 	AcceptInvite(ctx context.Context, arg AcceptInviteParams) (AcceptInviteRow, error)
 	AddFamilyMember(ctx context.Context, arg AddFamilyMemberParams) (FamilyMember, error)
 	ArchiveCategory(ctx context.Context, arg ArchiveCategoryParams) (int64, error)
+	ArchiveItem(ctx context.Context, arg ArchiveItemParams) (int64, error)
 	ArchiveLocation(ctx context.Context, arg ArchiveLocationParams) (int64, error)
 	ArchivePerson(ctx context.Context, arg ArchivePersonParams) (int64, error)
 	ArchiveRoom(ctx context.Context, arg ArchiveRoomParams) (int64, error)
 	ArchiveTraitDef(ctx context.Context, arg ArchiveTraitDefParams) (int64, error)
+	// Guarded by EXISTS against both items and tags so neither side can belong
+	// to another family — the FK alone only proves the rows exist, not that
+	// they are this family's own.
+	AttachItemTag(ctx context.Context, arg AttachItemTagParams) error
 	// Guarded so a family cannot point parent_id at a category it cannot see:
 	// the FK alone only proves the row exists, not that it is this family's own
 	// or a built-in.
@@ -45,6 +50,27 @@ type Querier interface {
 	// Only the SHA-256 of the token is stored. A database dump therefore yields no
 	// usable invite links.
 	CreateFamilyInvite(ctx context.Context, arg CreateFamilyInviteParams) (CreateFamilyInviteRow, error)
+	// Items: real possessions, in real places, optionally inside a container
+	// (SPEC 3, "Concepts" and SPEC 4, "Items").
+	//
+	// `items.family_id` is a real column, so every query here filters on it
+	// directly, the same shape as locations.sql — no EXISTS-through-a-parent
+	// needed, unlike rooms.sql.
+	//
+	// Containment is read-resolved, not denormalised (see 00008_items.sql's
+	// header): GetItemAncestorChain and GetItemDescendantDepths are the two
+	// recursive queries internal/items builds cycle prevention, depth limits
+	// and effective-place resolution on top of. Both still filter every row on
+	// family_id, so a chain can never walk into another family's items even if
+	// a caller somehow had a foreign id to try.
+	CreateItem(ctx context.Context, arg CreateItemParams) (Item, error)
+	// Item events: the audit trail (SPEC 4, "Items" and SPEC 7, "Data safety").
+	//
+	// Always written by internal/items' Service inside the same transaction as
+	// the item write it describes — never as a best-effort side call. `type` is
+	// plain text (see 00008_items.sql's header); the handful of values this
+	// milestone writes are "created", "updated", "moved" and "status_changed".
+	CreateItemEvent(ctx context.Context, arg CreateItemEventParams) (ItemEvent, error)
 	// Locations: one of the family's physical places (SPEC 3, "Concepts").
 	//
 	// Scoped directly on family_id, same shape as people.sql.
@@ -77,9 +103,17 @@ type Querier interface {
 	// location is actually this family's, which is what proves the room may be
 	// created here at all.
 	CreateRoom(ctx context.Context, arg CreateRoomParams) (Room, error)
+	// Tags: family-defined labels an item can carry (SPEC 4, "Items").
+	//
+	// No archived_at on `tags` itself — SPEC's own schema sketch omits it for
+	// this one table, so deleting a tag is a genuine hard delete; `item_tags`
+	// rows pointing at it cascade away with it (00008_items.sql).
+	CreateTag(ctx context.Context, arg CreateTagParams) (Tag, error)
 	// Guarded by EXISTS against categories so a custom field can only attach to a
 	// category this family can actually see (its own, or a built-in).
 	CreateTraitDef(ctx context.Context, arg CreateTraitDefParams) (TraitDef, error)
+	DeleteTag(ctx context.Context, arg DeleteTagParams) (int64, error)
+	DetachItemTag(ctx context.Context, arg DetachItemTagParams) (int64, error)
 	GetCategory(ctx context.Context, arg GetCategoryParams) (Category, error)
 	// Scoped through family_members rather than by primary key alone.
 	//
@@ -102,6 +136,18 @@ type Querier interface {
 	// and nothing else about it: an invite link must be enough to see who invited
 	// you, and never enough to see their inventory.
 	GetInviteByTokenHash(ctx context.Context, tokenHash []byte) (GetInviteByTokenHashRow, error)
+	GetItem(ctx context.Context, arg GetItemParams) (Item, error)
+	// Row 0 is the item itself; the last row is its root. Used for depth
+	// computation, effective-place resolution (the root's place columns), and —
+	// called with a candidate parent's id — cycle detection on re-parenting: if
+	// the item being moved appears anywhere in the candidate's own chain, the
+	// candidate is that item or one of its descendants.
+	GetItemAncestorChain(ctx context.Context, arg GetItemAncestorChainParams) ([]GetItemAncestorChainRow, error)
+	// Every existing descendant of an item, with its depth relative to that
+	// item (the item itself is not included). Used only when moving a
+	// container with contents, to check the deepest descendant still fits
+	// under the max-depth-5 rule once the container is re-parented.
+	GetItemDescendantDepths(ctx context.Context, arg GetItemDescendantDepthsParams) ([]GetItemDescendantDepthsRow, error)
 	GetLocation(ctx context.Context, arg GetLocationParams) (Location, error)
 	GetPerson(ctx context.Context, arg GetPersonParams) (Person, error)
 	// `rotated_to` is what makes reuse detectable: a non-NULL value means this
@@ -115,6 +161,7 @@ type Querier interface {
 	// It is allowlisted by name in sqlc.yaml's `family-scoped` vet rule, so adding
 	// another unscoped query requires an obvious, reviewable change to that list.
 	GetServerTime(ctx context.Context) (pgtype.Timestamptz, error)
+	GetTag(ctx context.Context, arg GetTagParams) (Tag, error)
 	GetTraitDef(ctx context.Context, arg GetTraitDefParams) (TraitDef, error)
 	// TENANCY: pre-tenant. Resolves the principal carried by an access token; the
 	// caller then scopes everything that follows by the token's tenant claim.
@@ -131,11 +178,20 @@ type Querier interface {
 	ListCategories(ctx context.Context, arg ListCategoriesParams) ([]Category, error)
 	ListFamilyInvites(ctx context.Context, familyID pgtype.UUID) ([]ListFamilyInvitesRow, error)
 	ListFamilyMembers(ctx context.Context, familyID pgtype.UUID) ([]ListFamilyMembersRow, error)
+	ListItemChildren(ctx context.Context, arg ListItemChildrenParams) ([]Item, error)
+	ListItemEvents(ctx context.Context, arg ListItemEventsParams) ([]ItemEvent, error)
+	// Roots only (no parent): a nested item's place columns are cosmetic, so it
+	// is reached by following a container's contents link, not by this list
+	// (00008_items.sql's header). Filters are optional; an absent one matches
+	// everything.
+	ListItems(ctx context.Context, arg ListItemsParams) ([]Item, error)
 	ListLocations(ctx context.Context, arg ListLocationsParams) ([]Location, error)
 	// `include_archived` is a parameter rather than a second query so the list and
 	// its archived variant cannot drift apart.
 	ListPeople(ctx context.Context, arg ListPeopleParams) ([]Person, error)
 	ListRoomsByLocation(ctx context.Context, arg ListRoomsByLocationParams) ([]Room, error)
+	ListTags(ctx context.Context, familyID pgtype.UUID) ([]Tag, error)
+	ListTagsForItem(ctx context.Context, arg ListTagsForItemParams) ([]Tag, error)
 	// Trait definitions: the typed, category-specific fields a category carries
 	// (SPEC 4, "Taxonomy").
 	//
@@ -145,6 +201,11 @@ type Querier interface {
 	// code path, one validator, one renderer" applies per field, not per category.
 	// Driven by a category id list so GET /taxonomy issues one query, not N+1.
 	ListTraitDefsForCategories(ctx context.Context, arg ListTraitDefsForCategoriesParams) ([]TraitDef, error)
+	// Sets exactly one of a location-target (location_id/room_id/spot) or a
+	// parent-target (parent_item_id); the service clears the other side before
+	// calling this, so the row never carries both a parent and its own place
+	// as if it were a root.
+	MoveItem(ctx context.Context, arg MoveItemParams) (Item, error)
 	// Owners are deliberately not removable through this path: demoting or
 	// removing the last owner would leave the family unadministrable, and there is
 	// no role-change endpoint in M1. Zero affected rows is the caller's signal.
@@ -165,6 +226,9 @@ type Querier interface {
 	// successor makes reuse detectable, and the revocation keeps the live-token
 	// index honest.
 	RotateRefreshToken(ctx context.Context, arg RotateRefreshTokenParams) (int64, error)
+	// The service decides whether the target status is terminal and passes
+	// archived_at accordingly; this query just writes whatever it is given.
+	SetItemStatus(ctx context.Context, arg SetItemStatusParams) (Item, error)
 	// TENANCY: pre-tenant. Presence is a property of the account, not of a tenant.
 	TouchUserLastSeen(ctx context.Context, id pgtype.UUID) error
 	UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (Category, error)
@@ -173,6 +237,11 @@ type Querier interface {
 	//
 	// Membership-scoped for the same reason as GetFamily above.
 	UpdateFamily(ctx context.Context, arg UpdateFamilyParams) (Family, error)
+	// Everything except place and status, which only the move and status
+	// actions touch (so an `updated` event can never be confused with a
+	// `moved` or `status_changed` one). A NULL argument leaves its column
+	// untouched.
+	UpdateItem(ctx context.Context, arg UpdateItemParams) (Item, error)
 	// Partial update; a NULL argument leaves its column untouched.
 	UpdateLocation(ctx context.Context, arg UpdateLocationParams) (Location, error)
 	// Partial update; a NULL argument leaves its column untouched. `birthdate`,
@@ -180,6 +249,7 @@ type Querier interface {
 	// which is the right trade while nothing in the UI clears them.
 	UpdatePerson(ctx context.Context, arg UpdatePersonParams) (Person, error)
 	UpdateRoom(ctx context.Context, arg UpdateRoomParams) (Room, error)
+	UpdateTag(ctx context.Context, arg UpdateTagParams) (Tag, error)
 	UpdateTraitDef(ctx context.Context, arg UpdateTraitDefParams) (TraitDef, error)
 	// TENANCY: pre-tenant, same reasoning as every other query in this file — a
 	// locale preference belongs to the account, not to any one family it is a

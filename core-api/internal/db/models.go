@@ -54,6 +54,144 @@ func (ns NullFamilyRole) Value() (driver.Value, error) {
 	return string(ns.FamilyRole), nil
 }
 
+type ItemCondition string
+
+const (
+	ItemConditionNew     ItemCondition = "new"
+	ItemConditionLikeNew ItemCondition = "like_new"
+	ItemConditionGood    ItemCondition = "good"
+	ItemConditionWorn    ItemCondition = "worn"
+	ItemConditionPoor    ItemCondition = "poor"
+)
+
+func (e *ItemCondition) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ItemCondition(s)
+	case string:
+		*e = ItemCondition(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ItemCondition: %T", src)
+	}
+	return nil
+}
+
+type NullItemCondition struct {
+	ItemCondition ItemCondition `json:"item_condition"`
+	Valid         bool          `json:"valid"` // Valid is true if ItemCondition is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullItemCondition) Scan(value interface{}) error {
+	if value == nil {
+		ns.ItemCondition, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ItemCondition.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullItemCondition) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ItemCondition), nil
+}
+
+type ItemSeason string
+
+const (
+	ItemSeasonSummer    ItemSeason = "summer"
+	ItemSeasonWinter    ItemSeason = "winter"
+	ItemSeasonDemi      ItemSeason = "demi"
+	ItemSeasonAllSeason ItemSeason = "all_season"
+)
+
+func (e *ItemSeason) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ItemSeason(s)
+	case string:
+		*e = ItemSeason(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ItemSeason: %T", src)
+	}
+	return nil
+}
+
+type NullItemSeason struct {
+	ItemSeason ItemSeason `json:"item_season"`
+	Valid      bool       `json:"valid"` // Valid is true if ItemSeason is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullItemSeason) Scan(value interface{}) error {
+	if value == nil {
+		ns.ItemSeason, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ItemSeason.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullItemSeason) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ItemSeason), nil
+}
+
+type ItemStatus string
+
+const (
+	ItemStatusInUse      ItemStatus = "in_use"
+	ItemStatusStored     ItemStatus = "stored"
+	ItemStatusLent       ItemStatus = "lent"
+	ItemStatusToGiveAway ItemStatus = "to_give_away"
+	ItemStatusConsumed   ItemStatus = "consumed"
+	ItemStatusGivenAway  ItemStatus = "given_away"
+	ItemStatusSold       ItemStatus = "sold"
+	ItemStatusDiscarded  ItemStatus = "discarded"
+	ItemStatusLost       ItemStatus = "lost"
+)
+
+func (e *ItemStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ItemStatus(s)
+	case string:
+		*e = ItemStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ItemStatus: %T", src)
+	}
+	return nil
+}
+
+type NullItemStatus struct {
+	ItemStatus ItemStatus `json:"item_status"`
+	Valid      bool       `json:"valid"` // Valid is true if ItemStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullItemStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.ItemStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ItemStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullItemStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ItemStatus), nil
+}
+
 type LocationKind string
 
 const (
@@ -277,6 +415,59 @@ type FamilyMember struct {
 	JoinedAt pgtype.Timestamptz `json:"joined_at"`
 }
 
+type Item struct {
+	ID               pgtype.UUID        `json:"id"`
+	FamilyID         pgtype.UUID        `json:"family_id"`
+	Name             string             `json:"name"`
+	CategoryID       pgtype.UUID        `json:"category_id"`
+	LocationID       pgtype.UUID        `json:"location_id"`
+	RoomID           pgtype.UUID        `json:"room_id"`
+	Spot             pgtype.Text        `json:"spot"`
+	ParentItemID     pgtype.UUID        `json:"parent_item_id"`
+	IsContainer      bool               `json:"is_container"`
+	Status           ItemStatus         `json:"status"`
+	Quantity         pgtype.Numeric     `json:"quantity"`
+	Unit             pgtype.Text        `json:"unit"`
+	MinQuantity      pgtype.Numeric     `json:"min_quantity"`
+	ExpiresAt        pgtype.Date        `json:"expires_at"`
+	OpenedAt         pgtype.Date        `json:"opened_at"`
+	PaoMonths        pgtype.Int4        `json:"pao_months"`
+	Brand            pgtype.Text        `json:"brand"`
+	Condition        NullItemCondition  `json:"condition"`
+	Season           NullItemSeason     `json:"season"`
+	SizeSystem       NullSizeSystem     `json:"size_system"`
+	SizeValue        pgtype.Text        `json:"size_value"`
+	SizeNormMin      pgtype.Numeric     `json:"size_norm_min"`
+	SizeNormMax      pgtype.Numeric     `json:"size_norm_max"`
+	ForPersonID      pgtype.UUID        `json:"for_person_id"`
+	SerialNumber     pgtype.Text        `json:"serial_number"`
+	WarrantyUntil    pgtype.Date        `json:"warranty_until"`
+	PurchaseDate     pgtype.Date        `json:"purchase_date"`
+	PurchasePrice    pgtype.Numeric     `json:"purchase_price"`
+	PurchaseCurrency pgtype.Text        `json:"purchase_currency"`
+	Notes            pgtype.Text        `json:"notes"`
+	Traits           []byte             `json:"traits"`
+	CreatedBy        pgtype.UUID        `json:"created_by"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	ArchivedAt       pgtype.Timestamptz `json:"archived_at"`
+}
+
+type ItemEvent struct {
+	ID          pgtype.UUID        `json:"id"`
+	FamilyID    pgtype.UUID        `json:"family_id"`
+	ItemID      pgtype.UUID        `json:"item_id"`
+	ActorUserID pgtype.UUID        `json:"actor_user_id"`
+	Type        string             `json:"type"`
+	Payload     []byte             `json:"payload"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
+type ItemTag struct {
+	ItemID pgtype.UUID `json:"item_id"`
+	TagID  pgtype.UUID `json:"tag_id"`
+}
+
 type Location struct {
 	ID         pgtype.UUID        `json:"id"`
 	FamilyID   pgtype.UUID        `json:"family_id"`
@@ -332,6 +523,13 @@ type SizeLookup struct {
 	Value    string         `json:"value"`
 	NormMin  pgtype.Numeric `json:"norm_min"`
 	NormMax  pgtype.Numeric `json:"norm_max"`
+}
+
+type Tag struct {
+	ID       pgtype.UUID `json:"id"`
+	FamilyID pgtype.UUID `json:"family_id"`
+	Name     string      `json:"name"`
+	Color    pgtype.Text `json:"color"`
 }
 
 type TraitDef struct {

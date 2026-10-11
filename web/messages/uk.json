@@ -1,10 +1,12 @@
 {
   "AppShell": {
     "inventory": "Інвентар",
+    "items": "Речі",
     "people": "Люди",
     "family": "Сім'я",
     "locations": "Місця",
-    "taxonomy": "Категорії"
+    "taxonomy": "Категорії",
+    "tags": "Теги"
   },
   "LocaleSwitcher": {
     "label": "Мова",
@@ -37,7 +39,8 @@
     "roomNameLabel": "Назва",
     "addButton": "Додати кімнату",
     "savingButton": "Зберігаємо…",
-    "archiveButton": "Архівувати"
+    "archiveButton": "Архівувати",
+    "itemsLink": "Речі"
   },
   "Taxonomy": {
     "heading": "Категорії",
@@ -74,5 +77,139 @@
     "typeSize": "Розмір",
     "enumOptionsLabel": "Варіанти",
     "enumOptionsHint": "(через кому)"
+  },
+  "Items": {
+    "heading": "Речі",
+    "headingInLocation": "Речі в {location}",
+    "headingInRoom": "Речі в {room}",
+    "addButton": "Додати річ",
+    "empty": "Тут поки немає жодної речі.",
+    "containerBadge": "Контейнер",
+    "status": {
+      "in_use": "У використанні",
+      "stored": "На зберіганні",
+      "lent": "Позичено",
+      "to_give_away": "Віддати",
+      "consumed": "Використано",
+      "given_away": "Віддано",
+      "sold": "Продано",
+      "discarded": "Викинуто",
+      "lost": "Втрачено"
+    }
+  },
+  "ItemForm": {
+    "heading": "Додати річ",
+    "backLink": "Усі речі",
+    "noCategories": "Поки не налаштовано жодної категорії.",
+    "noLocations": "Поки не налаштовано жодного місця.",
+    "addLocationLink": "Спершу додайте місце",
+    "locationLabel": "Місце",
+    "roomLabel": "Кімната",
+    "noRoom": "Без конкретної кімнати",
+    "spotLabel": "Де саме",
+    "optionalHint": "(необов'язково)",
+    "nameLabel": "Назва",
+    "categoryLabel": "Категорія",
+    "isContainerLabel": "Це контейнер (може містити інші речі)",
+    "quantityLabel": "Кількість",
+    "unitLabel": "Одиниця",
+    "minQuantityLabel": "Мінімальна кількість",
+    "seasonLabel": "Сезон",
+    "season": {
+      "summer": "Літо",
+      "winter": "Зима",
+      "demi": "Демісезон",
+      "all_season": "Всесезонний"
+    },
+    "conditionLabel": "Стан",
+    "condition": {
+      "new": "Новий",
+      "like_new": "Як новий",
+      "good": "Добрий",
+      "worn": "Поношений",
+      "poor": "Поганий"
+    },
+    "sizeSystemLabel": "Система розмірів",
+    "sizeValueLabel": "Розмір",
+    "forPersonLabel": "Для",
+    "expiresAtLabel": "Термін придатності",
+    "openedAtLabel": "Відкрито",
+    "paoMonthsLabel": "Термін після відкриття (місяців)",
+    "serialNumberLabel": "Серійний номер",
+    "warrantyUntilLabel": "Гарантія до",
+    "categoryFieldsHeading": "Поля цієї категорії",
+    "brandLabel": "Бренд",
+    "purchaseDateLabel": "Дата покупки",
+    "purchasePriceLabel": "Ціна покупки",
+    "notesLabel": "Примітки",
+    "tagsLabel": "Теги",
+    "savingButton": "Зберігаємо…",
+    "addButton": "Додати річ",
+    "insideContainer": "Всередині: {name}"
+  },
+  "ItemDetail": {
+    "backLink": "Усі речі",
+    "insideContainer": "Всередині",
+    "containerBadge": "Контейнер",
+    "categoryLabel": "Категорія",
+    "quantityLabel": "Кількість",
+    "brandLabel": "Бренд",
+    "sizeLabel": "Розмір",
+    "notesLabel": "Примітки",
+    "statusHeading": "Статус",
+    "archivedNotice": "Ця річ заархівована. Її статус більше не можна змінити.",
+    "archiveButton": "Архівувати",
+    "moveHeading": "Перемістити",
+    "moveToPlace": "У місце",
+    "moveIntoContainer": "У контейнер",
+    "locationLabel": "Місце",
+    "roomLabel": "Кімната",
+    "noRoom": "Без конкретної кімнати",
+    "spotLabel": "Де саме",
+    "optionalHint": "(необов'язково)",
+    "containerLabel": "Контейнер",
+    "chooseContainer": "Виберіть контейнер",
+    "savingButton": "Зберігаємо…",
+    "moveButton": "Перемістити",
+    "changeStatusButton": "Змінити статус",
+    "status": {
+      "in_use": "У використанні",
+      "stored": "На зберіганні",
+      "lent": "Позичено",
+      "to_give_away": "Віддати",
+      "consumed": "Використано",
+      "given_away": "Віддано",
+      "sold": "Продано",
+      "discarded": "Викинуто",
+      "lost": "Втрачено"
+    },
+    "contentsHeading": "Вміст",
+    "noContents": "Поки нічого немає всередині.",
+    "addInsideButton": "Додати річ всередину",
+    "tagsHeading": "Теги",
+    "noTags": "Поки немає жодного тегу.",
+    "chooseTag": "Виберіть тег",
+    "attachTagButton": "Прикріпити",
+    "manageTagsLink": "Керувати тегами",
+    "eventsHeading": "Історія",
+    "event": {
+      "created": "Створено",
+      "updated": "Оновлено",
+      "moved": "Переміщено",
+      "status_changed": "Статус змінено",
+      "archived": "Заархівовано"
+    }
+  },
+  "Tags": {
+    "heading": "Теги",
+    "addHeading": "Додати тег",
+    "nameLabel": "Назва",
+    "colorLabel": "Колір",
+    "optionalHint": "(необов'язково)",
+    "addButton": "Додати тег",
+    "savingButton": "Зберігаємо…",
+    "saveButton": "Зберегти",
+    "deleteButton": "Видалити",
+    "empty": "Поки немає жодного тегу."
   }
 }

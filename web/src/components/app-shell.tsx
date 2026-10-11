@@ -30,9 +30,11 @@ export function AppShell({ me, children }: { me: Me; children: React.ReactNode }
           >
             <ul className="flex items-center gap-1">
               <NavItem href="/">{t("inventory")}</NavItem>
+              <NavItem href="/items">{t("items")}</NavItem>
               <NavItem href="/people">{t("people")}</NavItem>
               <NavItem href="/locations">{t("locations")}</NavItem>
               <NavItem href="/settings/taxonomy">{t("taxonomy")}</NavItem>
+              <NavItem href="/settings/tags">{t("tags")}</NavItem>
               <NavItem href="/settings/family">{t("family")}</NavItem>
             </ul>
           </nav>

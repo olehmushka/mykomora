@@ -57,6 +57,10 @@ export function createRoom(locationId: string, body: CreateRoomRequest) {
   );
 }
 
+export function getRoom(roomId: string) {
+  return callApi<Ok<"getRoom", 200>>(`/api/v1/rooms/${encodeURIComponent(roomId)}`);
+}
+
 export function archiveRoom(roomId: string) {
   return callApi<void>(`/api/v1/rooms/${encodeURIComponent(roomId)}`, { method: "DELETE" });
 }
