@@ -10,6 +10,7 @@ package apimap
 import (
 	"time"
 
+	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"github.com/olehmushka/mykomora/core-api/internal/api"
@@ -109,6 +110,112 @@ func Room(r db.Room) api.Room {
 		CreatedAt:  pgconv.ToTime(r.CreatedAt),
 		UpdatedAt:  pgconv.ToTime(r.UpdatedAt),
 	}
+}
+
+// Item renders one possession. effectiveLocationID/effectiveRoomID/
+// effectiveSpot are resolved by the caller (internal/items walks the
+// ancestor chain for a nested item) rather than read off the row directly,
+// because the row's own place columns are cosmetic once it has a parent
+// (SPEC 4, "Containment").
+func Item(it *db.Item, effectiveLocationID uuid.UUID, effectiveRoomID *uuid.UUID, effectiveSpot *string) api.Item {
+	return api.Item{
+		Id:                  pgconv.ToUUID(it.ID),
+		Name:                it.Name,
+		CategoryId:          pgconv.ToUUID(it.CategoryID),
+		LocationId:          pgconv.ToUUID(it.LocationID),
+		RoomId:              pgconv.ToUUIDPtr(it.RoomID),
+		Spot:                pgconv.ToTextPtr(it.Spot),
+		ParentItemId:        pgconv.ToUUIDPtr(it.ParentItemID),
+		IsContainer:         it.IsContainer,
+		Status:              api.ItemStatus(it.Status),
+		Quantity:            float32(pgconv.ToNumeric(it.Quantity)),
+		Unit:                pgconv.ToTextPtr(it.Unit),
+		MinQuantity:         numericPtr32(pgconv.ToNumericPtr(it.MinQuantity)),
+		ExpiresAt:           date(pgconv.ToDatePtr(it.ExpiresAt)),
+		OpenedAt:            date(pgconv.ToDatePtr(it.OpenedAt)),
+		PaoMonths:           pgconv.ToInt4Ptr(it.PaoMonths),
+		Brand:               pgconv.ToTextPtr(it.Brand),
+		Condition:           itemCondition(it.Condition),
+		Season:              itemSeason(it.Season),
+		SizeSystem:          sizeSystem(it.SizeSystem),
+		SizeValue:           pgconv.ToTextPtr(it.SizeValue),
+		ForPersonId:         pgconv.ToUUIDPtr(it.ForPersonID),
+		SerialNumber:        pgconv.ToTextPtr(it.SerialNumber),
+		WarrantyUntil:       date(pgconv.ToDatePtr(it.WarrantyUntil)),
+		PurchaseDate:        date(pgconv.ToDatePtr(it.PurchaseDate)),
+		PurchasePrice:       numericPtr32(pgconv.ToNumericPtr(it.PurchasePrice)),
+		PurchaseCurrency:    pgconv.ToTextPtr(it.PurchaseCurrency),
+		Notes:               pgconv.ToTextPtr(it.Notes),
+		Traits:              pgconv.ToJSONB(it.Traits),
+		EffectiveLocationId: effectiveLocationID,
+		EffectiveRoomId:     effectiveRoomID,
+		EffectiveSpot:       effectiveSpot,
+		CreatedBy:           pgconv.ToUUID(it.CreatedBy),
+		CreatedAt:           pgconv.ToTime(it.CreatedAt),
+		UpdatedAt:           pgconv.ToTime(it.UpdatedAt),
+		ArchivedAt:          pgconv.ToTimePtr(it.ArchivedAt),
+	}
+}
+
+// ItemEvent renders one row of an item's audit trail.
+func ItemEvent(e db.ItemEvent) api.ItemEvent {
+	return api.ItemEvent{
+		Id:          pgconv.ToUUID(e.ID),
+		ItemId:      pgconv.ToUUID(e.ItemID),
+		ActorUserId: pgconv.ToUUID(e.ActorUserID),
+		Type:        e.Type,
+		Payload:     pgconv.ToJSONB(e.Payload),
+		CreatedAt:   pgconv.ToTime(e.CreatedAt),
+	}
+}
+
+// Tag renders a family-defined label.
+func Tag(t db.Tag) api.Tag {
+	return api.Tag{
+		Id:    pgconv.ToUUID(t.ID),
+		Name:  t.Name,
+		Color: pgconv.ToTextPtr(t.Color),
+	}
+}
+
+func numericPtr32(v *float64) *float32 {
+	if v == nil {
+		return nil
+	}
+
+	f := float32(*v)
+
+	return &f
+}
+
+func itemCondition(v db.NullItemCondition) *api.ItemCondition {
+	if !v.Valid {
+		return nil
+	}
+
+	c := api.ItemCondition(v.ItemCondition)
+
+	return &c
+}
+
+func itemSeason(v db.NullItemSeason) *api.ItemSeason {
+	if !v.Valid {
+		return nil
+	}
+
+	s := api.ItemSeason(v.ItemSeason)
+
+	return &s
+}
+
+func sizeSystem(v db.NullSizeSystem) *api.SizeSystem {
+	if !v.Valid {
+		return nil
+	}
+
+	s := api.SizeSystem(v.SizeSystem)
+
+	return &s
 }
 
 func date(t *time.Time) *openapi_types.Date {

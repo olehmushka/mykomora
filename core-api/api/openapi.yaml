@@ -33,6 +33,10 @@ tags:
     description: Locations and rooms — where things physically are.
   - name: taxonomy
     description: The category tree and its trait schema, built-in and family-defined.
+  - name: items
+    description: Real possessions — in real places, optionally inside a container.
+  - name: tags
+    description: Family-defined labels an item can carry.
 
 # There is deliberately no document-level `security` default. oapi-codegen only
 # emits the per-operation security markers that the session middleware reads
@@ -1020,6 +1024,494 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/items:
+    get:
+      operationId: listItems
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: The family's root items
+      description: |
+        Items with a parent are reached through their container's own
+        `/contents`, not this list: a nested item's place columns are
+        cosmetic (SPEC 4, "Containment").
+      parameters:
+        - name: locationId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: roomId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: categoryId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: includeArchived
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 50
+            maximum: 200
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 0
+      responses:
+        "200":
+          description: Root items, most recently created first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Item"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createItem
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: Add an item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateItemRequest"
+      responses:
+        "201":
+          description: The created item.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/items/{itemId}:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getItem
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: One item
+      responses:
+        "200":
+          description: The item.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateItem
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: Update an item
+      description: |
+        Omitted fields are left alone. Place and status are deliberately not
+        part of this request — use `/move` and `/status` so their own
+        events stay unambiguous.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateItemRequest"
+      responses:
+        "200":
+          description: The updated item.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: archiveItem
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: Archive an item
+      responses:
+        "204":
+          description: Archived.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/items/{itemId}/move:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: moveItem
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: Move an item to a place or into a container
+      description: |
+        Exactly one of `locationId` or `parentItemId` must be given. Moving
+        a container moves its contents with it — one row, one event (SPEC
+        4, "Containment").
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MoveItemRequest"
+      responses:
+        "200":
+          description: The item at its new place.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/items/{itemId}/status:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: setItemStatus
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: Change an item's lifecycle status
+      description: |
+        `inUse`/`stored`/`lent`/`toGiveAway` move freely among themselves.
+        `consumed`/`givenAway`/`sold`/`discarded`/`lost` are terminal: once
+        set, the item is archived and no further status change is accepted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetItemStatusRequest"
+      responses:
+        "200":
+          description: The item at its new status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/items/{itemId}/contents:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: listItemContents
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: An item's direct contents
+      description: Direct children only; drill into a nested container's own `/contents` to go deeper.
+      responses:
+        "200":
+          description: The item's direct children.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Item"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/items/{itemId}/events:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: listItemEvents
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: An item's history
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 50
+            maximum: 200
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 0
+      responses:
+        "200":
+          description: Events, most recent first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ItemEvent"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/items/{itemId}/tags:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: listItemTags
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: An item's attached tags
+      responses:
+        "200":
+          description: Tags, alphabetically.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Tag"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: attachItemTag
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: Attach a tag to an item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttachItemTagRequest"
+      responses:
+        "204":
+          description: Attached (or already was).
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/items/{itemId}/tags/{tagId}:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: tagId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      operationId: detachItemTag
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: Detach a tag from an item
+      responses:
+        "204":
+          description: Detached (or already wasn't attached).
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/tags:
+    get:
+      operationId: listTags
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [tags]
+      summary: The family's tags
+      responses:
+        "200":
+          description: Tags, alphabetically.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Tag"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createTag
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [tags]
+      summary: Add a tag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTagRequest"
+      responses:
+        "201":
+          description: The created tag.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tag"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/tags/{tagId}:
+    parameters:
+      - name: tagId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      operationId: updateTag
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [tags]
+      summary: Rename or recolor a tag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTagRequest"
+      responses:
+        "200":
+          description: The updated tag.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tag"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteTag
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [tags]
+      summary: Delete a tag
+      description: A hard delete — tags carry no history to preserve (SPEC 4, "Items").
+      responses:
+        "204":
+          description: Deleted.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
     sessionCookie:
@@ -1595,3 +2087,367 @@ components:
         sortOrder:
           type: integer
           format: int32
+
+    ItemStatus:
+      type: string
+      description: |
+        Wire values match the stored enum verbatim, including the
+        underscores, rather than camelCasing them: a mismatch there would
+        mean a response could carry a status string the schema does not
+        admit.
+      enum: [in_use, stored, lent, to_give_away, consumed, given_away, sold, discarded, lost]
+
+    ItemCondition:
+      type: string
+      enum: [new, like_new, good, worn, poor]
+
+    ItemSeason:
+      type: string
+      enum: [summer, winter, demi, all_season]
+
+    SizeSystem:
+      type: string
+      description: Shared with M2's size normalisation table (SPEC 4, "Size normalisation").
+      enum: [kids_cm, kids_eu, intl_letter, eu_adult, shoe_eu, shoe_uk, shoe_us, one_size]
+
+    Item:
+      type: object
+      required:
+        [
+          id,
+          name,
+          categoryId,
+          locationId,
+          isContainer,
+          status,
+          quantity,
+          traits,
+          effectiveLocationId,
+          createdBy,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        categoryId:
+          type: string
+          format: uuid
+        locationId:
+          type: string
+          format: uuid
+          description: This item's own place. Cosmetic once `parentItemId` is set — see `effectiveLocationId`.
+        roomId:
+          type: string
+          format: uuid
+        spot:
+          type: string
+        parentItemId:
+          type: string
+          format: uuid
+        isContainer:
+          type: boolean
+        status:
+          $ref: "#/components/schemas/ItemStatus"
+        quantity:
+          type: number
+        unit:
+          type: string
+        minQuantity:
+          type: number
+        expiresAt:
+          type: string
+          format: date
+        openedAt:
+          type: string
+          format: date
+        paoMonths:
+          type: integer
+          format: int32
+        brand:
+          type: string
+        condition:
+          $ref: "#/components/schemas/ItemCondition"
+        season:
+          $ref: "#/components/schemas/ItemSeason"
+        sizeSystem:
+          $ref: "#/components/schemas/SizeSystem"
+        sizeValue:
+          type: string
+        forPersonId:
+          type: string
+          format: uuid
+        serialNumber:
+          type: string
+        warrantyUntil:
+          type: string
+          format: date
+        purchaseDate:
+          type: string
+          format: date
+        purchasePrice:
+          type: number
+        purchaseCurrency:
+          type: string
+        notes:
+          type: string
+        traits:
+          type: object
+          additionalProperties: true
+          description: Long-tail fields and family-defined custom fields only — never a hot-column key.
+        effectiveLocationId:
+          type: string
+          format: uuid
+          description: |
+            This item's own locationId when it has no parent; otherwise its
+            root container's. Always resolvable (SPEC 4, "Containment").
+        effectiveRoomId:
+          type: string
+          format: uuid
+        effectiveSpot:
+          type: string
+        createdBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        archivedAt:
+          type: string
+          format: date-time
+
+    CreateItemRequest:
+      type: object
+      required: [name, categoryId, isContainer, quantity]
+      description: |
+        Exactly one of `locationId` or `parentItemId` must be given — a new
+        item is either placed directly or created inside an existing
+        container. `status`, if given, must not be a terminal one; an item
+        is always created active.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        categoryId:
+          type: string
+          format: uuid
+        locationId:
+          type: string
+          format: uuid
+        roomId:
+          type: string
+          format: uuid
+        spot:
+          type: string
+        parentItemId:
+          type: string
+          format: uuid
+        isContainer:
+          type: boolean
+          default: false
+        status:
+          $ref: "#/components/schemas/ItemStatus"
+        quantity:
+          type: number
+          default: 1
+        unit:
+          type: string
+        minQuantity:
+          type: number
+        expiresAt:
+          type: string
+          format: date
+        openedAt:
+          type: string
+          format: date
+        paoMonths:
+          type: integer
+          format: int32
+        brand:
+          type: string
+        condition:
+          $ref: "#/components/schemas/ItemCondition"
+        season:
+          $ref: "#/components/schemas/ItemSeason"
+        sizeSystem:
+          $ref: "#/components/schemas/SizeSystem"
+        sizeValue:
+          type: string
+        forPersonId:
+          type: string
+          format: uuid
+        serialNumber:
+          type: string
+        warrantyUntil:
+          type: string
+          format: date
+        purchaseDate:
+          type: string
+          format: date
+        purchasePrice:
+          type: number
+        purchaseCurrency:
+          type: string
+        notes:
+          type: string
+        traits:
+          type: object
+          additionalProperties: true
+        tagIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    UpdateItemRequest:
+      type: object
+      description: |
+        Omitted fields are left alone. Place and status are not here on
+        purpose — see `/items/{itemId}/move` and `/items/{itemId}/status`.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        categoryId:
+          type: string
+          format: uuid
+        quantity:
+          type: number
+        unit:
+          type: string
+        minQuantity:
+          type: number
+        expiresAt:
+          type: string
+          format: date
+        openedAt:
+          type: string
+          format: date
+        paoMonths:
+          type: integer
+          format: int32
+        brand:
+          type: string
+        condition:
+          $ref: "#/components/schemas/ItemCondition"
+        season:
+          $ref: "#/components/schemas/ItemSeason"
+        sizeSystem:
+          $ref: "#/components/schemas/SizeSystem"
+        sizeValue:
+          type: string
+        forPersonId:
+          type: string
+          format: uuid
+        serialNumber:
+          type: string
+        warrantyUntil:
+          type: string
+          format: date
+        purchaseDate:
+          type: string
+          format: date
+        purchasePrice:
+          type: number
+        purchaseCurrency:
+          type: string
+        notes:
+          type: string
+        traits:
+          type: object
+          additionalProperties: true
+
+    MoveItemRequest:
+      type: object
+      description: Exactly one of `locationId` or `parentItemId` must be given.
+      properties:
+        locationId:
+          type: string
+          format: uuid
+        roomId:
+          type: string
+          format: uuid
+        spot:
+          type: string
+        parentItemId:
+          type: string
+          format: uuid
+
+    SetItemStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: "#/components/schemas/ItemStatus"
+
+    ItemEvent:
+      type: object
+      required: [id, itemId, actorUserId, type, payload, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        itemId:
+          type: string
+          format: uuid
+        actorUserId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          description: '`created`, `updated`, `moved`, `status_changed` or `archived` in this milestone; later milestones add more.'
+        payload:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+
+    Tag:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        color:
+          type: string
+
+    CreateTagRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+        color:
+          type: string
+
+    UpdateTagRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+        color:
+          type: string
+
+    AttachItemTagRequest:
+      type: object
+      required: [tagId]
+      properties:
+        tagId:
+          type: string
+          format: uuid

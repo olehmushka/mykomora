@@ -15,6 +15,7 @@ import (
 	"github.com/olehmushka/mykomora/core-api/internal/health"
 	"github.com/olehmushka/mykomora/core-api/internal/httpapi"
 	"github.com/olehmushka/mykomora/core-api/internal/httpserver"
+	"github.com/olehmushka/mykomora/core-api/internal/items"
 	"github.com/olehmushka/mykomora/core-api/internal/locale"
 	"github.com/olehmushka/mykomora/core-api/internal/logging"
 	"github.com/olehmushka/mykomora/core-api/internal/people"
@@ -36,6 +37,7 @@ func main() {
 		catalogue.Module,
 		places.Module,
 		taxonomy.Module,
+		items.Module,
 		httpapi.Module,
 		httpserver.Module,
 	).Run()

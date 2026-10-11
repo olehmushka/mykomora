@@ -8,6 +8,8 @@
 package pgconv
 
 import (
+	"encoding/json"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -113,6 +115,26 @@ func Int4(v int32) pgtype.Int4 {
 	return pgtype.Int4{Int32: v, Valid: true}
 }
 
+// Int4Ptr wraps an optional int32; nil becomes SQL NULL.
+func Int4Ptr(v *int32) pgtype.Int4 {
+	if v == nil {
+		return pgtype.Int4{}
+	}
+
+	return Int4(*v)
+}
+
+// ToInt4Ptr unwraps a nullable int32.
+func ToInt4Ptr(v pgtype.Int4) *int32 {
+	if !v.Valid {
+		return nil
+	}
+
+	value := v.Int32
+
+	return &value
+}
+
 // Date wraps an optional calendar date; nil becomes SQL NULL.
 func Date(t *time.Time) pgtype.Date {
 	if t == nil {
@@ -131,4 +153,87 @@ func ToDatePtr(v pgtype.Date) *time.Time {
 	t := v.Time
 
 	return &t
+}
+
+// Numeric wraps a float that is always present. pgtype.Numeric only scans a
+// string, not a float directly, so the value is formatted first; a finite
+// float64 formatted with FormatFloat always parses back, so a scan failure
+// here can only mean a non-finite input, which no caller passes.
+func Numeric(f float64) pgtype.Numeric {
+	var n pgtype.Numeric
+	if err := n.Scan(strconv.FormatFloat(f, 'f', -1, 64)); err != nil {
+		return pgtype.Numeric{}
+	}
+
+	return n
+}
+
+// NumericPtr wraps an optional float; nil becomes SQL NULL.
+func NumericPtr(f *float64) pgtype.Numeric {
+	if f == nil {
+		return pgtype.Numeric{}
+	}
+
+	return Numeric(*f)
+}
+
+// ToNumeric unwraps a float that is always present. A NULL column yields 0.
+func ToNumeric(v pgtype.Numeric) float64 {
+	if !v.Valid {
+		return 0
+	}
+
+	f, err := v.Float64Value()
+	if err != nil || !f.Valid {
+		return 0
+	}
+
+	return f.Float64
+}
+
+// ToNumericPtr unwraps a nullable float.
+func ToNumericPtr(v pgtype.Numeric) *float64 {
+	if !v.Valid {
+		return nil
+	}
+
+	f, err := v.Float64Value()
+	if err != nil || !f.Valid {
+		return nil
+	}
+
+	value := f.Float64
+
+	return &value
+}
+
+// JSONB marshals a plain map for storage; nil becomes an empty object so a
+// column declared NOT NULL never gets a Go nil.
+func JSONB(m map[string]any) []byte {
+	if m == nil {
+		m = map[string]any{}
+	}
+
+	b, err := json.Marshal(m)
+	if err != nil {
+		return []byte("{}")
+	}
+
+	return b
+}
+
+// ToJSONB unmarshals a stored traits blob. A malformed or empty column reads
+// as empty rather than erroring, the same trade taxonomy's decodeEnumOptions
+// makes for a column nothing in this package writes maliciously.
+func ToJSONB(raw []byte) map[string]any {
+	if len(raw) == 0 {
+		return map[string]any{}
+	}
+
+	var m map[string]any
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return map[string]any{}
+	}
+
+	return m
 }

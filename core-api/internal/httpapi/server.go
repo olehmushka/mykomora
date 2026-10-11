@@ -14,6 +14,7 @@ import (
 	"github.com/olehmushka/mykomora/core-api/internal/auth"
 	"github.com/olehmushka/mykomora/core-api/internal/family"
 	"github.com/olehmushka/mykomora/core-api/internal/health"
+	"github.com/olehmushka/mykomora/core-api/internal/items"
 	"github.com/olehmushka/mykomora/core-api/internal/people"
 	"github.com/olehmushka/mykomora/core-api/internal/places"
 	"github.com/olehmushka/mykomora/core-api/internal/taxonomy"
@@ -29,6 +30,7 @@ type (
 	peopleHandler   = people.Handler
 	placesHandler   = places.Handler
 	taxonomyHandler = taxonomy.Handler
+	itemsHandler    = items.Handler
 )
 
 // Server is the whole served surface.
@@ -39,6 +41,7 @@ type Server struct {
 	*peopleHandler
 	*placesHandler
 	*taxonomyHandler
+	*itemsHandler
 }
 
 // The contract and the implementation agree, checked at compile time.
@@ -52,6 +55,7 @@ func NewServer(
 	p *people.Handler,
 	pl *places.Handler,
 	t *taxonomy.Handler,
+	it *items.Handler,
 ) api.StrictServerInterface {
 	return &Server{
 		healthHandler:   h,
@@ -60,5 +64,6 @@ func NewServer(
 		peopleHandler:   p,
 		placesHandler:   pl,
 		taxonomyHandler: t,
+		itemsHandler:    it,
 	}
 }
