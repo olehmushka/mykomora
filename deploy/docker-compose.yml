@@ -3,7 +3,8 @@
 # The shape mirrors production — Caddy in front, core-api and web behind it,
 # Postgres and S3-compatible storage beneath — so that what works here is what
 # gets deployed. Differences are deliberate and limited to: plain HTTP, source
-# bind-mounts with live reload, and MinIO standing in for the real bucket.
+# bind-mounts with live reload, and LocalStack standing in for the real
+# bucket (R2/B2).
 
 name: mykomora
 
@@ -66,6 +67,17 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_REDIRECT_URL: ${GOOGLE_REDIRECT_URL}
+      # S3_ENDPOINT is reached from inside this network (the "s3" service
+      # below); S3_PUBLIC_ENDPOINT is what a presigned URL is signed
+      # against, because it has to be reachable from the browser, which
+      # cannot resolve "s3" at all (core-api's internal/storage package doc
+      # comment has the full reasoning).
+      S3_ENDPOINT: http://s3:4566
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:4566}
+      S3_REGION: ${S3_REGION}
+      S3_BUCKET: ${S3_BUCKET}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
     volumes:
       # Source is mounted for live reload; the module and build caches are named
       # volumes so a rebuild after `make down` is not a cold one.
@@ -76,6 +88,8 @@ services:
       postgres:
         condition: service_healthy
       migrate:
+        condition: service_completed_successfully
+      s3-init:
         condition: service_completed_successfully
     healthcheck:
       # start_period is generous because the dev stage compiles on first boot.
@@ -151,12 +165,17 @@ services:
       retries: 30
       start_period: 20s
 
-  # One-shot: creates the bucket.
+  # One-shot: creates the bucket and its CORS policy.
   #
   # No public-read policy is attached, but note that LocalStack does not enforce
   # IAM unless asked to, so anonymous access succeeds locally. Privacy is a
   # production property of the real bucket (R2/B2); what the local stack proves
   # is the presigned PUT/GET flow itself (SPEC 6, "Photos and attachments").
+  #
+  # The CORS policy is the other half of that proof: a presigned PUT/GET is
+  # useless to a browser the bucket won't answer cross-origin. core-api never
+  # sees this — it is a bucket-level setting, applied once here for local dev
+  # and documented in the deploy runbook for the production bucket (R2/B2).
   s3-init:
     image: localstack/localstack:4
     depends_on:
@@ -168,6 +187,7 @@ services:
       AWS_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
       AWS_ENDPOINT_URL: http://s3:4566
       S3_BUCKET: ${S3_BUCKET}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
     entrypoint:
       - /bin/sh
       - -c
@@ -177,7 +197,12 @@ services:
           --bucket "$$S3_BUCKET" --region "$$AWS_DEFAULT_REGION" 2>/dev/null \
           || echo "bucket $$S3_BUCKET already exists"
         aws --endpoint-url "$$AWS_ENDPOINT_URL" s3api head-bucket --bucket "$$S3_BUCKET"
-        echo "bucket $$S3_BUCKET ready"
+        cat > /tmp/cors.json <<EOF
+        {"CORSRules": [{"AllowedOrigins": ["$$PUBLIC_BASE_URL"], "AllowedMethods": ["GET", "PUT"], "AllowedHeaders": ["*"], "ExposeHeaders": ["ETag"]}]}
+        EOF
+        aws --endpoint-url "$$AWS_ENDPOINT_URL" s3api put-bucket-cors \
+          --bucket "$$S3_BUCKET" --cors-configuration file:///tmp/cors.json
+        echo "bucket $$S3_BUCKET ready, CORS allows $$PUBLIC_BASE_URL"
     restart: "no"
 
 volumes:

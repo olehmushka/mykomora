@@ -3,10 +3,13 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
 import { archive, attachTag, detachTag } from "@/app/items/[itemId]/actions";
+import { AttachmentsSection } from "@/app/items/[itemId]/attachments-section";
 import { MoveForm } from "@/app/items/[itemId]/move-form";
+import { PhotoGallery } from "@/app/items/[itemId]/photo-gallery";
 import { StatusForm } from "@/app/items/[itemId]/status-form";
 import { AppShell } from "@/components/app-shell";
 import { Notice } from "@/components/notice";
+import { listItemAttachments } from "@/lib/api/attachments";
 import {
   getItem,
   listItemContents,
@@ -16,6 +19,7 @@ import {
   type ItemEvent,
   type ItemStatus,
 } from "@/lib/api/items";
+import { listItemPhotos } from "@/lib/api/photos";
 import { listLocations, listRooms } from "@/lib/api/places";
 import { requireMe } from "@/lib/api/session";
 import { getTaxonomy, type Category } from "@/lib/api/taxonomy";
@@ -75,6 +79,8 @@ export default async function ItemDetailPage(props: PageProps<"/items/[itemId]">
     locationsResult,
     rootsResult,
     parentResult,
+    photosResult,
+    attachmentsResult,
   ] = await Promise.all([
     getTaxonomy(),
     item.isContainer ? listItemContents(itemId) : Promise.resolve(undefined),
@@ -84,6 +90,8 @@ export default async function ItemDetailPage(props: PageProps<"/items/[itemId]">
     listLocations(),
     listItems({}),
     item.parentItemId ? getItem(item.parentItemId) : Promise.resolve(undefined),
+    listItemPhotos(itemId),
+    listItemAttachments(itemId),
   ]);
 
   const categoryName = taxonomy.ok
@@ -169,6 +177,34 @@ export default async function ItemDetailPage(props: PageProps<"/items/[itemId]">
           </div>
         )}
       </dl>
+
+      <section aria-labelledby="photos" className="mt-10">
+        <h2 id="photos" className="text-sm font-medium uppercase tracking-wide text-muted">
+          {t("photosHeading")}
+        </h2>
+
+        {photosResult.ok ? (
+          <PhotoGallery itemId={itemId} photos={photosResult.data} />
+        ) : (
+          <div className="mt-3">
+            <Notice tone="warning" title={photosResult.detail} />
+          </div>
+        )}
+      </section>
+
+      <section aria-labelledby="attachments" className="mt-10">
+        <h2 id="attachments" className="text-sm font-medium uppercase tracking-wide text-muted">
+          {t("attachmentsHeading")}
+        </h2>
+
+        {attachmentsResult.ok ? (
+          <AttachmentsSection itemId={itemId} attachments={attachmentsResult.data} />
+        ) : (
+          <div className="mt-3">
+            <Notice tone="warning" title={attachmentsResult.detail} />
+          </div>
+        )}
+      </section>
 
       <section aria-labelledby="status" className="mt-10">
         <h2 id="status" className="text-sm font-medium uppercase tracking-wide text-muted">

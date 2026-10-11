@@ -12,6 +12,50 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AttachmentKind string
+
+const (
+	AttachmentKindReceipt  AttachmentKind = "receipt"
+	AttachmentKindManual   AttachmentKind = "manual"
+	AttachmentKindWarranty AttachmentKind = "warranty"
+	AttachmentKindOther    AttachmentKind = "other"
+)
+
+func (e *AttachmentKind) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = AttachmentKind(s)
+	case string:
+		*e = AttachmentKind(s)
+	default:
+		return fmt.Errorf("unsupported scan type for AttachmentKind: %T", src)
+	}
+	return nil
+}
+
+type NullAttachmentKind struct {
+	AttachmentKind AttachmentKind `json:"attachment_kind"`
+	Valid          bool           `json:"valid"` // Valid is true if AttachmentKind is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullAttachmentKind) Scan(value interface{}) error {
+	if value == nil {
+		ns.AttachmentKind, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.AttachmentKind.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullAttachmentKind) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.AttachmentKind), nil
+}
+
 type FamilyRole string
 
 const (
@@ -453,6 +497,18 @@ type Item struct {
 	ArchivedAt       pgtype.Timestamptz `json:"archived_at"`
 }
 
+type ItemAttachment struct {
+	ID          pgtype.UUID        `json:"id"`
+	ItemID      pgtype.UUID        `json:"item_id"`
+	Kind        AttachmentKind     `json:"kind"`
+	StorageKey  string             `json:"storage_key"`
+	Filename    string             `json:"filename"`
+	ContentType string             `json:"content_type"`
+	Bytes       int64              `json:"bytes"`
+	UploadedBy  pgtype.UUID        `json:"uploaded_by"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
 type ItemEvent struct {
 	ID          pgtype.UUID        `json:"id"`
 	FamilyID    pgtype.UUID        `json:"family_id"`
@@ -460,6 +516,21 @@ type ItemEvent struct {
 	ActorUserID pgtype.UUID        `json:"actor_user_id"`
 	Type        string             `json:"type"`
 	Payload     []byte             `json:"payload"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
+type ItemPhoto struct {
+	ID          pgtype.UUID        `json:"id"`
+	ItemID      pgtype.UUID        `json:"item_id"`
+	StorageKey  string             `json:"storage_key"`
+	ThumbKey    string             `json:"thumb_key"`
+	Width       int32              `json:"width"`
+	Height      int32              `json:"height"`
+	Bytes       int64              `json:"bytes"`
+	ContentType string             `json:"content_type"`
+	IsPrimary   bool               `json:"is_primary"`
+	SortOrder   int32              `json:"sort_order"`
+	UploadedBy  pgtype.UUID        `json:"uploaded_by"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 

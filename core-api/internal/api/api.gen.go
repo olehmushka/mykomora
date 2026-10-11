@@ -23,6 +23,30 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for AttachmentKind.
+const (
+	AttachmentKindManual   AttachmentKind = "manual"
+	AttachmentKindOther    AttachmentKind = "other"
+	AttachmentKindReceipt  AttachmentKind = "receipt"
+	AttachmentKindWarranty AttachmentKind = "warranty"
+)
+
+// Valid indicates whether the value is a known member of the AttachmentKind enum.
+func (e AttachmentKind) Valid() bool {
+	switch e {
+	case AttachmentKindManual:
+		return true
+	case AttachmentKindOther:
+		return true
+	case AttachmentKindReceipt:
+		return true
+	case AttachmentKindWarranty:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for FamilyRole.
 const (
 	Member FamilyRole = "member"
@@ -172,25 +196,25 @@ func (e ItemStatus) Valid() bool {
 
 // Defines values for LocationKind.
 const (
-	Garage   LocationKind = "garage"
-	Home     LocationKind = "home"
-	Other    LocationKind = "other"
-	Relative LocationKind = "relative"
-	Storage  LocationKind = "storage"
+	LocationKindGarage   LocationKind = "garage"
+	LocationKindHome     LocationKind = "home"
+	LocationKindOther    LocationKind = "other"
+	LocationKindRelative LocationKind = "relative"
+	LocationKindStorage  LocationKind = "storage"
 )
 
 // Valid indicates whether the value is a known member of the LocationKind enum.
 func (e LocationKind) Valid() bool {
 	switch e {
-	case Garage:
+	case LocationKindGarage:
 		return true
-	case Home:
+	case LocationKindHome:
 		return true
-	case Other:
+	case LocationKindOther:
 		return true
-	case Relative:
+	case LocationKindRelative:
 		return true
-	case Storage:
+	case LocationKindStorage:
 		return true
 	default:
 		return false
@@ -299,6 +323,27 @@ func (e UpdateMeRequestLocale) Valid() bool {
 	}
 }
 
+// Defines values for UploadPurpose.
+const (
+	Attachment UploadPurpose = "attachment"
+	Photo      UploadPurpose = "photo"
+	PhotoThumb UploadPurpose = "photo_thumb"
+)
+
+// Valid indicates whether the value is a known member of the UploadPurpose enum.
+func (e UploadPurpose) Valid() bool {
+	switch e {
+	case Attachment:
+		return true
+	case Photo:
+		return true
+	case PhotoThumb:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for UserLocale.
 const (
 	UserLocaleEn UserLocale = "en"
@@ -322,6 +367,9 @@ type AttachItemTagRequest struct {
 	TagId openapi_types.UUID `json:"tagId"`
 }
 
+// AttachmentKind defines model for AttachmentKind.
+type AttachmentKind string
+
 // Category defines model for Category.
 type Category struct {
 	ArchivedAt *time.Time         `json:"archivedAt,omitempty"`
@@ -338,6 +386,26 @@ type Category struct {
 	Slug      string              `json:"slug"`
 	SortOrder int32               `json:"sortOrder"`
 	Traits    []TraitDef          `json:"traits"`
+}
+
+// ConfirmItemAttachmentRequest defines model for ConfirmItemAttachmentRequest.
+type ConfirmItemAttachmentRequest struct {
+	Bytes       int64          `json:"bytes"`
+	ContentType string         `json:"contentType"`
+	Filename    string         `json:"filename"`
+	Kind        AttachmentKind `json:"kind"`
+	StorageKey  string         `json:"storageKey"`
+}
+
+// ConfirmItemPhotoRequest defines model for ConfirmItemPhotoRequest.
+type ConfirmItemPhotoRequest struct {
+	Bytes           int64  `json:"bytes"`
+	ContentType     string `json:"contentType"`
+	Height          int32  `json:"height"`
+	IsPrimary       *bool  `json:"isPrimary,omitempty"`
+	StorageKey      string `json:"storageKey"`
+	ThumbStorageKey string `json:"thumbStorageKey"`
+	Width           int32  `json:"width"`
 }
 
 // CreateCategoryRequest defines model for CreateCategoryRequest.
@@ -569,6 +637,21 @@ type Item struct {
 	WarrantyUntil *openapi_types.Date    `json:"warrantyUntil,omitempty"`
 }
 
+// ItemAttachment defines model for ItemAttachment.
+type ItemAttachment struct {
+	Bytes       int64              `json:"bytes"`
+	ContentType string             `json:"contentType"`
+	CreatedAt   time.Time          `json:"createdAt"`
+	Filename    string             `json:"filename"`
+	Id          openapi_types.UUID `json:"id"`
+	ItemId      openapi_types.UUID `json:"itemId"`
+	Kind        AttachmentKind     `json:"kind"`
+	UploadedBy  openapi_types.UUID `json:"uploadedBy"`
+
+	// Url A presigned GET, short-lived — mint a fresh one by listing again rather than caching this.
+	Url string `json:"url"`
+}
+
 // ItemCondition defines model for ItemCondition.
 type ItemCondition string
 
@@ -582,6 +665,24 @@ type ItemEvent struct {
 
 	// Type `created`, `updated`, `moved`, `status_changed` or `archived` in this milestone; later milestones add more.
 	Type string `json:"type"`
+}
+
+// ItemPhoto defines model for ItemPhoto.
+type ItemPhoto struct {
+	Bytes       int64              `json:"bytes"`
+	ContentType string             `json:"contentType"`
+	CreatedAt   time.Time          `json:"createdAt"`
+	Height      int32              `json:"height"`
+	Id          openapi_types.UUID `json:"id"`
+	IsPrimary   bool               `json:"isPrimary"`
+	ItemId      openapi_types.UUID `json:"itemId"`
+	SortOrder   int32              `json:"sortOrder"`
+	ThumbUrl    string             `json:"thumbUrl"`
+	UploadedBy  openapi_types.UUID `json:"uploadedBy"`
+
+	// Url A presigned GET, short-lived — mint a fresh one by listing again rather than caching this.
+	Url   string `json:"url"`
+	Width int32  `json:"width"`
 }
 
 // ItemSeason defines model for ItemSeason.
@@ -653,6 +754,33 @@ type PingResult struct {
 // PingResultDatabase Always `ok`; the 503 response covers the failure case.
 type PingResultDatabase string
 
+// PresignUploadRequest defines model for PresignUploadRequest.
+type PresignUploadRequest struct {
+	// ContentLength Exact byte size of the object about to be uploaded.
+	ContentLength int64 `json:"contentLength"`
+
+	// ContentType Examples: image/jpeg
+	ContentType string             `json:"contentType"`
+	ItemId      openapi_types.UUID `json:"itemId"`
+
+	// Purpose What a presigned PUT is for — decides the content-type/size allowlist it is checked against.
+	Purpose UploadPurpose `json:"purpose"`
+}
+
+// PresignUploadResult defines model for PresignUploadResult.
+type PresignUploadResult struct {
+	ExpiresAt time.Time `json:"expiresAt"`
+
+	// StorageKey Pass this back unchanged to the confirm endpoint.
+	StorageKey string `json:"storageKey"`
+
+	// UploadHeaders Headers the PUT request must carry (at minimum Content-Type) for the signature to validate.
+	UploadHeaders map[string]string `json:"uploadHeaders"`
+
+	// UploadUrl PUT the object here directly — never through core-api.
+	UploadUrl string `json:"uploadUrl"`
+}
+
 // Room defines model for Room.
 type Room struct {
 	ArchivedAt *time.Time         `json:"archivedAt,omitempty"`
@@ -722,6 +850,12 @@ type UpdateCategoryRequest struct {
 type UpdateFamilyRequest struct {
 	DefaultCurrency *string `json:"defaultCurrency,omitempty"`
 	Name            *string `json:"name,omitempty"`
+}
+
+// UpdateItemPhotoRequest defines model for UpdateItemPhotoRequest.
+type UpdateItemPhotoRequest struct {
+	IsPrimary *bool  `json:"isPrimary,omitempty"`
+	SortOrder *int32 `json:"sortOrder,omitempty"`
 }
 
 // UpdateItemRequest Omitted fields are left alone. Place and status are not here on
@@ -796,6 +930,9 @@ type UpdateTraitDefRequest struct {
 	Required    *bool   `json:"required,omitempty"`
 	SortOrder   *int32  `json:"sortOrder,omitempty"`
 }
+
+// UploadPurpose What a presigned PUT is for — decides the content-type/size allowlist it is checked against.
+type UploadPurpose string
 
 // User defines model for User.
 type User struct {
@@ -901,8 +1038,17 @@ type CreateItemJSONRequestBody = CreateItemRequest
 // UpdateItemJSONRequestBody defines body for UpdateItem for application/json ContentType.
 type UpdateItemJSONRequestBody = UpdateItemRequest
 
+// ConfirmItemAttachmentJSONRequestBody defines body for ConfirmItemAttachment for application/json ContentType.
+type ConfirmItemAttachmentJSONRequestBody = ConfirmItemAttachmentRequest
+
 // MoveItemJSONRequestBody defines body for MoveItem for application/json ContentType.
 type MoveItemJSONRequestBody = MoveItemRequest
+
+// ConfirmItemPhotoJSONRequestBody defines body for ConfirmItemPhoto for application/json ContentType.
+type ConfirmItemPhotoJSONRequestBody = ConfirmItemPhotoRequest
+
+// UpdateItemPhotoJSONRequestBody defines body for UpdateItemPhoto for application/json ContentType.
+type UpdateItemPhotoJSONRequestBody = UpdateItemPhotoRequest
 
 // SetItemStatusJSONRequestBody defines body for SetItemStatus for application/json ContentType.
 type SetItemStatusJSONRequestBody = SetItemStatusRequest
@@ -939,6 +1085,9 @@ type UpdateTagJSONRequestBody = UpdateTagRequest
 
 // UpdateTraitDefJSONRequestBody defines body for UpdateTraitDef for application/json ContentType.
 type UpdateTraitDefJSONRequestBody = UpdateTraitDefRequest
+
+// PresignUploadJSONRequestBody defines body for PresignUpload for application/json ContentType.
+type PresignUploadJSONRequestBody = PresignUploadRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -1005,6 +1154,15 @@ type ServerInterface interface {
 	// UpdateItem Update an item
 	// (PATCH /api/v1/items/{itemId})
 	UpdateItem(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID)
+	// ListItemAttachments An item's receipts, manuals and other documents
+	// (GET /api/v1/items/{itemId}/attachments)
+	ListItemAttachments(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID)
+	// ConfirmItemAttachment Confirm an attachment after it has been uploaded to object storage
+	// (POST /api/v1/items/{itemId}/attachments)
+	ConfirmItemAttachment(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID)
+	// DeleteItemAttachment Delete an attachment
+	// (DELETE /api/v1/items/{itemId}/attachments/{attachmentId})
+	DeleteItemAttachment(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID, attachmentId openapi_types.UUID)
 	// ListItemContents An item's direct contents
 	// (GET /api/v1/items/{itemId}/contents)
 	ListItemContents(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID)
@@ -1014,6 +1172,18 @@ type ServerInterface interface {
 	// MoveItem Move an item to a place or into a container
 	// (POST /api/v1/items/{itemId}/move)
 	MoveItem(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID)
+	// ListItemPhotos An item's photo gallery
+	// (GET /api/v1/items/{itemId}/photos)
+	ListItemPhotos(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID)
+	// ConfirmItemPhoto Confirm a photo after it has been uploaded to object storage
+	// (POST /api/v1/items/{itemId}/photos)
+	ConfirmItemPhoto(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID)
+	// DeleteItemPhoto Delete a photo
+	// (DELETE /api/v1/items/{itemId}/photos/{photoId})
+	DeleteItemPhoto(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID, photoId openapi_types.UUID)
+	// UpdateItemPhoto Reorder a photo or make it the primary one
+	// (PATCH /api/v1/items/{itemId}/photos/{photoId})
+	UpdateItemPhoto(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID, photoId openapi_types.UUID)
 	// SetItemStatus Change an item's lifecycle status
 	// (POST /api/v1/items/{itemId}/status)
 	SetItemStatus(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID)
@@ -1101,6 +1271,9 @@ type ServerInterface interface {
 	// UpdateTraitDef Update a custom field
 	// (PATCH /api/v1/trait-defs/{traitDefId})
 	UpdateTraitDef(w http.ResponseWriter, r *http.Request, traitDefId openapi_types.UUID)
+	// PresignUpload Request a presigned PUT to upload a photo or attachment
+	// (POST /api/v1/uploads/presign)
+	PresignUpload(w http.ResponseWriter, r *http.Request)
 	// GetHealthz Liveness probe
 	// (GET /healthz)
 	GetHealthz(w http.ResponseWriter, r *http.Request)
@@ -1236,6 +1409,24 @@ func (_ Unimplemented) UpdateItem(w http.ResponseWriter, r *http.Request, itemId
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// ListItemAttachments An item's receipts, manuals and other documents
+// (GET /api/v1/items/{itemId}/attachments)
+func (_ Unimplemented) ListItemAttachments(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ConfirmItemAttachment Confirm an attachment after it has been uploaded to object storage
+// (POST /api/v1/items/{itemId}/attachments)
+func (_ Unimplemented) ConfirmItemAttachment(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeleteItemAttachment Delete an attachment
+// (DELETE /api/v1/items/{itemId}/attachments/{attachmentId})
+func (_ Unimplemented) DeleteItemAttachment(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID, attachmentId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // ListItemContents An item's direct contents
 // (GET /api/v1/items/{itemId}/contents)
 func (_ Unimplemented) ListItemContents(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID) {
@@ -1251,6 +1442,30 @@ func (_ Unimplemented) ListItemEvents(w http.ResponseWriter, r *http.Request, it
 // MoveItem Move an item to a place or into a container
 // (POST /api/v1/items/{itemId}/move)
 func (_ Unimplemented) MoveItem(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListItemPhotos An item's photo gallery
+// (GET /api/v1/items/{itemId}/photos)
+func (_ Unimplemented) ListItemPhotos(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ConfirmItemPhoto Confirm a photo after it has been uploaded to object storage
+// (POST /api/v1/items/{itemId}/photos)
+func (_ Unimplemented) ConfirmItemPhoto(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeleteItemPhoto Delete a photo
+// (DELETE /api/v1/items/{itemId}/photos/{photoId})
+func (_ Unimplemented) DeleteItemPhoto(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID, photoId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateItemPhoto Reorder a photo or make it the primary one
+// (PATCH /api/v1/items/{itemId}/photos/{photoId})
+func (_ Unimplemented) UpdateItemPhoto(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID, photoId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1425,6 +1640,12 @@ func (_ Unimplemented) ArchiveTraitDef(w http.ResponseWriter, r *http.Request, t
 // UpdateTraitDef Update a custom field
 // (PATCH /api/v1/trait-defs/{traitDefId})
 func (_ Unimplemented) UpdateTraitDef(w http.ResponseWriter, r *http.Request, traitDefId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// PresignUpload Request a presigned PUT to upload a photo or attachment
+// (POST /api/v1/uploads/presign)
+func (_ Unimplemented) PresignUpload(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -2006,6 +2227,93 @@ func (siw *ServerInterfaceWrapper) UpdateItem(w http.ResponseWriter, r *http.Req
 	handler.ServeHTTP(w, r)
 }
 
+// ListItemAttachments operation middleware
+func (siw *ServerInterfaceWrapper) ListItemAttachments(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "itemId" -------------
+	var itemId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "itemId", chi.URLParam(r, "itemId"), &itemId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "itemId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListItemAttachments(w, r, itemId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ConfirmItemAttachment operation middleware
+func (siw *ServerInterfaceWrapper) ConfirmItemAttachment(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "itemId" -------------
+	var itemId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "itemId", chi.URLParam(r, "itemId"), &itemId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "itemId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ConfirmItemAttachment(w, r, itemId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteItemAttachment operation middleware
+func (siw *ServerInterfaceWrapper) DeleteItemAttachment(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "itemId" -------------
+	var itemId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "itemId", chi.URLParam(r, "itemId"), &itemId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "itemId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "attachmentId" -------------
+	var attachmentId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "attachmentId", chi.URLParam(r, "attachmentId"), &attachmentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "attachmentId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteItemAttachment(w, r, itemId, attachmentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListItemContents operation middleware
 func (siw *ServerInterfaceWrapper) ListItemContents(w http.ResponseWriter, r *http.Request) {
 
@@ -2104,6 +2412,128 @@ func (siw *ServerInterfaceWrapper) MoveItem(w http.ResponseWriter, r *http.Reque
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.MoveItem(w, r, itemId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListItemPhotos operation middleware
+func (siw *ServerInterfaceWrapper) ListItemPhotos(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "itemId" -------------
+	var itemId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "itemId", chi.URLParam(r, "itemId"), &itemId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "itemId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListItemPhotos(w, r, itemId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ConfirmItemPhoto operation middleware
+func (siw *ServerInterfaceWrapper) ConfirmItemPhoto(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "itemId" -------------
+	var itemId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "itemId", chi.URLParam(r, "itemId"), &itemId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "itemId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ConfirmItemPhoto(w, r, itemId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteItemPhoto operation middleware
+func (siw *ServerInterfaceWrapper) DeleteItemPhoto(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "itemId" -------------
+	var itemId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "itemId", chi.URLParam(r, "itemId"), &itemId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "itemId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "photoId" -------------
+	var photoId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "photoId", chi.URLParam(r, "photoId"), &photoId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "photoId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteItemPhoto(w, r, itemId, photoId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateItemPhoto operation middleware
+func (siw *ServerInterfaceWrapper) UpdateItemPhoto(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "itemId" -------------
+	var itemId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "itemId", chi.URLParam(r, "itemId"), &itemId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "itemId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "photoId" -------------
+	var photoId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "photoId", chi.URLParam(r, "photoId"), &photoId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "photoId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateItemPhoto(w, r, itemId, photoId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2837,6 +3267,20 @@ func (siw *ServerInterfaceWrapper) UpdateTraitDef(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r)
 }
 
+// PresignUpload operation middleware
+func (siw *ServerInterfaceWrapper) PresignUpload(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PresignUpload(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetHealthz operation middleware
 func (siw *ServerInterfaceWrapper) GetHealthz(w http.ResponseWriter, r *http.Request) {
 
@@ -3079,6 +3523,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Patch(options.BaseURL+"/api/v1/trait-defs/{traitDefId}", wrapper.UpdateTraitDef)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/uploads/presign", wrapper.PresignUpload)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/items", wrapper.ListItems)
 	})
 	r.Group(func(r chi.Router) {
@@ -3113,6 +3560,27 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Delete(options.BaseURL+"/api/v1/items/{itemId}/tags/{tagId}", wrapper.DetachItemTag)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/items/{itemId}/photos", wrapper.ListItemPhotos)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/items/{itemId}/photos", wrapper.ConfirmItemPhoto)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/api/v1/items/{itemId}/photos/{photoId}", wrapper.DeleteItemPhoto)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/api/v1/items/{itemId}/photos/{photoId}", wrapper.UpdateItemPhoto)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/items/{itemId}/attachments", wrapper.ListItemAttachments)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/items/{itemId}/attachments", wrapper.ConfirmItemAttachment)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/api/v1/items/{itemId}/attachments/{attachmentId}", wrapper.DeleteItemAttachment)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/tags", wrapper.ListTags)
@@ -4163,6 +4631,166 @@ func (response UpdateItem404JSONResponse) VisitUpdateItemResponse(w http.Respons
 	return err
 }
 
+type ListItemAttachmentsRequestObject struct {
+	ItemId openapi_types.UUID `json:"itemId"`
+}
+
+type ListItemAttachmentsResponseObject interface {
+	VisitListItemAttachmentsResponse(w http.ResponseWriter) error
+}
+
+type ListItemAttachments200JSONResponse []ItemAttachment
+
+func (response ListItemAttachments200JSONResponse) VisitListItemAttachmentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListItemAttachments401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListItemAttachments401JSONResponse) VisitListItemAttachmentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListItemAttachments404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ListItemAttachments404JSONResponse) VisitListItemAttachmentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmItemAttachmentRequestObject struct {
+	ItemId openapi_types.UUID `json:"itemId"`
+	Body   *ConfirmItemAttachmentJSONRequestBody
+}
+
+type ConfirmItemAttachmentResponseObject interface {
+	VisitConfirmItemAttachmentResponse(w http.ResponseWriter) error
+}
+
+type ConfirmItemAttachment201JSONResponse ItemAttachment
+
+func (response ConfirmItemAttachment201JSONResponse) VisitConfirmItemAttachmentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmItemAttachment400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response ConfirmItemAttachment400JSONResponse) VisitConfirmItemAttachmentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmItemAttachment401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ConfirmItemAttachment401JSONResponse) VisitConfirmItemAttachmentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmItemAttachment404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ConfirmItemAttachment404JSONResponse) VisitConfirmItemAttachmentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteItemAttachmentRequestObject struct {
+	ItemId       openapi_types.UUID `json:"itemId"`
+	AttachmentId openapi_types.UUID `json:"attachmentId"`
+}
+
+type DeleteItemAttachmentResponseObject interface {
+	VisitDeleteItemAttachmentResponse(w http.ResponseWriter) error
+}
+
+type DeleteItemAttachment204Response struct {
+}
+
+func (response DeleteItemAttachment204Response) VisitDeleteItemAttachmentResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteItemAttachment401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response DeleteItemAttachment401JSONResponse) VisitDeleteItemAttachmentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteItemAttachment404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response DeleteItemAttachment404JSONResponse) VisitDeleteItemAttachmentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListItemContentsRequestObject struct {
 	ItemId openapi_types.UUID `json:"itemId"`
 }
@@ -4318,6 +4946,232 @@ func (response MoveItem401JSONResponse) VisitMoveItemResponse(w http.ResponseWri
 type MoveItem404JSONResponse struct{ NotFoundJSONResponse }
 
 func (response MoveItem404JSONResponse) VisitMoveItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListItemPhotosRequestObject struct {
+	ItemId openapi_types.UUID `json:"itemId"`
+}
+
+type ListItemPhotosResponseObject interface {
+	VisitListItemPhotosResponse(w http.ResponseWriter) error
+}
+
+type ListItemPhotos200JSONResponse []ItemPhoto
+
+func (response ListItemPhotos200JSONResponse) VisitListItemPhotosResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListItemPhotos401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListItemPhotos401JSONResponse) VisitListItemPhotosResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListItemPhotos404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ListItemPhotos404JSONResponse) VisitListItemPhotosResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmItemPhotoRequestObject struct {
+	ItemId openapi_types.UUID `json:"itemId"`
+	Body   *ConfirmItemPhotoJSONRequestBody
+}
+
+type ConfirmItemPhotoResponseObject interface {
+	VisitConfirmItemPhotoResponse(w http.ResponseWriter) error
+}
+
+type ConfirmItemPhoto201JSONResponse ItemPhoto
+
+func (response ConfirmItemPhoto201JSONResponse) VisitConfirmItemPhotoResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmItemPhoto400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response ConfirmItemPhoto400JSONResponse) VisitConfirmItemPhotoResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmItemPhoto401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ConfirmItemPhoto401JSONResponse) VisitConfirmItemPhotoResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmItemPhoto404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ConfirmItemPhoto404JSONResponse) VisitConfirmItemPhotoResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteItemPhotoRequestObject struct {
+	ItemId  openapi_types.UUID `json:"itemId"`
+	PhotoId openapi_types.UUID `json:"photoId"`
+}
+
+type DeleteItemPhotoResponseObject interface {
+	VisitDeleteItemPhotoResponse(w http.ResponseWriter) error
+}
+
+type DeleteItemPhoto204Response struct {
+}
+
+func (response DeleteItemPhoto204Response) VisitDeleteItemPhotoResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteItemPhoto401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response DeleteItemPhoto401JSONResponse) VisitDeleteItemPhotoResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteItemPhoto404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response DeleteItemPhoto404JSONResponse) VisitDeleteItemPhotoResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateItemPhotoRequestObject struct {
+	ItemId  openapi_types.UUID `json:"itemId"`
+	PhotoId openapi_types.UUID `json:"photoId"`
+	Body    *UpdateItemPhotoJSONRequestBody
+}
+
+type UpdateItemPhotoResponseObject interface {
+	VisitUpdateItemPhotoResponse(w http.ResponseWriter) error
+}
+
+type UpdateItemPhoto200JSONResponse ItemPhoto
+
+func (response UpdateItemPhoto200JSONResponse) VisitUpdateItemPhotoResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateItemPhoto400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateItemPhoto400JSONResponse) VisitUpdateItemPhotoResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateItemPhoto401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdateItemPhoto401JSONResponse) VisitUpdateItemPhotoResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateItemPhoto404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateItemPhoto404JSONResponse) VisitUpdateItemPhotoResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -5794,6 +6648,70 @@ func (response UpdateTraitDef404JSONResponse) VisitUpdateTraitDefResponse(w http
 	return err
 }
 
+type PresignUploadRequestObject struct {
+	Body *PresignUploadJSONRequestBody
+}
+
+type PresignUploadResponseObject interface {
+	VisitPresignUploadResponse(w http.ResponseWriter) error
+}
+
+type PresignUpload200JSONResponse PresignUploadResult
+
+func (response PresignUpload200JSONResponse) VisitPresignUploadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PresignUpload400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response PresignUpload400JSONResponse) VisitPresignUploadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PresignUpload401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response PresignUpload401JSONResponse) VisitPresignUploadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PresignUpload404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response PresignUpload404JSONResponse) VisitPresignUploadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetHealthzRequestObject struct {
 }
 
@@ -5880,6 +6798,15 @@ type StrictServerInterface interface {
 	// UpdateItem Update an item
 	// (PATCH /api/v1/items/{itemId})
 	UpdateItem(ctx context.Context, request UpdateItemRequestObject) (UpdateItemResponseObject, error)
+	// ListItemAttachments An item's receipts, manuals and other documents
+	// (GET /api/v1/items/{itemId}/attachments)
+	ListItemAttachments(ctx context.Context, request ListItemAttachmentsRequestObject) (ListItemAttachmentsResponseObject, error)
+	// ConfirmItemAttachment Confirm an attachment after it has been uploaded to object storage
+	// (POST /api/v1/items/{itemId}/attachments)
+	ConfirmItemAttachment(ctx context.Context, request ConfirmItemAttachmentRequestObject) (ConfirmItemAttachmentResponseObject, error)
+	// DeleteItemAttachment Delete an attachment
+	// (DELETE /api/v1/items/{itemId}/attachments/{attachmentId})
+	DeleteItemAttachment(ctx context.Context, request DeleteItemAttachmentRequestObject) (DeleteItemAttachmentResponseObject, error)
 	// ListItemContents An item's direct contents
 	// (GET /api/v1/items/{itemId}/contents)
 	ListItemContents(ctx context.Context, request ListItemContentsRequestObject) (ListItemContentsResponseObject, error)
@@ -5889,6 +6816,18 @@ type StrictServerInterface interface {
 	// MoveItem Move an item to a place or into a container
 	// (POST /api/v1/items/{itemId}/move)
 	MoveItem(ctx context.Context, request MoveItemRequestObject) (MoveItemResponseObject, error)
+	// ListItemPhotos An item's photo gallery
+	// (GET /api/v1/items/{itemId}/photos)
+	ListItemPhotos(ctx context.Context, request ListItemPhotosRequestObject) (ListItemPhotosResponseObject, error)
+	// ConfirmItemPhoto Confirm a photo after it has been uploaded to object storage
+	// (POST /api/v1/items/{itemId}/photos)
+	ConfirmItemPhoto(ctx context.Context, request ConfirmItemPhotoRequestObject) (ConfirmItemPhotoResponseObject, error)
+	// DeleteItemPhoto Delete a photo
+	// (DELETE /api/v1/items/{itemId}/photos/{photoId})
+	DeleteItemPhoto(ctx context.Context, request DeleteItemPhotoRequestObject) (DeleteItemPhotoResponseObject, error)
+	// UpdateItemPhoto Reorder a photo or make it the primary one
+	// (PATCH /api/v1/items/{itemId}/photos/{photoId})
+	UpdateItemPhoto(ctx context.Context, request UpdateItemPhotoRequestObject) (UpdateItemPhotoResponseObject, error)
 	// SetItemStatus Change an item's lifecycle status
 	// (POST /api/v1/items/{itemId}/status)
 	SetItemStatus(ctx context.Context, request SetItemStatusRequestObject) (SetItemStatusResponseObject, error)
@@ -5976,6 +6915,9 @@ type StrictServerInterface interface {
 	// UpdateTraitDef Update a custom field
 	// (PATCH /api/v1/trait-defs/{traitDefId})
 	UpdateTraitDef(ctx context.Context, request UpdateTraitDefRequestObject) (UpdateTraitDefResponseObject, error)
+	// PresignUpload Request a presigned PUT to upload a photo or attachment
+	// (POST /api/v1/uploads/presign)
+	PresignUpload(ctx context.Context, request PresignUploadRequestObject) (PresignUploadResponseObject, error)
 	// GetHealthz Liveness probe
 	// (GET /healthz)
 	GetHealthz(ctx context.Context, request GetHealthzRequestObject) (GetHealthzResponseObject, error)
@@ -6590,6 +7532,92 @@ func (sh *strictHandler) UpdateItem(w http.ResponseWriter, r *http.Request, item
 	}
 }
 
+// ListItemAttachments operation middleware
+func (sh *strictHandler) ListItemAttachments(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID) {
+	var request ListItemAttachmentsRequestObject
+
+	request.ItemId = itemId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListItemAttachments(ctx, request.(ListItemAttachmentsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListItemAttachments")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListItemAttachmentsResponseObject); ok {
+		if err := validResponse.VisitListItemAttachmentsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ConfirmItemAttachment operation middleware
+func (sh *strictHandler) ConfirmItemAttachment(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID) {
+	var request ConfirmItemAttachmentRequestObject
+
+	request.ItemId = itemId
+
+	var body ConfirmItemAttachmentJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ConfirmItemAttachment(ctx, request.(ConfirmItemAttachmentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ConfirmItemAttachment")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ConfirmItemAttachmentResponseObject); ok {
+		if err := validResponse.VisitConfirmItemAttachmentResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteItemAttachment operation middleware
+func (sh *strictHandler) DeleteItemAttachment(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID, attachmentId openapi_types.UUID) {
+	var request DeleteItemAttachmentRequestObject
+
+	request.ItemId = itemId
+	request.AttachmentId = attachmentId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteItemAttachment(ctx, request.(DeleteItemAttachmentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteItemAttachment")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteItemAttachmentResponseObject); ok {
+		if err := validResponse.VisitDeleteItemAttachmentResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ListItemContents operation middleware
 func (sh *strictHandler) ListItemContents(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID) {
 	var request ListItemContentsRequestObject
@@ -6669,6 +7697,126 @@ func (sh *strictHandler) MoveItem(w http.ResponseWriter, r *http.Request, itemId
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(MoveItemResponseObject); ok {
 		if err := validResponse.VisitMoveItemResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListItemPhotos operation middleware
+func (sh *strictHandler) ListItemPhotos(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID) {
+	var request ListItemPhotosRequestObject
+
+	request.ItemId = itemId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListItemPhotos(ctx, request.(ListItemPhotosRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListItemPhotos")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListItemPhotosResponseObject); ok {
+		if err := validResponse.VisitListItemPhotosResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ConfirmItemPhoto operation middleware
+func (sh *strictHandler) ConfirmItemPhoto(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID) {
+	var request ConfirmItemPhotoRequestObject
+
+	request.ItemId = itemId
+
+	var body ConfirmItemPhotoJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ConfirmItemPhoto(ctx, request.(ConfirmItemPhotoRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ConfirmItemPhoto")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ConfirmItemPhotoResponseObject); ok {
+		if err := validResponse.VisitConfirmItemPhotoResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteItemPhoto operation middleware
+func (sh *strictHandler) DeleteItemPhoto(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID, photoId openapi_types.UUID) {
+	var request DeleteItemPhotoRequestObject
+
+	request.ItemId = itemId
+	request.PhotoId = photoId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteItemPhoto(ctx, request.(DeleteItemPhotoRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteItemPhoto")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteItemPhotoResponseObject); ok {
+		if err := validResponse.VisitDeleteItemPhotoResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateItemPhoto operation middleware
+func (sh *strictHandler) UpdateItemPhoto(w http.ResponseWriter, r *http.Request, itemId openapi_types.UUID, photoId openapi_types.UUID) {
+	var request UpdateItemPhotoRequestObject
+
+	request.ItemId = itemId
+	request.PhotoId = photoId
+
+	var body UpdateItemPhotoJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateItemPhoto(ctx, request.(UpdateItemPhotoRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateItemPhoto")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateItemPhotoResponseObject); ok {
+		if err := validResponse.VisitUpdateItemPhotoResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -7502,6 +8650,37 @@ func (sh *strictHandler) UpdateTraitDef(w http.ResponseWriter, r *http.Request, 
 	}
 }
 
+// PresignUpload operation middleware
+func (sh *strictHandler) PresignUpload(w http.ResponseWriter, r *http.Request) {
+	var request PresignUploadRequestObject
+
+	var body PresignUploadJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PresignUpload(ctx, request.(PresignUploadRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PresignUpload")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PresignUploadResponseObject); ok {
+		if err := validResponse.VisitPresignUploadResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetHealthz operation middleware
 func (sh *strictHandler) GetHealthz(w http.ResponseWriter, r *http.Request) {
 	var request GetHealthzRequestObject
@@ -7531,145 +8710,170 @@ func (sh *strictHandler) GetHealthz(w http.ResponseWriter, r *http.Request) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"FhPBfwjtHfw95lqvGyuem8GXD1/+fwAAAP//",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

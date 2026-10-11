@@ -11,7 +11,7 @@ info:
     token issuance all happen here. The web app is a thin client that forwards
     credentials; a future mobile client uses these same endpoints with a bearer
     token instead of cookies.
-  version: 0.2.0
+  version: 0.3.0
   license:
     name: Proprietary
 servers:
@@ -37,6 +37,8 @@ tags:
     description: Real possessions — in real places, optionally inside a container.
   - name: tags
     description: Family-defined labels an item can carry.
+  - name: uploads
+    description: Presigned object-storage uploads (SPEC 6, "Photos and attachments").
 
 # There is deliberately no document-level `security` default. oapi-codegen only
 # emits the per-operation security markers that the session middleware reads
@@ -1024,6 +1026,41 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/uploads/presign:
+    post:
+      operationId: presignUpload
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [uploads]
+      summary: Request a presigned PUT to upload a photo or attachment
+      description: |
+        The item must already belong to the caller's family. Content-type
+        and size are checked against a per-purpose allowlist before a URL is
+        ever minted; the confirm step (`POST /items/{itemId}/photos` or
+        `/attachments`) re-checks the real object once uploaded, so a client
+        cannot register a mismatched file by lying here (SPEC 6, "Photos
+        and attachments" — large files never pass through Go).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PresignUploadRequest"
+      responses:
+        "200":
+          description: A short-lived upload target.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresignUploadResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/items:
     get:
       operationId: listItems
@@ -1413,6 +1450,210 @@ paths:
       responses:
         "204":
           description: Detached (or already wasn't attached).
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/items/{itemId}/photos:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: listItemPhotos
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: An item's photo gallery
+      description: Ordered by sortOrder. Each entry carries a freshly-signed url/thumbUrl, minted at read time rather than stored.
+      responses:
+        "200":
+          description: Photos, in display order.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ItemPhoto"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: confirmItemPhoto
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: Confirm a photo after it has been uploaded to object storage
+      description: |
+        Both the full image and its thumbnail must already have been PUT to
+        the keys a prior `/uploads/presign` call returned. This step HEADs
+        both objects and rejects the confirm if their real content-type or
+        size disagree with what is declared here. The first photo on an
+        item is always primary, regardless of `isPrimary`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmItemPhotoRequest"
+      responses:
+        "201":
+          description: The confirmed photo.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemPhoto"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/items/{itemId}/photos/{photoId}:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: photoId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      operationId: updateItemPhoto
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: Reorder a photo or make it the primary one
+      description: Setting isPrimary true unsets whichever photo was primary before.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateItemPhotoRequest"
+      responses:
+        "200":
+          description: The updated photo.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemPhoto"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteItemPhoto
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: Delete a photo
+      description: If the deleted photo was primary and others remain, the lowest-sortOrder survivor becomes primary.
+      responses:
+        "204":
+          description: Deleted.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/items/{itemId}/attachments:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: listItemAttachments
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: An item's receipts, manuals and other documents
+      responses:
+        "200":
+          description: Attachments, oldest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ItemAttachment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: confirmItemAttachment
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: Confirm an attachment after it has been uploaded to object storage
+      description: Mirrors confirmItemPhoto's HEAD-check, for the single object a non-photo attachment is.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmItemAttachmentRequest"
+      responses:
+        "201":
+          description: The confirmed attachment.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemAttachment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/items/{itemId}/attachments/{attachmentId}:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: attachmentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      operationId: deleteItemAttachment
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: Delete an attachment
+      responses:
+        "204":
+          description: Deleted.
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -2451,3 +2692,173 @@ components:
         tagId:
           type: string
           format: uuid
+
+    UploadPurpose:
+      type: string
+      description: What a presigned PUT is for — decides the content-type/size allowlist it is checked against.
+      enum: [photo, photo_thumb, attachment]
+
+    PresignUploadRequest:
+      type: object
+      required: [itemId, purpose, contentType, contentLength]
+      properties:
+        itemId:
+          type: string
+          format: uuid
+        purpose:
+          $ref: "#/components/schemas/UploadPurpose"
+        contentType:
+          type: string
+          examples: [image/jpeg]
+        contentLength:
+          type: integer
+          format: int64
+          description: Exact byte size of the object about to be uploaded.
+
+    PresignUploadResult:
+      type: object
+      required: [storageKey, uploadUrl, uploadHeaders, expiresAt]
+      properties:
+        storageKey:
+          type: string
+          description: Pass this back unchanged to the confirm endpoint.
+        uploadUrl:
+          type: string
+          format: uri
+          description: PUT the object here directly — never through core-api.
+        uploadHeaders:
+          type: object
+          additionalProperties:
+            type: string
+          description: Headers the PUT request must carry (at minimum Content-Type) for the signature to validate.
+        expiresAt:
+          type: string
+          format: date-time
+
+    ItemPhoto:
+      type: object
+      required: [id, itemId, url, thumbUrl, width, height, bytes, contentType, isPrimary, sortOrder, uploadedBy, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        itemId:
+          type: string
+          format: uuid
+        url:
+          type: string
+          format: uri
+          description: A presigned GET, short-lived — mint a fresh one by listing again rather than caching this.
+        thumbUrl:
+          type: string
+          format: uri
+        width:
+          type: integer
+          format: int32
+        height:
+          type: integer
+          format: int32
+        bytes:
+          type: integer
+          format: int64
+        contentType:
+          type: string
+        isPrimary:
+          type: boolean
+        sortOrder:
+          type: integer
+          format: int32
+        uploadedBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+
+    ConfirmItemPhotoRequest:
+      type: object
+      required: [storageKey, thumbStorageKey, width, height, bytes, contentType]
+      properties:
+        storageKey:
+          type: string
+        thumbStorageKey:
+          type: string
+        width:
+          type: integer
+          format: int32
+          minimum: 1
+        height:
+          type: integer
+          format: int32
+          minimum: 1
+        bytes:
+          type: integer
+          format: int64
+          minimum: 1
+        contentType:
+          type: string
+        isPrimary:
+          type: boolean
+          default: false
+
+    UpdateItemPhotoRequest:
+      type: object
+      properties:
+        isPrimary:
+          type: boolean
+        sortOrder:
+          type: integer
+          format: int32
+
+    AttachmentKind:
+      type: string
+      enum: [receipt, manual, warranty, other]
+
+    ItemAttachment:
+      type: object
+      required: [id, itemId, kind, url, filename, contentType, bytes, uploadedBy, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        itemId:
+          type: string
+          format: uuid
+        kind:
+          $ref: "#/components/schemas/AttachmentKind"
+        url:
+          type: string
+          format: uri
+          description: A presigned GET, short-lived — mint a fresh one by listing again rather than caching this.
+        filename:
+          type: string
+        contentType:
+          type: string
+        bytes:
+          type: integer
+          format: int64
+        uploadedBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+
+    ConfirmItemAttachmentRequest:
+      type: object
+      required: [storageKey, filename, contentType, bytes, kind]
+      properties:
+        storageKey:
+          type: string
+        filename:
+          type: string
+          minLength: 1
+          maxLength: 255
+        contentType:
+          type: string
+        bytes:
+          type: integer
+          format: int64
+          minimum: 1
+        kind:
+          $ref: "#/components/schemas/AttachmentKind"

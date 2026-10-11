@@ -529,6 +529,31 @@ export interface paths {
         patch: operations["updateTraitDef"];
         trace?: never;
     };
+    "/api/v1/uploads/presign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request a presigned PUT to upload a photo or attachment
+         * @description The item must already belong to the caller's family. Content-type
+         *     and size are checked against a per-purpose allowlist before a URL is
+         *     ever minted; the confirm step (`POST /items/{itemId}/photos` or
+         *     `/attachments`) re-checks the real object once uploaded, so a client
+         *     cannot register a mismatched file by lying here (SPEC 6, "Photos
+         *     and attachments" — large files never pass through Go).
+         */
+        post: operations["presignUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/items": {
         parameters: {
             query?: never;
@@ -702,6 +727,106 @@ export interface paths {
         post?: never;
         /** Detach a tag from an item */
         delete: operations["detachItemTag"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items/{itemId}/photos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * An item's photo gallery
+         * @description Ordered by sortOrder. Each entry carries a freshly-signed url/thumbUrl, minted at read time rather than stored.
+         */
+        get: operations["listItemPhotos"];
+        put?: never;
+        /**
+         * Confirm a photo after it has been uploaded to object storage
+         * @description Both the full image and its thumbnail must already have been PUT to
+         *     the keys a prior `/uploads/presign` call returned. This step HEADs
+         *     both objects and rejects the confirm if their real content-type or
+         *     size disagree with what is declared here. The first photo on an
+         *     item is always primary, regardless of `isPrimary`.
+         */
+        post: operations["confirmItemPhoto"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items/{itemId}/photos/{photoId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+                photoId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a photo
+         * @description If the deleted photo was primary and others remain, the lowest-sortOrder survivor becomes primary.
+         */
+        delete: operations["deleteItemPhoto"];
+        options?: never;
+        head?: never;
+        /**
+         * Reorder a photo or make it the primary one
+         * @description Setting isPrimary true unsets whichever photo was primary before.
+         */
+        patch: operations["updateItemPhoto"];
+        trace?: never;
+    };
+    "/api/v1/items/{itemId}/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        /** An item's receipts, manuals and other documents */
+        get: operations["listItemAttachments"];
+        put?: never;
+        /**
+         * Confirm an attachment after it has been uploaded to object storage
+         * @description Mirrors confirmItemPhoto's HEAD-check, for the single object a non-photo attachment is.
+         */
+        post: operations["confirmItemAttachment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items/{itemId}/attachments/{attachmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+                attachmentId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete an attachment */
+        delete: operations["deleteItemAttachment"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1267,6 +1392,113 @@ export interface components {
         AttachItemTagRequest: {
             /** Format: uuid */
             tagId: string;
+        };
+        /**
+         * @description What a presigned PUT is for — decides the content-type/size allowlist it is checked against.
+         * @enum {string}
+         */
+        UploadPurpose: "photo" | "photo_thumb" | "attachment";
+        PresignUploadRequest: {
+            /** Format: uuid */
+            itemId: string;
+            purpose: components["schemas"]["UploadPurpose"];
+            /** @example image/jpeg */
+            contentType: string;
+            /**
+             * Format: int64
+             * @description Exact byte size of the object about to be uploaded.
+             */
+            contentLength: number;
+        };
+        PresignUploadResult: {
+            /** @description Pass this back unchanged to the confirm endpoint. */
+            storageKey: string;
+            /**
+             * Format: uri
+             * @description PUT the object here directly — never through core-api.
+             */
+            uploadUrl: string;
+            /** @description Headers the PUT request must carry (at minimum Content-Type) for the signature to validate. */
+            uploadHeaders: {
+                [key: string]: string;
+            };
+            /** Format: date-time */
+            expiresAt: string;
+        };
+        ItemPhoto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            itemId: string;
+            /**
+             * Format: uri
+             * @description A presigned GET, short-lived — mint a fresh one by listing again rather than caching this.
+             */
+            url: string;
+            /** Format: uri */
+            thumbUrl: string;
+            /** Format: int32 */
+            width: number;
+            /** Format: int32 */
+            height: number;
+            /** Format: int64 */
+            bytes: number;
+            contentType: string;
+            isPrimary: boolean;
+            /** Format: int32 */
+            sortOrder: number;
+            /** Format: uuid */
+            uploadedBy: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ConfirmItemPhotoRequest: {
+            storageKey: string;
+            thumbStorageKey: string;
+            /** Format: int32 */
+            width: number;
+            /** Format: int32 */
+            height: number;
+            /** Format: int64 */
+            bytes: number;
+            contentType: string;
+            /** @default false */
+            isPrimary: boolean;
+        };
+        UpdateItemPhotoRequest: {
+            isPrimary?: boolean;
+            /** Format: int32 */
+            sortOrder?: number;
+        };
+        /** @enum {string} */
+        AttachmentKind: "receipt" | "manual" | "warranty" | "other";
+        ItemAttachment: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            itemId: string;
+            kind: components["schemas"]["AttachmentKind"];
+            /**
+             * Format: uri
+             * @description A presigned GET, short-lived — mint a fresh one by listing again rather than caching this.
+             */
+            url: string;
+            filename: string;
+            contentType: string;
+            /** Format: int64 */
+            bytes: number;
+            /** Format: uuid */
+            uploadedBy: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ConfirmItemAttachmentRequest: {
+            storageKey: string;
+            filename: string;
+            contentType: string;
+            /** Format: int64 */
+            bytes: number;
+            kind: components["schemas"]["AttachmentKind"];
         };
     };
     responses: {
@@ -2269,6 +2501,33 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    presignUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PresignUploadRequest"];
+            };
+        };
+        responses: {
+            /** @description A short-lived upload target. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PresignUploadResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     listItems: {
         parameters: {
             query?: {
@@ -2572,6 +2831,188 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Detached (or already wasn't attached). */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listItemPhotos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Photos, in display order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemPhoto"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    confirmItemPhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmItemPhotoRequest"];
+            };
+        };
+        responses: {
+            /** @description The confirmed photo. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemPhoto"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteItemPhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+                photoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateItemPhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+                photoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateItemPhotoRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated photo. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemPhoto"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listItemAttachments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Attachments, oldest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemAttachment"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    confirmItemAttachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmItemAttachmentRequest"];
+            };
+        };
+        responses: {
+            /** @description The confirmed attachment. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemAttachment"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteItemAttachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+                attachmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
             204: {
                 headers: {
                     [name: string]: unknown;

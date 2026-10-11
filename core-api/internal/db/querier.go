@@ -26,6 +26,10 @@ type Querier interface {
 	// to another family — the FK alone only proves the rows exist, not that
 	// they are this family's own.
 	AttachItemTag(ctx context.Context, arg AttachItemTagParams) error
+	// Unsets any other primary photo on the item before a new one is promoted —
+	// the partial unique index on (item_id) WHERE is_primary allows at most one.
+	ClearItemPhotoPrimary(ctx context.Context, arg ClearItemPhotoPrimaryParams) error
+	CountItemPhotos(ctx context.Context, arg CountItemPhotosParams) (int64, error)
 	// Guarded so a family cannot point parent_id at a category it cannot see:
 	// the FK alone only proves the row exists, not that it is this family's own
 	// or a built-in.
@@ -64,6 +68,12 @@ type Querier interface {
 	// family_id, so a chain can never walk into another family's items even if
 	// a caller somehow had a foreign id to try.
 	CreateItem(ctx context.Context, arg CreateItemParams) (Item, error)
+	// Item attachments: receipts, manuals, warranty documents (SPEC 4, "Items";
+	// SPEC 6, "Photos and attachments").
+	//
+	// Like item_photos (db/queries/photos.sql), item_attachments has no
+	// family_id of its own; every query here scopes through items.
+	CreateItemAttachment(ctx context.Context, arg CreateItemAttachmentParams) (ItemAttachment, error)
 	// Item events: the audit trail (SPEC 4, "Items" and SPEC 7, "Data safety").
 	//
 	// Always written by internal/items' Service inside the same transaction as
@@ -71,6 +81,17 @@ type Querier interface {
 	// plain text (see 00008_items.sql's header); the handful of values this
 	// milestone writes are "created", "updated", "moved" and "status_changed".
 	CreateItemEvent(ctx context.Context, arg CreateItemEventParams) (ItemEvent, error)
+	// Item photos (SPEC 4, "Items"; SPEC 6, "Photos and attachments").
+	//
+	// item_photos has no family_id column of its own — its tenant key lives one
+	// hop away, through item_id, the same shape rooms.sql established for
+	// rooms-through-locations. Every query here scopes through items rather
+	// than taking a vet-rule exemption (CLAUDE.md, "Every query is family-scoped").
+	// is_primary is decided by the caller (the first photo on an item is always
+	// primary; internal/items.Service counts existing photos before calling
+	// this) rather than computed here, the same preference for Go-level logic
+	// over a cleverer INSERT that CreateItem/MoveItem already established.
+	CreateItemPhoto(ctx context.Context, arg CreateItemPhotoParams) (ItemPhoto, error)
 	// Locations: one of the family's physical places (SPEC 3, "Concepts").
 	//
 	// Scoped directly on family_id, same shape as people.sql.
@@ -112,6 +133,11 @@ type Querier interface {
 	// Guarded by EXISTS against categories so a custom field can only attach to a
 	// category this family can actually see (its own, or a built-in).
 	CreateTraitDef(ctx context.Context, arg CreateTraitDefParams) (TraitDef, error)
+	// Returns the deleted row so the caller can delete its object from storage.
+	DeleteItemAttachment(ctx context.Context, arg DeleteItemAttachmentParams) (ItemAttachment, error)
+	// Returns the deleted row so the caller can delete its two objects from
+	// storage and know whether it was primary (to promote the next one).
+	DeleteItemPhoto(ctx context.Context, arg DeleteItemPhotoParams) (ItemPhoto, error)
 	DeleteTag(ctx context.Context, arg DeleteTagParams) (int64, error)
 	DetachItemTag(ctx context.Context, arg DetachItemTagParams) (int64, error)
 	GetCategory(ctx context.Context, arg GetCategoryParams) (Category, error)
@@ -148,6 +174,7 @@ type Querier interface {
 	// container with contents, to check the deepest descendant still fits
 	// under the max-depth-5 rule once the container is re-parented.
 	GetItemDescendantDepths(ctx context.Context, arg GetItemDescendantDepthsParams) ([]GetItemDescendantDepthsRow, error)
+	GetItemPhoto(ctx context.Context, arg GetItemPhotoParams) (ItemPhoto, error)
 	GetLocation(ctx context.Context, arg GetLocationParams) (Location, error)
 	GetPerson(ctx context.Context, arg GetPersonParams) (Person, error)
 	// `rotated_to` is what makes reuse detectable: a non-NULL value means this
@@ -166,6 +193,12 @@ type Querier interface {
 	// TENANCY: pre-tenant. Resolves the principal carried by an access token; the
 	// caller then scopes everything that follows by the token's tenant claim.
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
+	// Cross-tenant on purpose: the orphaned-object cleanup sweeper (internal/
+	// storage/cleanup.go) has no per-family loop to run, it just needs every
+	// key any family's rows still reference, to diff against what the bucket
+	// actually holds. Allowlisted in sqlc.yaml's family-scoped rule for exactly
+	// this reason, the same way the refresh-token reuse-detection revoke is.
+	ListAllStorageKeys(ctx context.Context) ([]string, error)
 	// Categories: the built-in taxonomy plus each family's own (SPEC 4,
 	// "Taxonomy").
 	//
@@ -178,8 +211,10 @@ type Querier interface {
 	ListCategories(ctx context.Context, arg ListCategoriesParams) ([]Category, error)
 	ListFamilyInvites(ctx context.Context, familyID pgtype.UUID) ([]ListFamilyInvitesRow, error)
 	ListFamilyMembers(ctx context.Context, familyID pgtype.UUID) ([]ListFamilyMembersRow, error)
+	ListItemAttachments(ctx context.Context, arg ListItemAttachmentsParams) ([]ItemAttachment, error)
 	ListItemChildren(ctx context.Context, arg ListItemChildrenParams) ([]Item, error)
 	ListItemEvents(ctx context.Context, arg ListItemEventsParams) ([]ItemEvent, error)
+	ListItemPhotos(ctx context.Context, arg ListItemPhotosParams) ([]ItemPhoto, error)
 	// Roots only (no parent): a nested item's place columns are cosmetic, so it
 	// is reached by following a container's contents link, not by this list
 	// (00008_items.sql's header). Filters are optional; an absent one matches
@@ -206,6 +241,9 @@ type Querier interface {
 	// calling this, so the row never carries both a parent and its own place
 	// as if it were a root.
 	MoveItem(ctx context.Context, arg MoveItemParams) (Item, error)
+	// Called after deleting a primary photo that still has siblings: makes the
+	// lowest-sort_order survivor the new primary.
+	PromoteNextItemPhoto(ctx context.Context, arg PromoteNextItemPhotoParams) (ItemPhoto, error)
 	// Owners are deliberately not removable through this path: demoting or
 	// removing the last owner would leave the family unadministrable, and there is
 	// no role-change endpoint in M1. Zero affected rows is the caller's signal.
@@ -242,6 +280,10 @@ type Querier interface {
 	// `moved` or `status_changed` one). A NULL argument leaves its column
 	// untouched.
 	UpdateItem(ctx context.Context, arg UpdateItemParams) (Item, error)
+	// A NULL argument leaves its column untouched. Setting is_primary is always
+	// preceded by ClearItemPhotoPrimary in the same transaction when promoting a
+	// new primary.
+	UpdateItemPhoto(ctx context.Context, arg UpdateItemPhotoParams) (ItemPhoto, error)
 	// Partial update; a NULL argument leaves its column untouched.
 	UpdateLocation(ctx context.Context, arg UpdateLocationParams) (Location, error)
 	// Partial update; a NULL argument leaves its column untouched. `birthdate`,

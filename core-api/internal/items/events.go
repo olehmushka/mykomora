@@ -6,15 +6,19 @@ import (
 	"github.com/olehmushka/mykomora/core-api/internal/pgconv"
 )
 
-// Event types this milestone writes. Later milestones add more (SPEC 4,
-// "Items"; 00008_items.sql's header note on item_events.type being plain
-// text for exactly this reason).
+// Event types this and earlier milestones write. Later milestones add more
+// (SPEC 4, "Items"; 00008_items.sql's header note on item_events.type being
+// plain text for exactly this reason).
 const (
-	eventCreated       = "created"
-	eventUpdated       = "updated"
-	eventMoved         = "moved"
-	eventStatusChanged = "status_changed"
-	eventArchived      = "archived"
+	eventCreated           = "created"
+	eventUpdated           = "updated"
+	eventMoved             = "moved"
+	eventStatusChanged     = "status_changed"
+	eventArchived          = "archived"
+	eventPhotoAdded        = "photo_added"
+	eventPhotoRemoved      = "photo_removed"
+	eventAttachmentAdded   = "attachment_added"
+	eventAttachmentRemoved = "attachment_removed"
 )
 
 // createdPayload records what the item looked like at birth.
@@ -66,4 +70,38 @@ func placePayload(it *db.Item) map[string]any {
 // statusChangedPayload records the transition itself.
 func statusChangedPayload(from, to api.ItemStatus) map[string]any {
 	return map[string]any{"from": string(from), "to": string(to)}
+}
+
+// photoAddedPayload records which photo was added and whether it became
+// primary — not its storage keys, which are an internal detail of where
+// the bytes live rather than part of the item's history.
+func photoAddedPayload(photo *db.ItemPhoto) map[string]any {
+	return map[string]any{
+		"photoId":   pgconv.ToUUID(photo.ID).String(),
+		"isPrimary": photo.IsPrimary,
+	}
+}
+
+// photoRemovedPayload records which photo was removed, and the photo that
+// was promoted to replace it as primary, if any.
+func photoRemovedPayload(removed, promoted *db.ItemPhoto) map[string]any {
+	payload := map[string]any{"photoId": pgconv.ToUUID(removed.ID).String()}
+	if promoted != nil {
+		payload["promotedPhotoId"] = pgconv.ToUUID(promoted.ID).String()
+	}
+
+	return payload
+}
+
+// attachmentAddedPayload records which attachment was added and its kind.
+func attachmentAddedPayload(attachment *db.ItemAttachment) map[string]any {
+	return map[string]any{
+		"attachmentId": pgconv.ToUUID(attachment.ID).String(),
+		"kind":         string(attachment.Kind),
+	}
+}
+
+// attachmentRemovedPayload records which attachment was removed.
+func attachmentRemovedPayload(attachment *db.ItemAttachment) map[string]any {
+	return map[string]any{"attachmentId": pgconv.ToUUID(attachment.ID).String()}
 }

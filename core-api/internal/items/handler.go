@@ -41,6 +41,8 @@ func (h *Handler) ListItems(ctx context.Context, request api.ListItemsRequestObj
 }
 
 // CreateItem adds an item.
+//
+//nolint:dupl // only the generated request/response types differ from PresignUpload/ConfirmItemPhoto/ConfirmItemAttachment
 func (h *Handler) CreateItem(ctx context.Context, request api.CreateItemRequestObject) (api.CreateItemResponseObject, error) {
 	principal, ok := auth.PrincipalFrom(ctx)
 	if !ok {
