@@ -29,6 +29,10 @@ tags:
     description: The tenant itself — its settings, members and invites.
   - name: people
     description: Anyone the family tracks things for. Not the same as a member.
+  - name: places
+    description: Locations and rooms — where things physically are.
+  - name: taxonomy
+    description: The category tree and its trait schema, built-in and family-defined.
 
 # There is deliberately no document-level `security` default. oapi-codegen only
 # emits the per-operation security markers that the session middleware reads
@@ -211,6 +215,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Me"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      operationId: updateMe
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [auth]
+      summary: Update the signed-in user's own preferences
+      description: Locale is the only preference so far.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMeRequest"
+      responses:
+        "200":
+          description: The updated user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
 
@@ -531,6 +560,466 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/locations:
+    get:
+      operationId: listLocations
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [places]
+      summary: The family's locations
+      parameters:
+        - name: includeArchived
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Locations, in their sort order.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Location"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createLocation
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [places]
+      summary: Add a location
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLocationRequest"
+      responses:
+        "201":
+          description: The created location.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/locations/{locationId}:
+    parameters:
+      - name: locationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getLocation
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [places]
+      summary: One location
+      responses:
+        "200":
+          description: The location.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateLocation
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [places]
+      summary: Update a location
+      description: Omitted fields are left alone.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLocationRequest"
+      responses:
+        "200":
+          description: The updated location.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: archiveLocation
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [places]
+      summary: Archive a location
+      responses:
+        "204":
+          description: Archived.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/locations/{locationId}/rooms:
+    parameters:
+      - name: locationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: listRooms
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [places]
+      summary: The rooms of one location
+      parameters:
+        - name: includeArchived
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Rooms, in their sort order.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Room"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: createRoom
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [places]
+      summary: Add a room to a location
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRoomRequest"
+      responses:
+        "201":
+          description: The created room.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Room"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/rooms/{roomId}:
+    parameters:
+      - name: roomId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getRoom
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [places]
+      summary: One room
+      responses:
+        "200":
+          description: The room.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Room"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateRoom
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [places]
+      summary: Update a room
+      description: Omitted fields are left alone.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRoomRequest"
+      responses:
+        "200":
+          description: The updated room.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Room"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: archiveRoom
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [places]
+      summary: Archive a room
+      responses:
+        "204":
+          description: Archived.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/taxonomy:
+    get:
+      operationId: getTaxonomy
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [taxonomy]
+      summary: The localised category tree and its trait schema
+      description: |
+        Built-in categories ∪ this family's own, nested under their parents,
+        each with its resolved traits. Labels are resolved from the request's
+        Accept-Language (M2 dropped GeoIP; see docs/MILESTONES.md).
+        ETag-cached: send back `If-None-Match` to get a `304` when nothing
+        has changed.
+      parameters:
+        - name: If-None-Match
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The category tree.
+          headers:
+            ETag:
+              schema:
+                type: string
+            Vary:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Taxonomy"
+        "304":
+          description: Nothing has changed since the given ETag.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/categories:
+    post:
+      operationId: createCategory
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [taxonomy]
+      summary: Add a family-defined category
+      description: |
+        Built-in categories exist only via the seed migration; there is no
+        create path for them.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCategoryRequest"
+      responses:
+        "201":
+          description: The created category.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/categories/{categoryId}:
+    parameters:
+      - name: categoryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      operationId: updateCategory
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [taxonomy]
+      summary: Update a family-defined category
+      description: |
+        Omitted fields are left alone. A built-in category can never match:
+        it has no family_id for the update to be scoped by.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCategoryRequest"
+      responses:
+        "200":
+          description: The updated category.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: archiveCategory
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [taxonomy]
+      summary: Archive a family-defined category
+      responses:
+        "204":
+          description: Archived.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/categories/{categoryId}/trait-defs:
+    parameters:
+      - name: categoryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: createTraitDef
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [taxonomy]
+      summary: Add a custom field to a category
+      description: |
+        The category may be built-in or the family's own: a custom field is
+        "one code path, one validator, one renderer" per field, not per
+        category (SPEC 4, "Taxonomy").
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTraitDefRequest"
+      responses:
+        "201":
+          description: The created field.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TraitDef"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/trait-defs/{traitDefId}:
+    parameters:
+      - name: traitDefId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      operationId: updateTraitDef
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [taxonomy]
+      summary: Update a custom field
+      description: |
+        Its key and data type are fixed at creation; only the label,
+        requiredness, filterability and sort order can change.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTraitDefRequest"
+      responses:
+        "200":
+          description: The updated field.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TraitDef"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: archiveTraitDef
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [taxonomy]
+      summary: Archive a custom field
+      responses:
+        "204":
+          description: Archived.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
     sessionCookie:
@@ -819,3 +1308,290 @@ components:
         userId:
           type: string
           format: uuid
+
+    UpdateMeRequest:
+      type: object
+      properties:
+        locale:
+          type: string
+          enum: [en, uk]
+
+    LocationKind:
+      type: string
+      enum: [home, storage, garage, relative, other]
+
+    Location:
+      type: object
+      required: [id, name, kind, sortOrder, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        kind:
+          $ref: "#/components/schemas/LocationKind"
+        address:
+          type: string
+        sortOrder:
+          type: integer
+          format: int32
+        archivedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateLocationRequest:
+      type: object
+      required: [name, kind]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        kind:
+          $ref: "#/components/schemas/LocationKind"
+        address:
+          type: string
+        sortOrder:
+          type: integer
+          format: int32
+          default: 0
+
+    UpdateLocationRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        kind:
+          $ref: "#/components/schemas/LocationKind"
+        address:
+          type: string
+        sortOrder:
+          type: integer
+          format: int32
+
+    Room:
+      type: object
+      required: [id, locationId, name, sortOrder, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        locationId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        sortOrder:
+          type: integer
+          format: int32
+        archivedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateRoomRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        sortOrder:
+          type: integer
+          format: int32
+          default: 0
+
+    UpdateRoomRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        sortOrder:
+          type: integer
+          format: int32
+
+    TraitDataType:
+      type: string
+      enum: [text, number, integer, bool, date, enum, size]
+
+    TraitDef:
+      type: object
+      required: [id, categoryId, key, dataType, label, required, filterable, sortOrder, isBuiltin]
+      properties:
+        id:
+          type: string
+          format: uuid
+        categoryId:
+          type: string
+          format: uuid
+        key:
+          type: string
+        dataType:
+          $ref: "#/components/schemas/TraitDataType"
+        unit:
+          type: string
+        enumOptions:
+          type: array
+          items:
+            type: string
+        label:
+          type: string
+          description: Resolved in the request's locale; never a raw catalogue key.
+        required:
+          type: boolean
+        filterable:
+          type: boolean
+        sortOrder:
+          type: integer
+          format: int32
+        isBuiltin:
+          type: boolean
+          description: true when this field came from the seed migration rather than a family.
+        archivedAt:
+          type: string
+          format: date-time
+
+    CreateTraitDefRequest:
+      type: object
+      required: [key, dataType, labelCustom]
+      properties:
+        key:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Lowercase letters, digits, underscores or hyphens.
+        dataType:
+          $ref: "#/components/schemas/TraitDataType"
+        unit:
+          type: string
+        enumOptions:
+          type: array
+          items:
+            type: string
+          description: Required, and only meaningful, when dataType is "enum".
+        labelCustom:
+          type: string
+          minLength: 1
+          maxLength: 120
+        required:
+          type: boolean
+          default: false
+        filterable:
+          type: boolean
+          default: false
+        sortOrder:
+          type: integer
+          format: int32
+          default: 0
+
+    UpdateTraitDefRequest:
+      type: object
+      properties:
+        labelCustom:
+          type: string
+          minLength: 1
+          maxLength: 120
+        required:
+          type: boolean
+        filterable:
+          type: boolean
+        sortOrder:
+          type: integer
+          format: int32
+
+    Category:
+      type: object
+      required: [id, slug, name, sortOrder, isBuiltin, traits, children]
+      properties:
+        id:
+          type: string
+          format: uuid
+        parentId:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        icon:
+          type: string
+        name:
+          type: string
+          description: Resolved in the request's locale; never a raw catalogue key.
+        sortOrder:
+          type: integer
+          format: int32
+        isBuiltin:
+          type: boolean
+          description: true when this category came from the seed migration rather than a family.
+        archivedAt:
+          type: string
+          format: date-time
+        traits:
+          type: array
+          items:
+            $ref: "#/components/schemas/TraitDef"
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/Category"
+
+    Taxonomy:
+      type: object
+      required: [categories]
+      properties:
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/Category"
+
+    CreateCategoryRequest:
+      type: object
+      required: [slug, nameCustom]
+      properties:
+        parentId:
+          type: string
+          format: uuid
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Lowercase letters, digits, underscores or hyphens.
+        icon:
+          type: string
+        nameCustom:
+          type: string
+          minLength: 1
+          maxLength: 120
+        sortOrder:
+          type: integer
+          format: int32
+          default: 0
+
+    UpdateCategoryRequest:
+      type: object
+      properties:
+        nameCustom:
+          type: string
+          minLength: 1
+          maxLength: 120
+        icon:
+          type: string
+        sortOrder:
+          type: integer
+          format: int32

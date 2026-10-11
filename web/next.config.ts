@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
 
 const nextConfig: NextConfig = {
   // Emits a self-contained server bundle so the runtime image can carry the app
@@ -10,4 +11,10 @@ const nextConfig: NextConfig = {
   // core-api and stays server-side — never a NEXT_PUBLIC_ variable.
 };
 
-export default nextConfig;
+// No `[locale]` route segments: this is a single-family tool with no need for
+// localised URLs, so next-intl resolves the locale per request (the
+// NEXT_LOCALE cookie, then Accept-Language — see src/i18n/locale.ts) instead
+// of from the path.
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
+
+export default withNextIntl(nextConfig);

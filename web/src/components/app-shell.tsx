@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
+import { LocaleSwitcher } from "@/components/locale-switcher";
 import { SignOutButton } from "@/components/sign-out-button";
 import type { Me } from "@/lib/api/session";
 
@@ -11,6 +13,8 @@ import type { Me } from "@/lib/api/session";
  * them behind a tap for no reason.
  */
 export function AppShell({ me, children }: { me: Me; children: React.ReactNode }) {
+  const t = useTranslations("AppShell");
+
   return (
     <>
       <header className="border-b border-border">
@@ -25,12 +29,15 @@ export function AppShell({ me, children }: { me: Me; children: React.ReactNode }
             className="-mx-2 order-last w-full overflow-x-auto sm:order-none sm:ml-auto sm:w-auto sm:overflow-visible"
           >
             <ul className="flex items-center gap-1">
-              <NavItem href="/">Inventory</NavItem>
-              <NavItem href="/people">People</NavItem>
-              <NavItem href="/settings/family">Family</NavItem>
+              <NavItem href="/">{t("inventory")}</NavItem>
+              <NavItem href="/people">{t("people")}</NavItem>
+              <NavItem href="/locations">{t("locations")}</NavItem>
+              <NavItem href="/settings/taxonomy">{t("taxonomy")}</NavItem>
+              <NavItem href="/settings/family">{t("family")}</NavItem>
             </ul>
           </nav>
 
+          <LocaleSwitcher />
           <SignOutButton />
         </div>
       </header>

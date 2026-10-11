@@ -37,6 +37,7 @@ var (
 // any query is a handler that can reach an unscoped one.
 type Store interface {
 	GetUserByID(ctx context.Context, id pgtype.UUID) (db.User, error)
+	UpdateUserLocale(ctx context.Context, arg db.UpdateUserLocaleParams) (db.User, error)
 	GetFamily(ctx context.Context, arg db.GetFamilyParams) (db.Family, error)
 	GetFamilyMembership(ctx context.Context, arg db.GetFamilyMembershipParams) (db.FamilyMember, error)
 	GetRefreshTokenByHash(ctx context.Context, tokenHash []byte) (db.GetRefreshTokenByHashRow, error)

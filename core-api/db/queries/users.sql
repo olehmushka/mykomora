@@ -32,3 +32,12 @@ WHERE id = $1;
 UPDATE users
 SET last_seen_at = now()
 WHERE id = $1;
+
+-- name: UpdateUserLocale :one
+-- TENANCY: pre-tenant, same reasoning as every other query in this file — a
+-- locale preference belongs to the account, not to any one family it is a
+-- member of.
+UPDATE users
+SET locale = sqlc.arg(locale)
+WHERE id = sqlc.arg(id)
+RETURNING *;

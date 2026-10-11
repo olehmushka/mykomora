@@ -149,7 +149,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update the signed-in user's own preferences
+         * @description Locale is the only preference so far.
+         */
+        patch: operations["updateMe"];
         trace?: never;
     };
     "/api/v1/family": {
@@ -322,6 +326,209 @@ export interface paths {
         patch: operations["updatePerson"];
         trace?: never;
     };
+    "/api/v1/locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The family's locations */
+        get: operations["listLocations"];
+        put?: never;
+        /** Add a location */
+        post: operations["createLocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/locations/{locationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                locationId: string;
+            };
+            cookie?: never;
+        };
+        /** One location */
+        get: operations["getLocation"];
+        put?: never;
+        post?: never;
+        /** Archive a location */
+        delete: operations["archiveLocation"];
+        options?: never;
+        head?: never;
+        /**
+         * Update a location
+         * @description Omitted fields are left alone.
+         */
+        patch: operations["updateLocation"];
+        trace?: never;
+    };
+    "/api/v1/locations/{locationId}/rooms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                locationId: string;
+            };
+            cookie?: never;
+        };
+        /** The rooms of one location */
+        get: operations["listRooms"];
+        put?: never;
+        /** Add a room to a location */
+        post: operations["createRoom"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rooms/{roomId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                roomId: string;
+            };
+            cookie?: never;
+        };
+        /** One room */
+        get: operations["getRoom"];
+        put?: never;
+        post?: never;
+        /** Archive a room */
+        delete: operations["archiveRoom"];
+        options?: never;
+        head?: never;
+        /**
+         * Update a room
+         * @description Omitted fields are left alone.
+         */
+        patch: operations["updateRoom"];
+        trace?: never;
+    };
+    "/api/v1/taxonomy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The localised category tree and its trait schema
+         * @description Built-in categories ∪ this family's own, nested under their parents,
+         *     each with its resolved traits. Labels are resolved from the request's
+         *     Accept-Language (M2 dropped GeoIP; see docs/MILESTONES.md).
+         *     ETag-cached: send back `If-None-Match` to get a `304` when nothing
+         *     has changed.
+         */
+        get: operations["getTaxonomy"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add a family-defined category
+         * @description Built-in categories exist only via the seed migration; there is no
+         *     create path for them.
+         */
+        post: operations["createCategory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/categories/{categoryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                categoryId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Archive a family-defined category */
+        delete: operations["archiveCategory"];
+        options?: never;
+        head?: never;
+        /**
+         * Update a family-defined category
+         * @description Omitted fields are left alone. A built-in category can never match:
+         *     it has no family_id for the update to be scoped by.
+         */
+        patch: operations["updateCategory"];
+        trace?: never;
+    };
+    "/api/v1/categories/{categoryId}/trait-defs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                categoryId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add a custom field to a category
+         * @description The category may be built-in or the family's own: a custom field is
+         *     "one code path, one validator, one renderer" per field, not per
+         *     category (SPEC 4, "Taxonomy").
+         */
+        post: operations["createTraitDef"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trait-defs/{traitDefId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                traitDefId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Archive a custom field */
+        delete: operations["archiveTraitDef"];
+        options?: never;
+        head?: never;
+        /**
+         * Update a custom field
+         * @description Its key and data type are fixed at creation; only the label,
+         *     requiredness, filterability and sort order can change.
+         */
+        patch: operations["updateTraitDef"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -475,6 +682,159 @@ export interface components {
             avatarUrl?: string;
             /** Format: uuid */
             userId?: string;
+        };
+        UpdateMeRequest: {
+            /** @enum {string} */
+            locale?: "en" | "uk";
+        };
+        /** @enum {string} */
+        LocationKind: "home" | "storage" | "garage" | "relative" | "other";
+        Location: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            kind: components["schemas"]["LocationKind"];
+            address?: string;
+            /** Format: int32 */
+            sortOrder: number;
+            /** Format: date-time */
+            archivedAt?: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CreateLocationRequest: {
+            name: string;
+            kind: components["schemas"]["LocationKind"];
+            address?: string;
+            /**
+             * Format: int32
+             * @default 0
+             */
+            sortOrder: number;
+        };
+        UpdateLocationRequest: {
+            name?: string;
+            kind?: components["schemas"]["LocationKind"];
+            address?: string;
+            /** Format: int32 */
+            sortOrder?: number;
+        };
+        Room: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            locationId: string;
+            name: string;
+            /** Format: int32 */
+            sortOrder: number;
+            /** Format: date-time */
+            archivedAt?: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CreateRoomRequest: {
+            name: string;
+            /**
+             * Format: int32
+             * @default 0
+             */
+            sortOrder: number;
+        };
+        UpdateRoomRequest: {
+            name?: string;
+            /** Format: int32 */
+            sortOrder?: number;
+        };
+        /** @enum {string} */
+        TraitDataType: "text" | "number" | "integer" | "bool" | "date" | "enum" | "size";
+        TraitDef: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            categoryId: string;
+            key: string;
+            dataType: components["schemas"]["TraitDataType"];
+            unit?: string;
+            enumOptions?: string[];
+            /** @description Resolved in the request's locale; never a raw catalogue key. */
+            label: string;
+            required: boolean;
+            filterable: boolean;
+            /** Format: int32 */
+            sortOrder: number;
+            /** @description true when this field came from the seed migration rather than a family. */
+            isBuiltin: boolean;
+            /** Format: date-time */
+            archivedAt?: string;
+        };
+        CreateTraitDefRequest: {
+            /** @description Lowercase letters, digits, underscores or hyphens. */
+            key: string;
+            dataType: components["schemas"]["TraitDataType"];
+            unit?: string;
+            /** @description Required, and only meaningful, when dataType is "enum". */
+            enumOptions?: string[];
+            labelCustom: string;
+            /** @default false */
+            required: boolean;
+            /** @default false */
+            filterable: boolean;
+            /**
+             * Format: int32
+             * @default 0
+             */
+            sortOrder: number;
+        };
+        UpdateTraitDefRequest: {
+            labelCustom?: string;
+            required?: boolean;
+            filterable?: boolean;
+            /** Format: int32 */
+            sortOrder?: number;
+        };
+        Category: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            parentId?: string;
+            slug: string;
+            icon?: string;
+            /** @description Resolved in the request's locale; never a raw catalogue key. */
+            name: string;
+            /** Format: int32 */
+            sortOrder: number;
+            /** @description true when this category came from the seed migration rather than a family. */
+            isBuiltin: boolean;
+            /** Format: date-time */
+            archivedAt?: string;
+            traits: components["schemas"]["TraitDef"][];
+            children: components["schemas"]["Category"][];
+        };
+        Taxonomy: {
+            categories: components["schemas"]["Category"][];
+        };
+        CreateCategoryRequest: {
+            /** Format: uuid */
+            parentId?: string;
+            /** @description Lowercase letters, digits, underscores or hyphens. */
+            slug: string;
+            icon?: string;
+            nameCustom: string;
+            /**
+             * Format: int32
+             * @default 0
+             */
+            sortOrder: number;
+        };
+        UpdateCategoryRequest: {
+            nameCustom?: string;
+            icon?: string;
+            /** Format: int32 */
+            sortOrder?: number;
         };
     };
     responses: {
@@ -697,6 +1057,32 @@ export interface operations {
                     "application/json": components["schemas"]["Me"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    updateMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMeRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated user. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
         };
     };
@@ -1001,6 +1387,449 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Person"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listLocations: {
+        parameters: {
+            query?: {
+                includeArchived?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Locations, in their sort order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Location"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    createLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateLocationRequest"];
+            };
+        };
+        responses: {
+            /** @description The created location. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Location"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    getLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                locationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The location. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Location"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    archiveLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                locationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Archived. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                locationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateLocationRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated location. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Location"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listRooms: {
+        parameters: {
+            query?: {
+                includeArchived?: boolean;
+            };
+            header?: never;
+            path: {
+                locationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rooms, in their sort order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Room"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createRoom: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                locationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRoomRequest"];
+            };
+        };
+        responses: {
+            /** @description The created room. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Room"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getRoom: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                roomId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The room. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Room"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    archiveRoom: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                roomId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Archived. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateRoom: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                roomId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRoomRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated room. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Room"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getTaxonomy: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-None-Match"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The category tree. */
+            200: {
+                headers: {
+                    ETag?: string;
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Taxonomy"];
+                };
+            };
+            /** @description Nothing has changed since the given ETag. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    createCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCategoryRequest"];
+            };
+        };
+        responses: {
+            /** @description The created category. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Category"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    archiveCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                categoryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Archived. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                categoryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCategoryRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated category. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Category"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createTraitDef: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                categoryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTraitDefRequest"];
+            };
+        };
+        responses: {
+            /** @description The created field. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraitDef"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    archiveTraitDef: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                traitDefId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Archived. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateTraitDef: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                traitDefId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTraitDefRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated field. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraitDef"];
                 };
             };
             400: components["responses"]["BadRequest"];

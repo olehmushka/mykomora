@@ -263,6 +263,35 @@ func (h *Handler) GetMe(
 	}, nil
 }
 
+// UpdateMe changes the signed-in user's own preferences. Locale is the only
+// one so far.
+func (h *Handler) UpdateMe(
+	ctx context.Context,
+	request api.UpdateMeRequestObject,
+) (api.UpdateMeResponseObject, error) {
+	principal, ok := PrincipalFrom(ctx)
+	if !ok {
+		return api.UpdateMe401JSONResponse{UnauthorizedJSONResponse: noSession()}, nil
+	}
+
+	if request.Body == nil || request.Body.Locale == nil {
+		return api.UpdateMe400JSONResponse{BadRequestJSONResponse: api.BadRequestJSONResponse{
+			Code:    "invalid_me",
+			Message: "locale is required",
+		}}, nil
+	}
+
+	user, err := h.store.UpdateUserLocale(ctx, db.UpdateUserLocaleParams{
+		ID:     pgconv.UUID(principal.UserID),
+		Locale: pgconv.Text(string(*request.Body.Locale)),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("update locale: %w", err)
+	}
+
+	return api.UpdateMe200JSONResponse(apimap.User(user)), nil
+}
+
 // noSession is the standard 401 body. Every operation's 401 type wraps it.
 func noSession() api.UnauthorizedJSONResponse {
 	return api.UnauthorizedJSONResponse{

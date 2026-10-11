@@ -54,6 +54,10 @@ type RequestMeta struct {
 	UserAgent string
 	IP        *netip.Addr
 
+	// AcceptLanguage is the raw header value, read once here so handlers that
+	// need it (M2's locale.Resolver) stay free of *http.Request too.
+	AcceptLanguage string
+
 	// RefreshToken is the raw value of the refresh cookie, empty when absent.
 	RefreshToken string
 	// Flow is the raw value of the OAuth flow cookie, empty when absent.
@@ -107,9 +111,10 @@ func RequestMetaFrom(ctx context.Context) RequestMeta {
 // readRequestMeta extracts everything the handlers need from the raw request.
 func readRequestMeta(r *http.Request) RequestMeta {
 	meta := RequestMeta{
-		UserAgent:  r.UserAgent(),
-		IP:         clientIP(r),
-		CSRFHeader: r.Header.Get(CSRFHeaderName),
+		UserAgent:      r.UserAgent(),
+		IP:             clientIP(r),
+		AcceptLanguage: r.Header.Get("Accept-Language"),
+		CSRFHeader:     r.Header.Get(CSRFHeaderName),
 	}
 
 	if c, err := r.Cookie(RefreshCookieName); err == nil {
@@ -131,9 +136,10 @@ func readRequestMeta(r *http.Request) RequestMeta {
 // X-Forwarded-For.
 //
 // That header is trivially spoofable and nothing in front of core-api is
-// trusted to sanitise it yet. Client IP becomes load-bearing in M2 (default
-// locale) and M10 (rate limits); both deserve a proxy-aware resolver keyed to
-// Caddy's known address, not a guess made here.
+// trusted to sanitise it yet. M2 dropped the one planned use of client IP
+// (GeoIP-based default locale — see internal/locale's doc comment), so the
+// next thing to make this load-bearing is M10's rate limits, which deserve a
+// proxy-aware resolver keyed to Caddy's known address, not a guess made here.
 func clientIP(r *http.Request) *netip.Addr {
 	host := r.RemoteAddr
 	if h, _, err := net.SplitHostPort(host); err == nil {

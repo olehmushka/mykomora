@@ -65,23 +65,34 @@ run: ## Run with live reload against a local database
 
 ## --- migrations ------------------------------------------------------------
 
+## db/migrations/00006_taxonomy_seed.go is a Go-function migration: it only
+## registers with a process that imports db/migrations, which the stock
+## goose CLI never does. cmd/migrate does that import, so up/down/reset/status
+## run through it instead of $(GOOSE) directly. migrate-create (scaffolding a
+## new filename) needs no registration and stays on the stock CLI.
+
 .PHONY: migrate-up
 migrate-up: ## Apply all pending migrations
-	$(GOOSE) postgres "$(DATABASE_URL)" up
+	go run ./cmd/migrate up
 
 .PHONY: migrate-down
 migrate-down: ## Roll back the most recent migration
-	$(GOOSE) postgres "$(DATABASE_URL)" down
+	go run ./cmd/migrate down
 
 .PHONY: migrate-reset
 migrate-reset: ## Roll every migration back to base
-	$(GOOSE) postgres "$(DATABASE_URL)" down-to 0
+	go run ./cmd/migrate down-to-0
 
 .PHONY: migrate-status
 migrate-status: ## Show which migrations have been applied
-	$(GOOSE) postgres "$(DATABASE_URL)" status
+	go run ./cmd/migrate status
 
 .PHONY: migrate-create
 migrate-create: ## Create a new SQL migration: make migrate-create name=add_items
 	@test -n "$(name)" || { echo "usage: make migrate-create name=<snake_case_name>"; exit 1; }
 	$(GOOSE) create $(name) sql
+
+.PHONY: migrate-create-go
+migrate-create-go: ## Create a new Go-function migration: make migrate-create-go name=backfill_x
+	@test -n "$(name)" || { echo "usage: make migrate-create-go name=<snake_case_name>"; exit 1; }
+	$(GOOSE) create $(name) go

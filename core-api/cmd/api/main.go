@@ -9,14 +9,18 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/olehmushka/mykomora/core-api/internal/auth"
+	"github.com/olehmushka/mykomora/core-api/internal/catalogue"
 	"github.com/olehmushka/mykomora/core-api/internal/config"
 	"github.com/olehmushka/mykomora/core-api/internal/family"
 	"github.com/olehmushka/mykomora/core-api/internal/health"
 	"github.com/olehmushka/mykomora/core-api/internal/httpapi"
 	"github.com/olehmushka/mykomora/core-api/internal/httpserver"
+	"github.com/olehmushka/mykomora/core-api/internal/locale"
 	"github.com/olehmushka/mykomora/core-api/internal/logging"
 	"github.com/olehmushka/mykomora/core-api/internal/people"
+	"github.com/olehmushka/mykomora/core-api/internal/places"
 	"github.com/olehmushka/mykomora/core-api/internal/postgres"
+	"github.com/olehmushka/mykomora/core-api/internal/taxonomy"
 )
 
 func main() {
@@ -28,6 +32,10 @@ func main() {
 		auth.Module,
 		family.Module,
 		people.Module,
+		locale.Module,
+		catalogue.Module,
+		places.Module,
+		taxonomy.Module,
 		httpapi.Module,
 		httpserver.Module,
 	).Run()

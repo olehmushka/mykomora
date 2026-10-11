@@ -85,6 +85,36 @@ Prove the entire toolchain end to end before writing any domain code.
 
 **Done when:** the whole UI renders correctly in Ukrainian and English, and a Ukrainian IP lands on `uk` by default.
 
+> **Delivered, with four notes.**
+>
+> *GeoIP was dropped entirely.* SPEC's locale order includes an IP geolocated against MaxMind's
+> GeoLite2-Country database; that step would mean an account, a license key and a
+> redistribution/update story for a database file, for a single-family app with no public sign-up.
+> Locale resolves from the `NEXT_LOCALE` cookie (web), then `Accept-Language`, then English — no
+> client IP anywhere in the chain. This milestone's own "Done when" sentence no longer holds for
+> its second clause: a Ukrainian IP with no cookie and an English-language browser now sees `en` on
+> first load, not `uk`.
+>
+> *Migrations now run through `core-api/cmd/migrate`, not the stock `goose` CLI.* The 23-category
+> seed is this repo's first Go-function goose migration
+> (`db/migrations/00006_taxonomy_seed.go`), and `goose.AddMigrationContext` only registers a
+> migration with the process that imports the package defining it — which the stock CLI never
+> does. `make migrate-up/down/reset/status` and the `migrate` Compose service now go through that
+> command instead; `make migrate-create` (scaffolding a new filename) is unaffected, and
+> `make migrate-create-go` was added alongside it.
+>
+> *Locale resolution splits across the two services rather than living in one chain.* core-api's
+> `internal/locale.Resolver` only ever sees the stored preference (`users.locale`) and the
+> `Accept-Language` it was sent; the web app resolves the `NEXT_LOCALE` cookie itself before a
+> request ever reaches core-api, and sends the result as that header. This is also correct for a
+> future mobile client, which has no concept of that cookie at all.
+>
+> *M1's existing error strings were not retrofitted into the Go message catalogue.* The catalogue
+> (`internal/catalogue`) covers the 23 categories' and their traits' labels plus this milestone's
+> own new validation messages; `people` and `family`'s hardcoded strings are migrated
+> opportunistically as those files are next touched, not as a blanket rewrite — the web app doesn't
+> render them bilingually today either.
+
 ---
 
 ## M3 — Items core *(8–10 days — the largest milestone)*

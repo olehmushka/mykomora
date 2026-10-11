@@ -24,6 +24,8 @@ import (
 	"github.com/pressly/goose/v3"
 	"github.com/testcontainers/testcontainers-go"
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
+
+	_ "github.com/olehmushka/mykomora/core-api/db/migrations" // registers the Go migrations
 )
 
 // DB is a migrated, throwaway database and the two handles onto it: the pgx

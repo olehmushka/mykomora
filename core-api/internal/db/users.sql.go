@@ -47,6 +47,37 @@ func (q *Queries) TouchUserLastSeen(ctx context.Context, id pgtype.UUID) error {
 	return err
 }
 
+const updateUserLocale = `-- name: UpdateUserLocale :one
+UPDATE users
+SET locale = $1
+WHERE id = $2
+RETURNING id, google_sub, email, display_name, avatar_url, locale, created_at, last_seen_at
+`
+
+type UpdateUserLocaleParams struct {
+	Locale pgtype.Text `json:"locale"`
+	ID     pgtype.UUID `json:"id"`
+}
+
+// TENANCY: pre-tenant, same reasoning as every other query in this file — a
+// locale preference belongs to the account, not to any one family it is a
+// member of.
+func (q *Queries) UpdateUserLocale(ctx context.Context, arg UpdateUserLocaleParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUserLocale, arg.Locale, arg.ID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.GoogleSub,
+		&i.Email,
+		&i.DisplayName,
+		&i.AvatarUrl,
+		&i.Locale,
+		&i.CreatedAt,
+		&i.LastSeenAt,
+	)
+	return i, err
+}
+
 const upsertUserByGoogleSub = `-- name: UpsertUserByGoogleSub :one
 
 INSERT INTO users (google_sub, email, display_name, avatar_url)

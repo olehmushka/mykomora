@@ -80,6 +80,33 @@ func (e InviteStatus) Valid() bool {
 	}
 }
 
+// Defines values for LocationKind.
+const (
+	Garage   LocationKind = "garage"
+	Home     LocationKind = "home"
+	Other    LocationKind = "other"
+	Relative LocationKind = "relative"
+	Storage  LocationKind = "storage"
+)
+
+// Valid indicates whether the value is a known member of the LocationKind enum.
+func (e LocationKind) Valid() bool {
+	switch e {
+	case Garage:
+		return true
+	case Home:
+		return true
+	case Other:
+		return true
+	case Relative:
+		return true
+	case Storage:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PingResultDatabase.
 const (
 	PingResultDatabaseOk PingResultDatabase = "ok"
@@ -95,22 +122,110 @@ func (e PingResultDatabase) Valid() bool {
 	}
 }
 
+// Defines values for TraitDataType.
+const (
+	Bool    TraitDataType = "bool"
+	Date    TraitDataType = "date"
+	Enum    TraitDataType = "enum"
+	Integer TraitDataType = "integer"
+	Number  TraitDataType = "number"
+	Size    TraitDataType = "size"
+	Text    TraitDataType = "text"
+)
+
+// Valid indicates whether the value is a known member of the TraitDataType enum.
+func (e TraitDataType) Valid() bool {
+	switch e {
+	case Bool:
+		return true
+	case Date:
+		return true
+	case Enum:
+		return true
+	case Integer:
+		return true
+	case Number:
+		return true
+	case Size:
+		return true
+	case Text:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateMeRequestLocale.
+const (
+	UpdateMeRequestLocaleEn UpdateMeRequestLocale = "en"
+	UpdateMeRequestLocaleUk UpdateMeRequestLocale = "uk"
+)
+
+// Valid indicates whether the value is a known member of the UpdateMeRequestLocale enum.
+func (e UpdateMeRequestLocale) Valid() bool {
+	switch e {
+	case UpdateMeRequestLocaleEn:
+		return true
+	case UpdateMeRequestLocaleUk:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for UserLocale.
 const (
-	En UserLocale = "en"
-	Uk UserLocale = "uk"
+	UserLocaleEn UserLocale = "en"
+	UserLocaleUk UserLocale = "uk"
 )
 
 // Valid indicates whether the value is a known member of the UserLocale enum.
 func (e UserLocale) Valid() bool {
 	switch e {
-	case En:
+	case UserLocaleEn:
 		return true
-	case Uk:
+	case UserLocaleUk:
 		return true
 	default:
 		return false
 	}
+}
+
+// Category defines model for Category.
+type Category struct {
+	ArchivedAt *time.Time         `json:"archivedAt,omitempty"`
+	Children   []Category         `json:"children"`
+	Icon       *string            `json:"icon,omitempty"`
+	Id         openapi_types.UUID `json:"id"`
+
+	// IsBuiltin true when this category came from the seed migration rather than a family.
+	IsBuiltin bool `json:"isBuiltin"`
+
+	// Name Resolved in the request's locale; never a raw catalogue key.
+	Name      string              `json:"name"`
+	ParentId  *openapi_types.UUID `json:"parentId,omitempty"`
+	Slug      string              `json:"slug"`
+	SortOrder int32               `json:"sortOrder"`
+	Traits    []TraitDef          `json:"traits"`
+}
+
+// CreateCategoryRequest defines model for CreateCategoryRequest.
+type CreateCategoryRequest struct {
+	Icon       *string             `json:"icon,omitempty"`
+	NameCustom string              `json:"nameCustom"`
+	ParentId   *openapi_types.UUID `json:"parentId,omitempty"`
+
+	// Slug Lowercase letters, digits, underscores or hyphens.
+	Slug      string `json:"slug"`
+	SortOrder *int32 `json:"sortOrder,omitempty"`
+}
+
+// CreateLocationRequest defines model for CreateLocationRequest.
+type CreateLocationRequest struct {
+	Address   *string      `json:"address,omitempty"`
+	Kind      LocationKind `json:"kind"`
+	Name      string       `json:"name"`
+	SortOrder *int32       `json:"sortOrder,omitempty"`
 }
 
 // CreatePersonRequest defines model for CreatePersonRequest.
@@ -120,6 +235,28 @@ type CreatePersonRequest struct {
 	IsChild   *bool               `json:"isChild,omitempty"`
 	Name      string              `json:"name"`
 	UserId    *openapi_types.UUID `json:"userId,omitempty"`
+}
+
+// CreateRoomRequest defines model for CreateRoomRequest.
+type CreateRoomRequest struct {
+	Name      string `json:"name"`
+	SortOrder *int32 `json:"sortOrder,omitempty"`
+}
+
+// CreateTraitDefRequest defines model for CreateTraitDefRequest.
+type CreateTraitDefRequest struct {
+	DataType TraitDataType `json:"dataType"`
+
+	// EnumOptions Required, and only meaningful, when dataType is "enum".
+	EnumOptions *[]string `json:"enumOptions,omitempty"`
+	Filterable  *bool     `json:"filterable,omitempty"`
+
+	// Key Lowercase letters, digits, underscores or hyphens.
+	Key         string  `json:"key"`
+	LabelCustom string  `json:"labelCustom"`
+	Required    *bool   `json:"required,omitempty"`
+	SortOrder   *int32  `json:"sortOrder,omitempty"`
+	Unit        *string `json:"unit,omitempty"`
 }
 
 // CreatedInvite defines model for CreatedInvite.
@@ -200,6 +337,21 @@ type InvitePreview struct {
 // InviteStatus defines model for InviteStatus.
 type InviteStatus string
 
+// Location defines model for Location.
+type Location struct {
+	Address    *string            `json:"address,omitempty"`
+	ArchivedAt *time.Time         `json:"archivedAt,omitempty"`
+	CreatedAt  time.Time          `json:"createdAt"`
+	Id         openapi_types.UUID `json:"id"`
+	Kind       LocationKind       `json:"kind"`
+	Name       string             `json:"name"`
+	SortOrder  int32              `json:"sortOrder"`
+	UpdatedAt  time.Time          `json:"updatedAt"`
+}
+
+// LocationKind defines model for LocationKind.
+type LocationKind string
+
 // Me defines model for Me.
 type Me struct {
 	Family Family `json:"family"`
@@ -237,11 +389,73 @@ type PingResult struct {
 // PingResultDatabase Always `ok`; the 503 response covers the failure case.
 type PingResultDatabase string
 
+// Room defines model for Room.
+type Room struct {
+	ArchivedAt *time.Time         `json:"archivedAt,omitempty"`
+	CreatedAt  time.Time          `json:"createdAt"`
+	Id         openapi_types.UUID `json:"id"`
+	LocationId openapi_types.UUID `json:"locationId"`
+	Name       string             `json:"name"`
+	SortOrder  int32              `json:"sortOrder"`
+	UpdatedAt  time.Time          `json:"updatedAt"`
+}
+
+// Taxonomy defines model for Taxonomy.
+type Taxonomy struct {
+	Categories []Category `json:"categories"`
+}
+
+// TraitDataType defines model for TraitDataType.
+type TraitDataType string
+
+// TraitDef defines model for TraitDef.
+type TraitDef struct {
+	ArchivedAt  *time.Time         `json:"archivedAt,omitempty"`
+	CategoryId  openapi_types.UUID `json:"categoryId"`
+	DataType    TraitDataType      `json:"dataType"`
+	EnumOptions *[]string          `json:"enumOptions,omitempty"`
+	Filterable  bool               `json:"filterable"`
+	Id          openapi_types.UUID `json:"id"`
+
+	// IsBuiltin true when this field came from the seed migration rather than a family.
+	IsBuiltin bool   `json:"isBuiltin"`
+	Key       string `json:"key"`
+
+	// Label Resolved in the request's locale; never a raw catalogue key.
+	Label     string  `json:"label"`
+	Required  bool    `json:"required"`
+	SortOrder int32   `json:"sortOrder"`
+	Unit      *string `json:"unit,omitempty"`
+}
+
+// UpdateCategoryRequest defines model for UpdateCategoryRequest.
+type UpdateCategoryRequest struct {
+	Icon       *string `json:"icon,omitempty"`
+	NameCustom *string `json:"nameCustom,omitempty"`
+	SortOrder  *int32  `json:"sortOrder,omitempty"`
+}
+
 // UpdateFamilyRequest defines model for UpdateFamilyRequest.
 type UpdateFamilyRequest struct {
 	DefaultCurrency *string `json:"defaultCurrency,omitempty"`
 	Name            *string `json:"name,omitempty"`
 }
+
+// UpdateLocationRequest defines model for UpdateLocationRequest.
+type UpdateLocationRequest struct {
+	Address   *string       `json:"address,omitempty"`
+	Kind      *LocationKind `json:"kind,omitempty"`
+	Name      *string       `json:"name,omitempty"`
+	SortOrder *int32        `json:"sortOrder,omitempty"`
+}
+
+// UpdateMeRequest defines model for UpdateMeRequest.
+type UpdateMeRequest struct {
+	Locale *UpdateMeRequestLocale `json:"locale,omitempty"`
+}
+
+// UpdateMeRequestLocale defines model for UpdateMeRequest.Locale.
+type UpdateMeRequestLocale string
 
 // UpdatePersonRequest defines model for UpdatePersonRequest.
 type UpdatePersonRequest struct {
@@ -250,6 +464,20 @@ type UpdatePersonRequest struct {
 	IsChild   *bool               `json:"isChild,omitempty"`
 	Name      *string             `json:"name,omitempty"`
 	UserId    *openapi_types.UUID `json:"userId,omitempty"`
+}
+
+// UpdateRoomRequest defines model for UpdateRoomRequest.
+type UpdateRoomRequest struct {
+	Name      *string `json:"name,omitempty"`
+	SortOrder *int32  `json:"sortOrder,omitempty"`
+}
+
+// UpdateTraitDefRequest defines model for UpdateTraitDefRequest.
+type UpdateTraitDefRequest struct {
+	Filterable  *bool   `json:"filterable,omitempty"`
+	LabelCustom *string `json:"labelCustom,omitempty"`
+	Required    *bool   `json:"required,omitempty"`
+	SortOrder   *int32  `json:"sortOrder,omitempty"`
 }
 
 // User defines model for User.
@@ -302,19 +530,61 @@ type StartGoogleAuthParams struct {
 	Next *string `form:"next,omitempty" json:"next,omitempty"`
 }
 
+// ListLocationsParams defines parameters for ListLocations.
+type ListLocationsParams struct {
+	IncludeArchived *bool `form:"includeArchived,omitempty" json:"includeArchived,omitempty"`
+}
+
+// ListRoomsParams defines parameters for ListRooms.
+type ListRoomsParams struct {
+	IncludeArchived *bool `form:"includeArchived,omitempty" json:"includeArchived,omitempty"`
+}
+
 // ListPeopleParams defines parameters for ListPeople.
 type ListPeopleParams struct {
 	IncludeArchived *bool `form:"includeArchived,omitempty" json:"includeArchived,omitempty"`
 }
 
+// GetTaxonomyParams defines parameters for GetTaxonomy.
+type GetTaxonomyParams struct {
+	IfNoneMatch *string `json:"If-None-Match,omitempty"`
+}
+
+// CreateCategoryJSONRequestBody defines body for CreateCategory for application/json ContentType.
+type CreateCategoryJSONRequestBody = CreateCategoryRequest
+
+// UpdateCategoryJSONRequestBody defines body for UpdateCategory for application/json ContentType.
+type UpdateCategoryJSONRequestBody = UpdateCategoryRequest
+
+// CreateTraitDefJSONRequestBody defines body for CreateTraitDef for application/json ContentType.
+type CreateTraitDefJSONRequestBody = CreateTraitDefRequest
+
 // UpdateFamilyJSONRequestBody defines body for UpdateFamily for application/json ContentType.
 type UpdateFamilyJSONRequestBody = UpdateFamilyRequest
+
+// CreateLocationJSONRequestBody defines body for CreateLocation for application/json ContentType.
+type CreateLocationJSONRequestBody = CreateLocationRequest
+
+// UpdateLocationJSONRequestBody defines body for UpdateLocation for application/json ContentType.
+type UpdateLocationJSONRequestBody = UpdateLocationRequest
+
+// CreateRoomJSONRequestBody defines body for CreateRoom for application/json ContentType.
+type CreateRoomJSONRequestBody = CreateRoomRequest
+
+// UpdateMeJSONRequestBody defines body for UpdateMe for application/json ContentType.
+type UpdateMeJSONRequestBody = UpdateMeRequest
 
 // CreatePersonJSONRequestBody defines body for CreatePerson for application/json ContentType.
 type CreatePersonJSONRequestBody = CreatePersonRequest
 
 // UpdatePersonJSONRequestBody defines body for UpdatePerson for application/json ContentType.
 type UpdatePersonJSONRequestBody = UpdatePersonRequest
+
+// UpdateRoomJSONRequestBody defines body for UpdateRoom for application/json ContentType.
+type UpdateRoomJSONRequestBody = UpdateRoomRequest
+
+// UpdateTraitDefJSONRequestBody defines body for UpdateTraitDef for application/json ContentType.
+type UpdateTraitDefJSONRequestBody = UpdateTraitDefRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -330,6 +600,18 @@ type ServerInterface interface {
 	// RefreshSession Rotate the session
 	// (POST /api/v1/auth/refresh)
 	RefreshSession(w http.ResponseWriter, r *http.Request)
+	// CreateCategory Add a family-defined category
+	// (POST /api/v1/categories)
+	CreateCategory(w http.ResponseWriter, r *http.Request)
+	// ArchiveCategory Archive a family-defined category
+	// (DELETE /api/v1/categories/{categoryId})
+	ArchiveCategory(w http.ResponseWriter, r *http.Request, categoryId openapi_types.UUID)
+	// UpdateCategory Update a family-defined category
+	// (PATCH /api/v1/categories/{categoryId})
+	UpdateCategory(w http.ResponseWriter, r *http.Request, categoryId openapi_types.UUID)
+	// CreateTraitDef Add a custom field to a category
+	// (POST /api/v1/categories/{categoryId}/trait-defs)
+	CreateTraitDef(w http.ResponseWriter, r *http.Request, categoryId openapi_types.UUID)
 	// GetFamily The current family's settings
 	// (GET /api/v1/family)
 	GetFamily(w http.ResponseWriter, r *http.Request)
@@ -354,9 +636,33 @@ type ServerInterface interface {
 	// GetInvitePreview What an invite link leads to
 	// (GET /api/v1/invites/{token})
 	GetInvitePreview(w http.ResponseWriter, r *http.Request, token string)
+	// ListLocations The family's locations
+	// (GET /api/v1/locations)
+	ListLocations(w http.ResponseWriter, r *http.Request, params ListLocationsParams)
+	// CreateLocation Add a location
+	// (POST /api/v1/locations)
+	CreateLocation(w http.ResponseWriter, r *http.Request)
+	// ArchiveLocation Archive a location
+	// (DELETE /api/v1/locations/{locationId})
+	ArchiveLocation(w http.ResponseWriter, r *http.Request, locationId openapi_types.UUID)
+	// GetLocation One location
+	// (GET /api/v1/locations/{locationId})
+	GetLocation(w http.ResponseWriter, r *http.Request, locationId openapi_types.UUID)
+	// UpdateLocation Update a location
+	// (PATCH /api/v1/locations/{locationId})
+	UpdateLocation(w http.ResponseWriter, r *http.Request, locationId openapi_types.UUID)
+	// ListRooms The rooms of one location
+	// (GET /api/v1/locations/{locationId}/rooms)
+	ListRooms(w http.ResponseWriter, r *http.Request, locationId openapi_types.UUID, params ListRoomsParams)
+	// CreateRoom Add a room to a location
+	// (POST /api/v1/locations/{locationId}/rooms)
+	CreateRoom(w http.ResponseWriter, r *http.Request, locationId openapi_types.UUID)
 	// GetMe The signed-in user and their current family
 	// (GET /api/v1/me)
 	GetMe(w http.ResponseWriter, r *http.Request)
+	// UpdateMe Update the signed-in user's own preferences
+	// (PATCH /api/v1/me)
+	UpdateMe(w http.ResponseWriter, r *http.Request)
 	// ListPeople People the family tracks things for
 	// (GET /api/v1/people)
 	ListPeople(w http.ResponseWriter, r *http.Request, params ListPeopleParams)
@@ -375,6 +681,24 @@ type ServerInterface interface {
 	// GetPing Round-trip probe
 	// (GET /api/v1/ping)
 	GetPing(w http.ResponseWriter, r *http.Request)
+	// ArchiveRoom Archive a room
+	// (DELETE /api/v1/rooms/{roomId})
+	ArchiveRoom(w http.ResponseWriter, r *http.Request, roomId openapi_types.UUID)
+	// GetRoom One room
+	// (GET /api/v1/rooms/{roomId})
+	GetRoom(w http.ResponseWriter, r *http.Request, roomId openapi_types.UUID)
+	// UpdateRoom Update a room
+	// (PATCH /api/v1/rooms/{roomId})
+	UpdateRoom(w http.ResponseWriter, r *http.Request, roomId openapi_types.UUID)
+	// GetTaxonomy The localised category tree and its trait schema
+	// (GET /api/v1/taxonomy)
+	GetTaxonomy(w http.ResponseWriter, r *http.Request, params GetTaxonomyParams)
+	// ArchiveTraitDef Archive a custom field
+	// (DELETE /api/v1/trait-defs/{traitDefId})
+	ArchiveTraitDef(w http.ResponseWriter, r *http.Request, traitDefId openapi_types.UUID)
+	// UpdateTraitDef Update a custom field
+	// (PATCH /api/v1/trait-defs/{traitDefId})
+	UpdateTraitDef(w http.ResponseWriter, r *http.Request, traitDefId openapi_types.UUID)
 	// GetHealthz Liveness probe
 	// (GET /healthz)
 	GetHealthz(w http.ResponseWriter, r *http.Request)
@@ -405,6 +729,30 @@ func (_ Unimplemented) Logout(w http.ResponseWriter, r *http.Request) {
 // RefreshSession Rotate the session
 // (POST /api/v1/auth/refresh)
 func (_ Unimplemented) RefreshSession(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateCategory Add a family-defined category
+// (POST /api/v1/categories)
+func (_ Unimplemented) CreateCategory(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ArchiveCategory Archive a family-defined category
+// (DELETE /api/v1/categories/{categoryId})
+func (_ Unimplemented) ArchiveCategory(w http.ResponseWriter, r *http.Request, categoryId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateCategory Update a family-defined category
+// (PATCH /api/v1/categories/{categoryId})
+func (_ Unimplemented) UpdateCategory(w http.ResponseWriter, r *http.Request, categoryId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateTraitDef Add a custom field to a category
+// (POST /api/v1/categories/{categoryId}/trait-defs)
+func (_ Unimplemented) CreateTraitDef(w http.ResponseWriter, r *http.Request, categoryId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -456,9 +804,57 @@ func (_ Unimplemented) GetInvitePreview(w http.ResponseWriter, r *http.Request, 
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// ListLocations The family's locations
+// (GET /api/v1/locations)
+func (_ Unimplemented) ListLocations(w http.ResponseWriter, r *http.Request, params ListLocationsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateLocation Add a location
+// (POST /api/v1/locations)
+func (_ Unimplemented) CreateLocation(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ArchiveLocation Archive a location
+// (DELETE /api/v1/locations/{locationId})
+func (_ Unimplemented) ArchiveLocation(w http.ResponseWriter, r *http.Request, locationId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetLocation One location
+// (GET /api/v1/locations/{locationId})
+func (_ Unimplemented) GetLocation(w http.ResponseWriter, r *http.Request, locationId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateLocation Update a location
+// (PATCH /api/v1/locations/{locationId})
+func (_ Unimplemented) UpdateLocation(w http.ResponseWriter, r *http.Request, locationId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListRooms The rooms of one location
+// (GET /api/v1/locations/{locationId}/rooms)
+func (_ Unimplemented) ListRooms(w http.ResponseWriter, r *http.Request, locationId openapi_types.UUID, params ListRoomsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateRoom Add a room to a location
+// (POST /api/v1/locations/{locationId}/rooms)
+func (_ Unimplemented) CreateRoom(w http.ResponseWriter, r *http.Request, locationId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // GetMe The signed-in user and their current family
 // (GET /api/v1/me)
 func (_ Unimplemented) GetMe(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateMe Update the signed-in user's own preferences
+// (PATCH /api/v1/me)
+func (_ Unimplemented) UpdateMe(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -495,6 +891,42 @@ func (_ Unimplemented) UpdatePerson(w http.ResponseWriter, r *http.Request, pers
 // GetPing Round-trip probe
 // (GET /api/v1/ping)
 func (_ Unimplemented) GetPing(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ArchiveRoom Archive a room
+// (DELETE /api/v1/rooms/{roomId})
+func (_ Unimplemented) ArchiveRoom(w http.ResponseWriter, r *http.Request, roomId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetRoom One room
+// (GET /api/v1/rooms/{roomId})
+func (_ Unimplemented) GetRoom(w http.ResponseWriter, r *http.Request, roomId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateRoom Update a room
+// (PATCH /api/v1/rooms/{roomId})
+func (_ Unimplemented) UpdateRoom(w http.ResponseWriter, r *http.Request, roomId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetTaxonomy The localised category tree and its trait schema
+// (GET /api/v1/taxonomy)
+func (_ Unimplemented) GetTaxonomy(w http.ResponseWriter, r *http.Request, params GetTaxonomyParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ArchiveTraitDef Archive a custom field
+// (DELETE /api/v1/trait-defs/{traitDefId})
+func (_ Unimplemented) ArchiveTraitDef(w http.ResponseWriter, r *http.Request, traitDefId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateTraitDef Update a custom field
+// (PATCH /api/v1/trait-defs/{traitDefId})
+func (_ Unimplemented) UpdateTraitDef(w http.ResponseWriter, r *http.Request, traitDefId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -637,6 +1069,98 @@ func (siw *ServerInterfaceWrapper) RefreshSession(w http.ResponseWriter, r *http
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.RefreshSession(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateCategory operation middleware
+func (siw *ServerInterfaceWrapper) CreateCategory(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateCategory(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ArchiveCategory operation middleware
+func (siw *ServerInterfaceWrapper) ArchiveCategory(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "categoryId" -------------
+	var categoryId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "categoryId", chi.URLParam(r, "categoryId"), &categoryId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "categoryId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ArchiveCategory(w, r, categoryId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateCategory operation middleware
+func (siw *ServerInterfaceWrapper) UpdateCategory(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "categoryId" -------------
+	var categoryId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "categoryId", chi.URLParam(r, "categoryId"), &categoryId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "categoryId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateCategory(w, r, categoryId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateTraitDef operation middleware
+func (siw *ServerInterfaceWrapper) CreateTraitDef(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "categoryId" -------------
+	var categoryId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "categoryId", chi.URLParam(r, "categoryId"), &categoryId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "categoryId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateTraitDef(w, r, categoryId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -794,11 +1318,218 @@ func (siw *ServerInterfaceWrapper) GetInvitePreview(w http.ResponseWriter, r *ht
 	handler.ServeHTTP(w, r)
 }
 
+// ListLocations operation middleware
+func (siw *ServerInterfaceWrapper) ListLocations(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListLocationsParams
+
+	// ------------- Optional query parameter "includeArchived" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "includeArchived", r.URL.Query(), &params.IncludeArchived, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "includeArchived"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "includeArchived", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListLocations(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateLocation operation middleware
+func (siw *ServerInterfaceWrapper) CreateLocation(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateLocation(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ArchiveLocation operation middleware
+func (siw *ServerInterfaceWrapper) ArchiveLocation(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "locationId" -------------
+	var locationId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "locationId", chi.URLParam(r, "locationId"), &locationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "locationId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ArchiveLocation(w, r, locationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetLocation operation middleware
+func (siw *ServerInterfaceWrapper) GetLocation(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "locationId" -------------
+	var locationId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "locationId", chi.URLParam(r, "locationId"), &locationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "locationId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetLocation(w, r, locationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateLocation operation middleware
+func (siw *ServerInterfaceWrapper) UpdateLocation(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "locationId" -------------
+	var locationId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "locationId", chi.URLParam(r, "locationId"), &locationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "locationId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateLocation(w, r, locationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListRooms operation middleware
+func (siw *ServerInterfaceWrapper) ListRooms(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "locationId" -------------
+	var locationId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "locationId", chi.URLParam(r, "locationId"), &locationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "locationId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListRoomsParams
+
+	// ------------- Optional query parameter "includeArchived" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "includeArchived", r.URL.Query(), &params.IncludeArchived, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "includeArchived"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "includeArchived", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListRooms(w, r, locationId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateRoom operation middleware
+func (siw *ServerInterfaceWrapper) CreateRoom(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "locationId" -------------
+	var locationId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "locationId", chi.URLParam(r, "locationId"), &locationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "locationId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateRoom(w, r, locationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetMe operation middleware
 func (siw *ServerInterfaceWrapper) GetMe(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetMe(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateMe operation middleware
+func (siw *ServerInterfaceWrapper) UpdateMe(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateMe(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -938,6 +1669,177 @@ func (siw *ServerInterfaceWrapper) GetPing(w http.ResponseWriter, r *http.Reques
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetPing(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ArchiveRoom operation middleware
+func (siw *ServerInterfaceWrapper) ArchiveRoom(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "roomId" -------------
+	var roomId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "roomId", chi.URLParam(r, "roomId"), &roomId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "roomId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ArchiveRoom(w, r, roomId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetRoom operation middleware
+func (siw *ServerInterfaceWrapper) GetRoom(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "roomId" -------------
+	var roomId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "roomId", chi.URLParam(r, "roomId"), &roomId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "roomId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRoom(w, r, roomId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateRoom operation middleware
+func (siw *ServerInterfaceWrapper) UpdateRoom(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "roomId" -------------
+	var roomId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "roomId", chi.URLParam(r, "roomId"), &roomId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "roomId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateRoom(w, r, roomId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetTaxonomy operation middleware
+func (siw *ServerInterfaceWrapper) GetTaxonomy(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetTaxonomyParams
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "If-None-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-None-Match")]; found {
+		var IfNoneMatch string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "If-None-Match", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-None-Match", valueList[0], &IfNoneMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "If-None-Match", Err: err})
+			return
+		}
+
+		params.IfNoneMatch = &IfNoneMatch
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetTaxonomy(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ArchiveTraitDef operation middleware
+func (siw *ServerInterfaceWrapper) ArchiveTraitDef(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "traitDefId" -------------
+	var traitDefId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "traitDefId", chi.URLParam(r, "traitDefId"), &traitDefId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "traitDefId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ArchiveTraitDef(w, r, traitDefId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateTraitDef operation middleware
+func (siw *ServerInterfaceWrapper) UpdateTraitDef(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "traitDefId" -------------
+	var traitDefId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "traitDefId", chi.URLParam(r, "traitDefId"), &traitDefId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "traitDefId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateTraitDef(w, r, traitDefId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1096,6 +1998,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/api/v1/me", wrapper.GetMe)
 	})
 	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/api/v1/me", wrapper.UpdateMe)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/family", wrapper.GetFamily)
 	})
 	r.Group(func(r chi.Router) {
@@ -1133,6 +2038,57 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Patch(options.BaseURL+"/api/v1/people/{personId}", wrapper.UpdatePerson)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/locations", wrapper.ListLocations)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/locations", wrapper.CreateLocation)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/api/v1/locations/{locationId}", wrapper.ArchiveLocation)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/locations/{locationId}", wrapper.GetLocation)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/api/v1/locations/{locationId}", wrapper.UpdateLocation)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/locations/{locationId}/rooms", wrapper.ListRooms)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/locations/{locationId}/rooms", wrapper.CreateRoom)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/api/v1/rooms/{roomId}", wrapper.ArchiveRoom)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/rooms/{roomId}", wrapper.GetRoom)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/api/v1/rooms/{roomId}", wrapper.UpdateRoom)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/taxonomy", wrapper.GetTaxonomy)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/categories", wrapper.CreateCategory)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/api/v1/categories/{categoryId}", wrapper.ArchiveCategory)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/api/v1/categories/{categoryId}", wrapper.UpdateCategory)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/categories/{categoryId}/trait-defs", wrapper.CreateTraitDef)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/api/v1/trait-defs/{traitDefId}", wrapper.ArchiveTraitDef)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/api/v1/trait-defs/{traitDefId}", wrapper.UpdateTraitDef)
 	})
 
 	return r
@@ -1272,6 +2228,230 @@ func (response RefreshSession401JSONResponse) VisitRefreshSessionResponse(w http
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCategoryRequestObject struct {
+	Body *CreateCategoryJSONRequestBody
+}
+
+type CreateCategoryResponseObject interface {
+	VisitCreateCategoryResponse(w http.ResponseWriter) error
+}
+
+type CreateCategory201JSONResponse Category
+
+func (response CreateCategory201JSONResponse) VisitCreateCategoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCategory400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateCategory400JSONResponse) VisitCreateCategoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCategory401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreateCategory401JSONResponse) VisitCreateCategoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ArchiveCategoryRequestObject struct {
+	CategoryId openapi_types.UUID `json:"categoryId"`
+}
+
+type ArchiveCategoryResponseObject interface {
+	VisitArchiveCategoryResponse(w http.ResponseWriter) error
+}
+
+type ArchiveCategory204Response struct {
+}
+
+func (response ArchiveCategory204Response) VisitArchiveCategoryResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type ArchiveCategory401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ArchiveCategory401JSONResponse) VisitArchiveCategoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ArchiveCategory404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ArchiveCategory404JSONResponse) VisitArchiveCategoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateCategoryRequestObject struct {
+	CategoryId openapi_types.UUID `json:"categoryId"`
+	Body       *UpdateCategoryJSONRequestBody
+}
+
+type UpdateCategoryResponseObject interface {
+	VisitUpdateCategoryResponse(w http.ResponseWriter) error
+}
+
+type UpdateCategory200JSONResponse Category
+
+func (response UpdateCategory200JSONResponse) VisitUpdateCategoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateCategory400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateCategory400JSONResponse) VisitUpdateCategoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateCategory401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdateCategory401JSONResponse) VisitUpdateCategoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateCategory404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateCategory404JSONResponse) VisitUpdateCategoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateTraitDefRequestObject struct {
+	CategoryId openapi_types.UUID `json:"categoryId"`
+	Body       *CreateTraitDefJSONRequestBody
+}
+
+type CreateTraitDefResponseObject interface {
+	VisitCreateTraitDefResponse(w http.ResponseWriter) error
+}
+
+type CreateTraitDef201JSONResponse TraitDef
+
+func (response CreateTraitDef201JSONResponse) VisitCreateTraitDefResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateTraitDef400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateTraitDef400JSONResponse) VisitCreateTraitDefResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateTraitDef401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreateTraitDef401JSONResponse) VisitCreateTraitDefResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateTraitDef404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response CreateTraitDef404JSONResponse) VisitCreateTraitDefResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -1688,6 +2868,367 @@ func (response GetInvitePreview404JSONResponse) VisitGetInvitePreviewResponse(w 
 	return err
 }
 
+type ListLocationsRequestObject struct {
+	Params ListLocationsParams
+}
+
+type ListLocationsResponseObject interface {
+	VisitListLocationsResponse(w http.ResponseWriter) error
+}
+
+type ListLocations200JSONResponse []Location
+
+func (response ListLocations200JSONResponse) VisitListLocationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListLocations401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListLocations401JSONResponse) VisitListLocationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateLocationRequestObject struct {
+	Body *CreateLocationJSONRequestBody
+}
+
+type CreateLocationResponseObject interface {
+	VisitCreateLocationResponse(w http.ResponseWriter) error
+}
+
+type CreateLocation201JSONResponse Location
+
+func (response CreateLocation201JSONResponse) VisitCreateLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateLocation400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateLocation400JSONResponse) VisitCreateLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateLocation401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreateLocation401JSONResponse) VisitCreateLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ArchiveLocationRequestObject struct {
+	LocationId openapi_types.UUID `json:"locationId"`
+}
+
+type ArchiveLocationResponseObject interface {
+	VisitArchiveLocationResponse(w http.ResponseWriter) error
+}
+
+type ArchiveLocation204Response struct {
+}
+
+func (response ArchiveLocation204Response) VisitArchiveLocationResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type ArchiveLocation401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ArchiveLocation401JSONResponse) VisitArchiveLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ArchiveLocation404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ArchiveLocation404JSONResponse) VisitArchiveLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetLocationRequestObject struct {
+	LocationId openapi_types.UUID `json:"locationId"`
+}
+
+type GetLocationResponseObject interface {
+	VisitGetLocationResponse(w http.ResponseWriter) error
+}
+
+type GetLocation200JSONResponse Location
+
+func (response GetLocation200JSONResponse) VisitGetLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetLocation401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetLocation401JSONResponse) VisitGetLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetLocation404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetLocation404JSONResponse) VisitGetLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLocationRequestObject struct {
+	LocationId openapi_types.UUID `json:"locationId"`
+	Body       *UpdateLocationJSONRequestBody
+}
+
+type UpdateLocationResponseObject interface {
+	VisitUpdateLocationResponse(w http.ResponseWriter) error
+}
+
+type UpdateLocation200JSONResponse Location
+
+func (response UpdateLocation200JSONResponse) VisitUpdateLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLocation400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateLocation400JSONResponse) VisitUpdateLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLocation401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdateLocation401JSONResponse) VisitUpdateLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLocation404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateLocation404JSONResponse) VisitUpdateLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListRoomsRequestObject struct {
+	LocationId openapi_types.UUID `json:"locationId"`
+	Params     ListRoomsParams
+}
+
+type ListRoomsResponseObject interface {
+	VisitListRoomsResponse(w http.ResponseWriter) error
+}
+
+type ListRooms200JSONResponse []Room
+
+func (response ListRooms200JSONResponse) VisitListRoomsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListRooms401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListRooms401JSONResponse) VisitListRoomsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListRooms404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ListRooms404JSONResponse) VisitListRoomsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateRoomRequestObject struct {
+	LocationId openapi_types.UUID `json:"locationId"`
+	Body       *CreateRoomJSONRequestBody
+}
+
+type CreateRoomResponseObject interface {
+	VisitCreateRoomResponse(w http.ResponseWriter) error
+}
+
+type CreateRoom201JSONResponse Room
+
+func (response CreateRoom201JSONResponse) VisitCreateRoomResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateRoom400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateRoom400JSONResponse) VisitCreateRoomResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateRoom401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreateRoom401JSONResponse) VisitCreateRoomResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateRoom404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response CreateRoom404JSONResponse) VisitCreateRoomResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetMeRequestObject struct {
 }
 
@@ -1712,6 +3253,56 @@ func (response GetMe200JSONResponse) VisitGetMeResponse(w http.ResponseWriter) e
 type GetMe401JSONResponse struct{ UnauthorizedJSONResponse }
 
 func (response GetMe401JSONResponse) VisitGetMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateMeRequestObject struct {
+	Body *UpdateMeJSONRequestBody
+}
+
+type UpdateMeResponseObject interface {
+	VisitUpdateMeResponse(w http.ResponseWriter) error
+}
+
+type UpdateMe200JSONResponse User
+
+func (response UpdateMe200JSONResponse) VisitUpdateMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateMe400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateMe400JSONResponse) VisitUpdateMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateMe401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdateMe401JSONResponse) VisitUpdateMeResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -2003,6 +3594,332 @@ func (response GetPing503JSONResponse) VisitGetPingResponse(w http.ResponseWrite
 	return err
 }
 
+type ArchiveRoomRequestObject struct {
+	RoomId openapi_types.UUID `json:"roomId"`
+}
+
+type ArchiveRoomResponseObject interface {
+	VisitArchiveRoomResponse(w http.ResponseWriter) error
+}
+
+type ArchiveRoom204Response struct {
+}
+
+func (response ArchiveRoom204Response) VisitArchiveRoomResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type ArchiveRoom401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ArchiveRoom401JSONResponse) VisitArchiveRoomResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ArchiveRoom404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ArchiveRoom404JSONResponse) VisitArchiveRoomResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetRoomRequestObject struct {
+	RoomId openapi_types.UUID `json:"roomId"`
+}
+
+type GetRoomResponseObject interface {
+	VisitGetRoomResponse(w http.ResponseWriter) error
+}
+
+type GetRoom200JSONResponse Room
+
+func (response GetRoom200JSONResponse) VisitGetRoomResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetRoom401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetRoom401JSONResponse) VisitGetRoomResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetRoom404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetRoom404JSONResponse) VisitGetRoomResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateRoomRequestObject struct {
+	RoomId openapi_types.UUID `json:"roomId"`
+	Body   *UpdateRoomJSONRequestBody
+}
+
+type UpdateRoomResponseObject interface {
+	VisitUpdateRoomResponse(w http.ResponseWriter) error
+}
+
+type UpdateRoom200JSONResponse Room
+
+func (response UpdateRoom200JSONResponse) VisitUpdateRoomResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateRoom400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateRoom400JSONResponse) VisitUpdateRoomResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateRoom401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdateRoom401JSONResponse) VisitUpdateRoomResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateRoom404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateRoom404JSONResponse) VisitUpdateRoomResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetTaxonomyRequestObject struct {
+	Params GetTaxonomyParams
+}
+
+type GetTaxonomyResponseObject interface {
+	VisitGetTaxonomyResponse(w http.ResponseWriter) error
+}
+
+type GetTaxonomy200ResponseHeaders struct {
+	ETag *string
+	Vary *string
+}
+
+type GetTaxonomy200JSONResponse struct {
+	Body    Taxonomy
+	Headers GetTaxonomy200ResponseHeaders
+}
+
+func (response GetTaxonomy200JSONResponse) VisitGetTaxonomyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	if response.Headers.Vary != nil {
+		w.Header().Set("Vary", fmt.Sprint(*response.Headers.Vary))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetTaxonomy304Response struct {
+}
+
+func (response GetTaxonomy304Response) VisitGetTaxonomyResponse(w http.ResponseWriter) error {
+	w.WriteHeader(304)
+	return nil
+}
+
+type GetTaxonomy401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetTaxonomy401JSONResponse) VisitGetTaxonomyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ArchiveTraitDefRequestObject struct {
+	TraitDefId openapi_types.UUID `json:"traitDefId"`
+}
+
+type ArchiveTraitDefResponseObject interface {
+	VisitArchiveTraitDefResponse(w http.ResponseWriter) error
+}
+
+type ArchiveTraitDef204Response struct {
+}
+
+func (response ArchiveTraitDef204Response) VisitArchiveTraitDefResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type ArchiveTraitDef401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ArchiveTraitDef401JSONResponse) VisitArchiveTraitDefResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ArchiveTraitDef404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ArchiveTraitDef404JSONResponse) VisitArchiveTraitDefResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateTraitDefRequestObject struct {
+	TraitDefId openapi_types.UUID `json:"traitDefId"`
+	Body       *UpdateTraitDefJSONRequestBody
+}
+
+type UpdateTraitDefResponseObject interface {
+	VisitUpdateTraitDefResponse(w http.ResponseWriter) error
+}
+
+type UpdateTraitDef200JSONResponse TraitDef
+
+func (response UpdateTraitDef200JSONResponse) VisitUpdateTraitDefResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateTraitDef400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateTraitDef400JSONResponse) VisitUpdateTraitDefResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateTraitDef401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdateTraitDef401JSONResponse) VisitUpdateTraitDefResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateTraitDef404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateTraitDef404JSONResponse) VisitUpdateTraitDefResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetHealthzRequestObject struct {
 }
 
@@ -2038,6 +3955,18 @@ type StrictServerInterface interface {
 	// RefreshSession Rotate the session
 	// (POST /api/v1/auth/refresh)
 	RefreshSession(ctx context.Context, request RefreshSessionRequestObject) (RefreshSessionResponseObject, error)
+	// CreateCategory Add a family-defined category
+	// (POST /api/v1/categories)
+	CreateCategory(ctx context.Context, request CreateCategoryRequestObject) (CreateCategoryResponseObject, error)
+	// ArchiveCategory Archive a family-defined category
+	// (DELETE /api/v1/categories/{categoryId})
+	ArchiveCategory(ctx context.Context, request ArchiveCategoryRequestObject) (ArchiveCategoryResponseObject, error)
+	// UpdateCategory Update a family-defined category
+	// (PATCH /api/v1/categories/{categoryId})
+	UpdateCategory(ctx context.Context, request UpdateCategoryRequestObject) (UpdateCategoryResponseObject, error)
+	// CreateTraitDef Add a custom field to a category
+	// (POST /api/v1/categories/{categoryId}/trait-defs)
+	CreateTraitDef(ctx context.Context, request CreateTraitDefRequestObject) (CreateTraitDefResponseObject, error)
 	// GetFamily The current family's settings
 	// (GET /api/v1/family)
 	GetFamily(ctx context.Context, request GetFamilyRequestObject) (GetFamilyResponseObject, error)
@@ -2062,9 +3991,33 @@ type StrictServerInterface interface {
 	// GetInvitePreview What an invite link leads to
 	// (GET /api/v1/invites/{token})
 	GetInvitePreview(ctx context.Context, request GetInvitePreviewRequestObject) (GetInvitePreviewResponseObject, error)
+	// ListLocations The family's locations
+	// (GET /api/v1/locations)
+	ListLocations(ctx context.Context, request ListLocationsRequestObject) (ListLocationsResponseObject, error)
+	// CreateLocation Add a location
+	// (POST /api/v1/locations)
+	CreateLocation(ctx context.Context, request CreateLocationRequestObject) (CreateLocationResponseObject, error)
+	// ArchiveLocation Archive a location
+	// (DELETE /api/v1/locations/{locationId})
+	ArchiveLocation(ctx context.Context, request ArchiveLocationRequestObject) (ArchiveLocationResponseObject, error)
+	// GetLocation One location
+	// (GET /api/v1/locations/{locationId})
+	GetLocation(ctx context.Context, request GetLocationRequestObject) (GetLocationResponseObject, error)
+	// UpdateLocation Update a location
+	// (PATCH /api/v1/locations/{locationId})
+	UpdateLocation(ctx context.Context, request UpdateLocationRequestObject) (UpdateLocationResponseObject, error)
+	// ListRooms The rooms of one location
+	// (GET /api/v1/locations/{locationId}/rooms)
+	ListRooms(ctx context.Context, request ListRoomsRequestObject) (ListRoomsResponseObject, error)
+	// CreateRoom Add a room to a location
+	// (POST /api/v1/locations/{locationId}/rooms)
+	CreateRoom(ctx context.Context, request CreateRoomRequestObject) (CreateRoomResponseObject, error)
 	// GetMe The signed-in user and their current family
 	// (GET /api/v1/me)
 	GetMe(ctx context.Context, request GetMeRequestObject) (GetMeResponseObject, error)
+	// UpdateMe Update the signed-in user's own preferences
+	// (PATCH /api/v1/me)
+	UpdateMe(ctx context.Context, request UpdateMeRequestObject) (UpdateMeResponseObject, error)
 	// ListPeople People the family tracks things for
 	// (GET /api/v1/people)
 	ListPeople(ctx context.Context, request ListPeopleRequestObject) (ListPeopleResponseObject, error)
@@ -2083,6 +4036,24 @@ type StrictServerInterface interface {
 	// GetPing Round-trip probe
 	// (GET /api/v1/ping)
 	GetPing(ctx context.Context, request GetPingRequestObject) (GetPingResponseObject, error)
+	// ArchiveRoom Archive a room
+	// (DELETE /api/v1/rooms/{roomId})
+	ArchiveRoom(ctx context.Context, request ArchiveRoomRequestObject) (ArchiveRoomResponseObject, error)
+	// GetRoom One room
+	// (GET /api/v1/rooms/{roomId})
+	GetRoom(ctx context.Context, request GetRoomRequestObject) (GetRoomResponseObject, error)
+	// UpdateRoom Update a room
+	// (PATCH /api/v1/rooms/{roomId})
+	UpdateRoom(ctx context.Context, request UpdateRoomRequestObject) (UpdateRoomResponseObject, error)
+	// GetTaxonomy The localised category tree and its trait schema
+	// (GET /api/v1/taxonomy)
+	GetTaxonomy(ctx context.Context, request GetTaxonomyRequestObject) (GetTaxonomyResponseObject, error)
+	// ArchiveTraitDef Archive a custom field
+	// (DELETE /api/v1/trait-defs/{traitDefId})
+	ArchiveTraitDef(ctx context.Context, request ArchiveTraitDefRequestObject) (ArchiveTraitDefResponseObject, error)
+	// UpdateTraitDef Update a custom field
+	// (PATCH /api/v1/trait-defs/{traitDefId})
+	UpdateTraitDef(ctx context.Context, request UpdateTraitDefRequestObject) (UpdateTraitDefResponseObject, error)
 	// GetHealthz Liveness probe
 	// (GET /healthz)
 	GetHealthz(ctx context.Context, request GetHealthzRequestObject) (GetHealthzResponseObject, error)
@@ -2220,6 +4191,129 @@ func (sh *strictHandler) RefreshSession(w http.ResponseWriter, r *http.Request) 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(RefreshSessionResponseObject); ok {
 		if err := validResponse.VisitRefreshSessionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateCategory operation middleware
+func (sh *strictHandler) CreateCategory(w http.ResponseWriter, r *http.Request) {
+	var request CreateCategoryRequestObject
+
+	var body CreateCategoryJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateCategory(ctx, request.(CreateCategoryRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateCategory")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateCategoryResponseObject); ok {
+		if err := validResponse.VisitCreateCategoryResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ArchiveCategory operation middleware
+func (sh *strictHandler) ArchiveCategory(w http.ResponseWriter, r *http.Request, categoryId openapi_types.UUID) {
+	var request ArchiveCategoryRequestObject
+
+	request.CategoryId = categoryId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ArchiveCategory(ctx, request.(ArchiveCategoryRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ArchiveCategory")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ArchiveCategoryResponseObject); ok {
+		if err := validResponse.VisitArchiveCategoryResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateCategory operation middleware
+func (sh *strictHandler) UpdateCategory(w http.ResponseWriter, r *http.Request, categoryId openapi_types.UUID) {
+	var request UpdateCategoryRequestObject
+
+	request.CategoryId = categoryId
+
+	var body UpdateCategoryJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateCategory(ctx, request.(UpdateCategoryRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateCategory")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateCategoryResponseObject); ok {
+		if err := validResponse.VisitUpdateCategoryResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateTraitDef operation middleware
+func (sh *strictHandler) CreateTraitDef(w http.ResponseWriter, r *http.Request, categoryId openapi_types.UUID) {
+	var request CreateTraitDefRequestObject
+
+	request.CategoryId = categoryId
+
+	var body CreateTraitDefJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateTraitDef(ctx, request.(CreateTraitDefRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateTraitDef")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateTraitDefResponseObject); ok {
+		if err := validResponse.VisitCreateTraitDefResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -2432,6 +4526,208 @@ func (sh *strictHandler) GetInvitePreview(w http.ResponseWriter, r *http.Request
 	}
 }
 
+// ListLocations operation middleware
+func (sh *strictHandler) ListLocations(w http.ResponseWriter, r *http.Request, params ListLocationsParams) {
+	var request ListLocationsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListLocations(ctx, request.(ListLocationsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListLocations")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListLocationsResponseObject); ok {
+		if err := validResponse.VisitListLocationsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateLocation operation middleware
+func (sh *strictHandler) CreateLocation(w http.ResponseWriter, r *http.Request) {
+	var request CreateLocationRequestObject
+
+	var body CreateLocationJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateLocation(ctx, request.(CreateLocationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateLocation")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateLocationResponseObject); ok {
+		if err := validResponse.VisitCreateLocationResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ArchiveLocation operation middleware
+func (sh *strictHandler) ArchiveLocation(w http.ResponseWriter, r *http.Request, locationId openapi_types.UUID) {
+	var request ArchiveLocationRequestObject
+
+	request.LocationId = locationId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ArchiveLocation(ctx, request.(ArchiveLocationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ArchiveLocation")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ArchiveLocationResponseObject); ok {
+		if err := validResponse.VisitArchiveLocationResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetLocation operation middleware
+func (sh *strictHandler) GetLocation(w http.ResponseWriter, r *http.Request, locationId openapi_types.UUID) {
+	var request GetLocationRequestObject
+
+	request.LocationId = locationId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetLocation(ctx, request.(GetLocationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetLocation")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetLocationResponseObject); ok {
+		if err := validResponse.VisitGetLocationResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateLocation operation middleware
+func (sh *strictHandler) UpdateLocation(w http.ResponseWriter, r *http.Request, locationId openapi_types.UUID) {
+	var request UpdateLocationRequestObject
+
+	request.LocationId = locationId
+
+	var body UpdateLocationJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateLocation(ctx, request.(UpdateLocationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateLocation")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateLocationResponseObject); ok {
+		if err := validResponse.VisitUpdateLocationResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListRooms operation middleware
+func (sh *strictHandler) ListRooms(w http.ResponseWriter, r *http.Request, locationId openapi_types.UUID, params ListRoomsParams) {
+	var request ListRoomsRequestObject
+
+	request.LocationId = locationId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListRooms(ctx, request.(ListRoomsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListRooms")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListRoomsResponseObject); ok {
+		if err := validResponse.VisitListRoomsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateRoom operation middleware
+func (sh *strictHandler) CreateRoom(w http.ResponseWriter, r *http.Request, locationId openapi_types.UUID) {
+	var request CreateRoomRequestObject
+
+	request.LocationId = locationId
+
+	var body CreateRoomJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateRoom(ctx, request.(CreateRoomRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateRoom")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateRoomResponseObject); ok {
+		if err := validResponse.VisitCreateRoomResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetMe operation middleware
 func (sh *strictHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 	var request GetMeRequestObject
@@ -2449,6 +4745,37 @@ func (sh *strictHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetMeResponseObject); ok {
 		if err := validResponse.VisitGetMeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateMe operation middleware
+func (sh *strictHandler) UpdateMe(w http.ResponseWriter, r *http.Request) {
+	var request UpdateMeRequestObject
+
+	var body UpdateMeJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateMe(ctx, request.(UpdateMeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateMe")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateMeResponseObject); ok {
+		if err := validResponse.VisitUpdateMeResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -2622,6 +4949,176 @@ func (sh *strictHandler) GetPing(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ArchiveRoom operation middleware
+func (sh *strictHandler) ArchiveRoom(w http.ResponseWriter, r *http.Request, roomId openapi_types.UUID) {
+	var request ArchiveRoomRequestObject
+
+	request.RoomId = roomId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ArchiveRoom(ctx, request.(ArchiveRoomRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ArchiveRoom")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ArchiveRoomResponseObject); ok {
+		if err := validResponse.VisitArchiveRoomResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetRoom operation middleware
+func (sh *strictHandler) GetRoom(w http.ResponseWriter, r *http.Request, roomId openapi_types.UUID) {
+	var request GetRoomRequestObject
+
+	request.RoomId = roomId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetRoom(ctx, request.(GetRoomRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetRoom")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetRoomResponseObject); ok {
+		if err := validResponse.VisitGetRoomResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateRoom operation middleware
+func (sh *strictHandler) UpdateRoom(w http.ResponseWriter, r *http.Request, roomId openapi_types.UUID) {
+	var request UpdateRoomRequestObject
+
+	request.RoomId = roomId
+
+	var body UpdateRoomJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateRoom(ctx, request.(UpdateRoomRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateRoom")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateRoomResponseObject); ok {
+		if err := validResponse.VisitUpdateRoomResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetTaxonomy operation middleware
+func (sh *strictHandler) GetTaxonomy(w http.ResponseWriter, r *http.Request, params GetTaxonomyParams) {
+	var request GetTaxonomyRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetTaxonomy(ctx, request.(GetTaxonomyRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetTaxonomy")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetTaxonomyResponseObject); ok {
+		if err := validResponse.VisitGetTaxonomyResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ArchiveTraitDef operation middleware
+func (sh *strictHandler) ArchiveTraitDef(w http.ResponseWriter, r *http.Request, traitDefId openapi_types.UUID) {
+	var request ArchiveTraitDefRequestObject
+
+	request.TraitDefId = traitDefId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ArchiveTraitDef(ctx, request.(ArchiveTraitDefRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ArchiveTraitDef")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ArchiveTraitDefResponseObject); ok {
+		if err := validResponse.VisitArchiveTraitDefResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateTraitDef operation middleware
+func (sh *strictHandler) UpdateTraitDef(w http.ResponseWriter, r *http.Request, traitDefId openapi_types.UUID) {
+	var request UpdateTraitDefRequestObject
+
+	request.TraitDefId = traitDefId
+
+	var body UpdateTraitDefJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateTraitDef(ctx, request.(UpdateTraitDefRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateTraitDef")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateTraitDefResponseObject); ok {
+		if err := validResponse.VisitUpdateTraitDefResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetHealthz operation middleware
 func (sh *strictHandler) GetHealthz(w http.ResponseWriter, r *http.Request) {
 	var request GetHealthzRequestObject
@@ -2651,79 +5148,109 @@ func (sh *strictHandler) GetHealthz(w http.ResponseWriter, r *http.Request) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
+	"AAD//w==",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

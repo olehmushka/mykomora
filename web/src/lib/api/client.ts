@@ -41,6 +41,13 @@ export type RequestOptions = {
   cookieHeader?: string;
   /** Echoed in the CSRF header; required by core-api for cookie mutations. */
   csrfToken?: string;
+  /**
+   * The resolved UI locale, forwarded as Accept-Language. core-api's own
+   * locale.Resolver only ever sees this header plus the stored preference
+   * (SPEC.md's GeoIP step was dropped — see docs/MILESTONES.md's M2 note);
+   * resolving the cookie/header chain is this app's job, not core-api's.
+   */
+  acceptLanguage?: string;
   /** Overrides the default base URL. Used by tests. */
   baseUrl?: string;
   fetchImpl?: typeof fetch;
@@ -63,6 +70,7 @@ export async function apiRequest<T>(
     body,
     cookieHeader,
     csrfToken,
+    acceptLanguage,
     baseUrl = coreApiBaseUrl(),
     fetchImpl = fetch,
     signal,
@@ -76,6 +84,10 @@ export async function apiRequest<T>(
 
   if (csrfToken) {
     headers.set(CSRF_HEADER, csrfToken);
+  }
+
+  if (acceptLanguage) {
+    headers.set("Accept-Language", acceptLanguage);
   }
 
   if (body !== undefined) {

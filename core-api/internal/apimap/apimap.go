@@ -39,7 +39,7 @@ func locale(stored *string) *api.UserLocale {
 	}
 
 	value := api.UserLocale(*stored)
-	if value != api.En && value != api.Uk {
+	if value != api.UserLocaleEn && value != api.UserLocaleUk {
 		return nil
 	}
 
@@ -81,6 +81,33 @@ func Person(p db.Person) api.Person {
 		ArchivedAt: pgconv.ToTimePtr(p.ArchivedAt),
 		CreatedAt:  pgconv.ToTime(p.CreatedAt),
 		UpdatedAt:  pgconv.ToTime(p.UpdatedAt),
+	}
+}
+
+// Location renders one of the family's physical places.
+func Location(l db.Location) api.Location {
+	return api.Location{
+		Id:         pgconv.ToUUID(l.ID),
+		Name:       l.Name,
+		Kind:       api.LocationKind(l.Kind),
+		Address:    pgconv.ToTextPtr(l.Address),
+		SortOrder:  l.SortOrder,
+		ArchivedAt: pgconv.ToTimePtr(l.ArchivedAt),
+		CreatedAt:  pgconv.ToTime(l.CreatedAt),
+		UpdatedAt:  pgconv.ToTime(l.UpdatedAt),
+	}
+}
+
+// Room renders a room inside a location.
+func Room(r db.Room) api.Room {
+	return api.Room{
+		Id:         pgconv.ToUUID(r.ID),
+		LocationId: pgconv.ToUUID(r.LocationID),
+		Name:       r.Name,
+		SortOrder:  r.SortOrder,
+		ArchivedAt: pgconv.ToTimePtr(r.ArchivedAt),
+		CreatedAt:  pgconv.ToTime(r.CreatedAt),
+		UpdatedAt:  pgconv.ToTime(r.UpdatedAt),
 	}
 }
 

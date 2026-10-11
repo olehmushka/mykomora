@@ -119,6 +119,37 @@ describe("apiRequest", () => {
     expect(seen?.get("content-type")).toBe("application/json");
   });
 
+  // core-api's own locale.Resolver only ever sees this header plus the
+  // stored preference; resolving the cookie/header chain is this app's job.
+  it("forwards the resolved locale as Accept-Language", async () => {
+    let seen: Headers | undefined;
+
+    await apiRequest("/api/v1/taxonomy", {
+      baseUrl,
+      acceptLanguage: "uk",
+      fetchImpl: async (_input, init) => {
+        seen = new Headers(init?.headers);
+        return jsonResponse(200, {});
+      },
+    });
+
+    expect(seen?.get("accept-language")).toBe("uk");
+  });
+
+  it("omits Accept-Language when no locale was resolved", async () => {
+    let seen: Headers | undefined;
+
+    await apiRequest("/api/v1/ping", {
+      baseUrl,
+      fetchImpl: async (_input, init) => {
+        seen = new Headers(init?.headers);
+        return jsonResponse(200, {});
+      },
+    });
+
+    expect(seen?.has("accept-language")).toBe(false);
+  });
+
   it("sends a JSON body only when there is one", async () => {
     let body: BodyInit | null | undefined;
 

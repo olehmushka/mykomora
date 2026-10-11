@@ -15,16 +15,20 @@ import (
 	"github.com/olehmushka/mykomora/core-api/internal/family"
 	"github.com/olehmushka/mykomora/core-api/internal/health"
 	"github.com/olehmushka/mykomora/core-api/internal/people"
+	"github.com/olehmushka/mykomora/core-api/internal/places"
+	"github.com/olehmushka/mykomora/core-api/internal/taxonomy"
 )
 
 // Every package calls its handler `Handler`, and four embedded fields cannot
 // share a name. These aliases give each one a distinct field name while
 // keeping the methods promoted, which a named field would not.
 type (
-	healthHandler = health.Handler
-	authHandler   = auth.Handler
-	familyHandler = family.Handler
-	peopleHandler = people.Handler
+	healthHandler   = health.Handler
+	authHandler     = auth.Handler
+	familyHandler   = family.Handler
+	peopleHandler   = people.Handler
+	placesHandler   = places.Handler
+	taxonomyHandler = taxonomy.Handler
 )
 
 // Server is the whole served surface.
@@ -33,6 +37,8 @@ type Server struct {
 	*authHandler
 	*familyHandler
 	*peopleHandler
+	*placesHandler
+	*taxonomyHandler
 }
 
 // The contract and the implementation agree, checked at compile time.
@@ -44,11 +50,15 @@ func NewServer(
 	a *auth.Handler,
 	f *family.Handler,
 	p *people.Handler,
+	pl *places.Handler,
+	t *taxonomy.Handler,
 ) api.StrictServerInterface {
 	return &Server{
-		healthHandler: h,
-		authHandler:   a,
-		familyHandler: f,
-		peopleHandler: p,
+		healthHandler:   h,
+		authHandler:     a,
+		familyHandler:   f,
+		peopleHandler:   p,
+		placesHandler:   pl,
+		taxonomyHandler: t,
 	}
 }
