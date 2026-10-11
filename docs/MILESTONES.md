@@ -129,6 +129,48 @@ Prove the entire toolchain end to end before writing any domain code.
 
 **Done when:** a real box of kids' clothes is in the system, can be moved as a unit, and its history is visible.
 
+> **Delivered, with five notes.**
+>
+> *The hot-column ↔ trait-key mapping was already decided for us.* M2's seed migration
+> (`db/migrations/taxonomy_seed_data.go`) placeholder-seeded `size`, `size_system`, `season`,
+> `for_person`, `expires_at`, `opened_at`, `pao_months`, `quantity`, `unit`, `min_quantity`,
+> `serial_number` and `warranty_until` as `data_type = 'text'` specifically so this milestone
+> could give them a real column and, where the vocabulary is closed, a real `data_type`. This
+> migration's own `UPDATE trait_defs` statements do exactly that for `season`/`condition`/
+> `size_system` (→ `enum`), `pao_months` (→ `integer`), `quantity`/`min_quantity` (→ `number`) and
+> the three date fields (→ `date`). `for_person` and `size` stay `text` placeholders on purpose:
+> `for_person`'s valid values are a family's dynamic `people` list, and `size`'s validation
+> against `size_lookup` needs a `size_type` column `trait_defs` doesn't have — both are M8's job.
+> A request's `traits` object may never carry one of these keys; the validator rejects it with a
+> 400 rather than silently routing it, so there is exactly one place this rule lives
+> (`internal/items/traits.go`).
+>
+> *`item_condition` and `item_season` needed vocabularies the spec never named.* Locked in as
+> `(new, like_new, good, worn, poor)` and `(summer, winter, demi, all_season)` — a product call,
+> not an engineering one, made explicitly rather than guessed past.
+>
+> *Containment is read-resolved, never denormalised.* A nested item's own `location_id`/
+> `room_id`/`spot` are set once at creation (so the `NOT NULL` column has something to hold) and
+> become cosmetic the moment it has a parent; effective place is always the root ancestor's place,
+> walked via one recursive CTE (`GetItemAncestorChain`) at read time. Moving a container therefore
+> writes exactly one row and one event, and every descendant's effective place changes for free.
+> `GET /items/{id}/contents` returns direct children only — drilling into a nested container is
+> one link at a time, not a flattened subtree — and location/room browse (`GET /items`) shows root
+> items only, for the same reason.
+>
+> *Tags got full management now, not deferred to M5.* Beyond the milestone's own `tags`/
+> `item_tags` tables, this PR also ships a standalone `/settings/tags` page (create/rename/delete)
+> and dedicated `POST /items/{id}/tags` + `DELETE /items/{id}/tags/{tagId}` endpoints, pulled
+> forward from M5's "browse by tag" on request, rather than the minimal replace-all-on-the-item-
+> form shape originally scoped.
+>
+> *`CreateItem`/`MoveItem` validate referenced rows with their own Go-level reads rather than
+> folding the checks into the `INSERT`'s `WHERE EXISTS` the way `rooms.sql`/`trait_defs.sql` do.*
+> Those tables have one referential check each; items has up to four (category, location, room,
+> parent, person) plus trait, depth and cycle validation that cannot be expressed as a single SQL
+> guard anyway. The small TOCTOU window this opens cannot leak across families — every write still
+> carries its own `family_id` — so the trade is a plainer `INSERT`, not a safety gap.
+
 ---
 
 ## M4 — Photos & attachments *(4–5 days)*
