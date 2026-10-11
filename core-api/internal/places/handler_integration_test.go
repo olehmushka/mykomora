@@ -59,7 +59,7 @@ func fixture(t *testing.T, h *places.Handler, ctx context.Context) (locationID, 
 	t.Helper()
 
 	locationResp, err := h.CreateLocation(ctx, api.CreateLocationRequestObject{
-		Body: &api.CreateLocationRequest{Name: "Flat", Kind: api.Home},
+		Body: &api.CreateLocationRequest{Name: "Flat", Kind: api.LocationKindHome},
 	})
 	if err != nil {
 		t.Fatalf("CreateLocation: %v", err)

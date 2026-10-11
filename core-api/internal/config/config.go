@@ -64,6 +64,26 @@ type Config struct {
 	// against. It is configurable so tests can point it at a local issuer and
 	// never touch the network.
 	GoogleIssuerURL string `env:"GOOGLE_ISSUER_URL" envDefault:"https://accounts.google.com"`
+
+	// S3Endpoint is reached from inside core-api's own network — LocalStack's
+	// Compose-internal hostname locally, the same as S3PublicEndpoint in
+	// production. core-api's own HeadObject/DeleteObject/ListObjects calls use
+	// this one.
+	S3Endpoint string `env:"S3_ENDPOINT,required"`
+
+	// S3PublicEndpoint is reached from the browser. Locally it is
+	// LocalStack's host-published port (http://localhost:4566), not the
+	// Compose-internal hostname in S3Endpoint, which the browser cannot
+	// resolve; in production the two coincide. Only presigned URLs handed to
+	// a client are signed against this one (SPEC 6, "Photos and
+	// attachments" — large files never pass through Go, so a presigned URL
+	// is useless if the browser can't reach its host).
+	S3PublicEndpoint string `env:"S3_PUBLIC_ENDPOINT,required"`
+
+	S3Region          string `env:"S3_REGION,required"`
+	S3Bucket          string `env:"S3_BUCKET,required"`
+	S3AccessKeyID     string `env:"S3_ACCESS_KEY_ID,required"`
+	S3SecretAccessKey string `env:"S3_SECRET_ACCESS_KEY,required"`
 }
 
 // minAppSecretLen is 32 bytes of key material for HMAC-SHA256. Shorter is not

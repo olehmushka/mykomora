@@ -30,9 +30,13 @@ import (
 )
 
 // fixture is everything a test needs: a handler, a signed-in principal's
-// context, a location with two rooms, and a built-in category id.
+// context, a location with two rooms, a built-in category id, and the
+// fake object store behind the handler (see fake_storage_test.go) so
+// photo/attachment tests can simulate the client's upload before
+// confirming it.
 type fixture struct {
 	h          *items.Handler
+	storage    *fakeStorage
 	ctx        context.Context
 	locationID uuid.UUID
 	roomAID    uuid.UUID
@@ -67,7 +71,7 @@ func newFixture(t *testing.T) fixture {
 	placesHandler := places.NewHandler(queries, log)
 
 	locationResp, err := placesHandler.CreateLocation(ctx, api.CreateLocationRequestObject{
-		Body: &api.CreateLocationRequest{Name: "Flat", Kind: api.Home},
+		Body: &api.CreateLocationRequest{Name: "Flat", Kind: api.LocationKindHome},
 	})
 	if err != nil {
 		t.Fatalf("CreateLocation: %v", err)
@@ -100,8 +104,11 @@ func newFixture(t *testing.T) fixture {
 		t.Fatal("seed migration's clothing_footwear category is missing")
 	}
 
+	fakeS3 := newFakeStorage()
+
 	return fixture{
-		h:          items.NewHandler(items.NewService(queries, tx, log), log),
+		h:          items.NewHandler(items.NewService(queries, tx, fakeS3, log), log),
+		storage:    fakeS3,
 		ctx:        ctx,
 		locationID: location.Id,
 		roomAID:    roomA,

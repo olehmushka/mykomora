@@ -44,4 +44,16 @@ type Store interface {
 	GetLocation(ctx context.Context, arg db.GetLocationParams) (db.Location, error)
 	GetRoom(ctx context.Context, arg db.GetRoomParams) (db.Room, error)
 	GetPerson(ctx context.Context, arg db.GetPersonParams) (db.Person, error)
+
+	CreateItemPhoto(ctx context.Context, arg db.CreateItemPhotoParams) (db.ItemPhoto, error)
+	ListItemPhotos(ctx context.Context, arg db.ListItemPhotosParams) ([]db.ItemPhoto, error)
+	CountItemPhotos(ctx context.Context, arg db.CountItemPhotosParams) (int64, error)
+	ClearItemPhotoPrimary(ctx context.Context, arg db.ClearItemPhotoPrimaryParams) error
+	UpdateItemPhoto(ctx context.Context, arg db.UpdateItemPhotoParams) (db.ItemPhoto, error)
+	DeleteItemPhoto(ctx context.Context, arg db.DeleteItemPhotoParams) (db.ItemPhoto, error)
+	PromoteNextItemPhoto(ctx context.Context, arg db.PromoteNextItemPhotoParams) (db.ItemPhoto, error)
+
+	CreateItemAttachment(ctx context.Context, arg db.CreateItemAttachmentParams) (db.ItemAttachment, error)
+	ListItemAttachments(ctx context.Context, arg db.ListItemAttachmentsParams) ([]db.ItemAttachment, error)
+	DeleteItemAttachment(ctx context.Context, arg db.DeleteItemAttachmentParams) (db.ItemAttachment, error)
 }

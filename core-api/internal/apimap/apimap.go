@@ -169,6 +169,43 @@ func ItemEvent(e db.ItemEvent) api.ItemEvent {
 	}
 }
 
+// ItemPhoto renders one photo of an item's gallery. url/thumbUrl are
+// presigned GETs the caller mints fresh for every read (internal/items'
+// Service.toAPIPhoto) rather than anything stored on the row.
+func ItemPhoto(p *db.ItemPhoto, url, thumbURL string) api.ItemPhoto {
+	return api.ItemPhoto{
+		Id:          pgconv.ToUUID(p.ID),
+		ItemId:      pgconv.ToUUID(p.ItemID),
+		Url:         url,
+		ThumbUrl:    thumbURL,
+		Width:       p.Width,
+		Height:      p.Height,
+		Bytes:       p.Bytes,
+		ContentType: p.ContentType,
+		IsPrimary:   p.IsPrimary,
+		SortOrder:   p.SortOrder,
+		UploadedBy:  pgconv.ToUUID(p.UploadedBy),
+		CreatedAt:   pgconv.ToTime(p.CreatedAt),
+	}
+}
+
+// ItemAttachment renders one receipt, manual or other document attached
+// to an item. url is a presigned GET, minted fresh the same way
+// ItemPhoto's are.
+func ItemAttachment(a *db.ItemAttachment, url string) api.ItemAttachment {
+	return api.ItemAttachment{
+		Id:          pgconv.ToUUID(a.ID),
+		ItemId:      pgconv.ToUUID(a.ItemID),
+		Kind:        api.AttachmentKind(a.Kind),
+		Url:         url,
+		Filename:    a.Filename,
+		ContentType: a.ContentType,
+		Bytes:       a.Bytes,
+		UploadedBy:  pgconv.ToUUID(a.UploadedBy),
+		CreatedAt:   pgconv.ToTime(a.CreatedAt),
+	}
+}
+
 // Tag renders a family-defined label.
 func Tag(t db.Tag) api.Tag {
 	return api.Tag{

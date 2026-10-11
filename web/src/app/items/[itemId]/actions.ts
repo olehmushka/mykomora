@@ -3,6 +3,12 @@
 import { revalidatePath } from "next/cache";
 
 import {
+  confirmItemAttachment,
+  deleteItemAttachment,
+  listItemAttachments,
+  type ConfirmItemAttachmentRequest,
+} from "@/lib/api/attachments";
+import {
   archiveItem,
   attachItemTag,
   detachItemTag,
@@ -10,6 +16,15 @@ import {
   setItemStatus,
   type ItemStatus,
 } from "@/lib/api/items";
+import {
+  confirmItemPhoto,
+  deleteItemPhoto,
+  listItemPhotos,
+  updateItemPhoto,
+  type ConfirmItemPhotoRequest,
+  type UpdateItemPhotoRequest,
+} from "@/lib/api/photos";
+import { presignUpload, type PresignUploadRequest } from "@/lib/api/uploads";
 
 export type ActionState = { error?: string };
 
@@ -97,4 +112,63 @@ export async function detachTag(itemId: string, form: FormData): Promise<void> {
     await detachItemTag(itemId, tagId);
     revalidatePath(`/items/${itemId}`);
   }
+}
+
+// --- photos --------------------------------------------------------------
+//
+// These are called directly from client components (photo-gallery.tsx,
+// attachments-section.tsx) as plain async functions, not via <form
+// action=.../useActionState — the upload flow needs client-side control
+// (resize, two presigned PUTs, then confirm) that FormData can't carry.
+// They stay "use server" wrappers over lib/api/* rather than exporting
+// those directly, because only a function in a "use server" file can be
+// called this way from a client bundle at all.
+
+export async function presignUploadAction(body: PresignUploadRequest) {
+  return presignUpload(body);
+}
+
+export async function refreshPhotos(itemId: string) {
+  return listItemPhotos(itemId);
+}
+
+export async function confirmPhoto(itemId: string, body: ConfirmItemPhotoRequest) {
+  const result = await confirmItemPhoto(itemId, body);
+  if (result.ok) revalidatePath(`/items/${itemId}`);
+
+  return result;
+}
+
+export async function updatePhoto(itemId: string, photoId: string, body: UpdateItemPhotoRequest) {
+  const result = await updateItemPhoto(itemId, photoId, body);
+  if (result.ok) revalidatePath(`/items/${itemId}`);
+
+  return result;
+}
+
+export async function deletePhoto(itemId: string, photoId: string) {
+  const result = await deleteItemPhoto(itemId, photoId);
+  if (result.ok) revalidatePath(`/items/${itemId}`);
+
+  return result;
+}
+
+// --- attachments -----------------------------------------------------------
+
+export async function refreshAttachments(itemId: string) {
+  return listItemAttachments(itemId);
+}
+
+export async function confirmAttachment(itemId: string, body: ConfirmItemAttachmentRequest) {
+  const result = await confirmItemAttachment(itemId, body);
+  if (result.ok) revalidatePath(`/items/${itemId}`);
+
+  return result;
+}
+
+export async function deleteAttachment(itemId: string, attachmentId: string) {
+  const result = await deleteItemAttachment(itemId, attachmentId);
+  if (result.ok) revalidatePath(`/items/${itemId}`);
+
+  return result;
 }

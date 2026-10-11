@@ -40,6 +40,7 @@ import (
 	"github.com/olehmushka/mykomora/core-api/internal/db"
 	"github.com/olehmushka/mykomora/core-api/internal/pgconv"
 	"github.com/olehmushka/mykomora/core-api/internal/postgres"
+	"github.com/olehmushka/mykomora/core-api/internal/storage"
 )
 
 const (
@@ -78,16 +79,17 @@ func wrapNotFound(err error, what string) error {
 	}
 }
 
-// Service implements every items and tags operation.
+// Service implements every items, tags, photos and attachments operation.
 type Service struct {
-	store Store
-	tx    *postgres.TxRunner
-	log   *slog.Logger
+	store   Store
+	tx      *postgres.TxRunner
+	storage storage.Client
+	log     *slog.Logger
 }
 
 // NewService builds the items service.
-func NewService(store Store, tx *postgres.TxRunner, log *slog.Logger) *Service {
-	return &Service{store: store, tx: tx, log: log.With(slog.String("component", "items"))}
+func NewService(store Store, tx *postgres.TxRunner, storageClient storage.Client, log *slog.Logger) *Service {
+	return &Service{store: store, tx: tx, storage: storageClient, log: log.With(slog.String("component", "items"))}
 }
 
 // present reports whether a hot field will have a value after this request:

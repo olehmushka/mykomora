@@ -21,6 +21,7 @@ import (
 	"github.com/olehmushka/mykomora/core-api/internal/people"
 	"github.com/olehmushka/mykomora/core-api/internal/places"
 	"github.com/olehmushka/mykomora/core-api/internal/postgres"
+	"github.com/olehmushka/mykomora/core-api/internal/storage"
 	"github.com/olehmushka/mykomora/core-api/internal/taxonomy"
 )
 
@@ -37,6 +38,7 @@ func main() {
 		catalogue.Module,
 		places.Module,
 		taxonomy.Module,
+		storage.Module,
 		items.Module,
 		httpapi.Module,
 		httpserver.Module,
