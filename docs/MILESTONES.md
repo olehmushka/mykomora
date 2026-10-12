@@ -286,6 +286,29 @@ This is the milestone that decides whether the app survives contact with reality
 
 **Done when:** opening the app shows a truthful, dismissible list of what needs action today.
 
+> **Delivered, with four notes.**
+>
+> *Alerts are computed, never stored.* `GET /alerts` classifies the family's live items on every call
+> (`internal/items/alerts.go`); only snoozes persist, in `alert_dismissals`, one row per
+> (family, item, kind). A snooze is per family, offered as 1 day / 1 week / 1 month, and undoable. It
+> expires by date only: it does not lift early if the item's own dates change. "Today" is the UTC
+> calendar day.
+>
+> *Effective expiry is the earlier of the printed date and `opened_at + pao_months`.* The same rule
+> exists twice — in `alerts.sql` for filtering and in `apimap.EffectiveExpiry` for `Item.effectiveExpiresAt`
+> — and both clamp to month end like Postgres (31 Jan + 1 month = 28 Feb). Windows: expired is before
+> today, expiring is today through +30 days, warranty is today through +60 (an already-ended warranty
+> is not an alert). Below minimum is strictly `quantity < min_quantity`.
+>
+> *Quantity changes are one statement.* `POST /items/{id}/quantity` takes a `delta` or an absolute
+> `quantity`, locks the row, clamps at zero and writes `quantity_changed {from, to}` in the same
+> transaction; a change that changes nothing writes no event.
+>
+> *Deferred.* `loan_overdue` waits for the `loans` table in M9 (`AlertKind` is an enum, so M9 adds a
+> value). Adding the `expired` value to it made oapi-codegen prefix the other enums' colliding
+> constants — `api.Pending` is now `api.InviteStatusPending`. The shopping list is below-minimum only;
+> the plain-text export is built in the browser (copy or `.txt` download).
+
 ---
 
 ## M8 — Kids' sizes & seasons *(4–5 days)*

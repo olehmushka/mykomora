@@ -16,6 +16,10 @@ type Querier interface {
 	// the same link cannot both win. No row means expired, revoked or already used.
 	AcceptInvite(ctx context.Context, arg AcceptInviteParams) (AcceptInviteRow, error)
 	AddFamilyMember(ctx context.Context, arg AddFamilyMemberParams) (FamilyMember, error)
+	// Sets the quantity to new_quantity, or moves it by delta, never below
+	// zero. The prior value is read under a row lock in the same statement so
+	// the quantity_changed event records what this call actually changed.
+	AdjustItemQuantity(ctx context.Context, arg AdjustItemQuantityParams) (AdjustItemQuantityRow, error)
 	ArchiveCategory(ctx context.Context, arg ArchiveCategoryParams) (int64, error)
 	ArchiveItem(ctx context.Context, arg ArchiveItemParams) (int64, error)
 	ArchiveLocation(ctx context.Context, arg ArchiveLocationParams) (int64, error)
@@ -140,6 +144,7 @@ type Querier interface {
 	// Purchase value of live items still owned. No conversion between
 	// currencies (multi-currency is post-v1): one row per currency.
 	DashboardValueByCurrency(ctx context.Context, familyID pgtype.UUID) ([]DashboardValueByCurrencyRow, error)
+	DeleteAlertDismissal(ctx context.Context, arg DeleteAlertDismissalParams) (int64, error)
 	// Returns the deleted row so the caller can delete its object from storage.
 	DeleteItemAttachment(ctx context.Context, arg DeleteItemAttachmentParams) (ItemAttachment, error)
 	// Returns the deleted row so the caller can delete its two objects from
@@ -212,6 +217,16 @@ type Querier interface {
 	// TENANCY: pre-tenant. Resolves the principal carried by an access token; the
 	// caller then scopes everything that follows by the token's tenant claim.
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
+	ListActiveAlertDismissals(ctx context.Context, arg ListActiveAlertDismissalsParams) ([]AlertDismissal, error)
+	// Attention panel and shopping list (MILESTONES M7).
+	//
+	// Alerts are computed on read from the item columns; only snoozes are
+	// stored. The classification into kinds happens in internal/items so the
+	// thresholds live next to their tests — this query only narrows the
+	// family's items to the ones that could possibly raise an alert.
+	// effective_expiry is the earlier of the printed expiry and the
+	// period-after-opening date (opened_at + pao_months); LEAST ignores NULLs.
+	ListAlertCandidates(ctx context.Context, arg ListAlertCandidatesParams) ([]ListAlertCandidatesRow, error)
 	// Cross-tenant on purpose: the orphaned-object cleanup sweeper (internal/
 	// storage/cleanup.go) has no per-family loop to run, it just needs every
 	// key any family's rows still reference, to diff against what the bucket
@@ -249,6 +264,7 @@ type Querier interface {
 	ListPeople(ctx context.Context, arg ListPeopleParams) ([]Person, error)
 	ListRecentItemEvents(ctx context.Context, arg ListRecentItemEventsParams) ([]ListRecentItemEventsRow, error)
 	ListRoomsByLocation(ctx context.Context, arg ListRoomsByLocationParams) ([]Room, error)
+	ListShoppingItems(ctx context.Context, familyID pgtype.UUID) ([]ListShoppingItemsRow, error)
 	ListTags(ctx context.Context, familyID pgtype.UUID) ([]Tag, error)
 	ListTagsForItem(ctx context.Context, arg ListTagsForItemParams) ([]Tag, error)
 	// Trait definitions: the typed, category-specific fields a category carries
@@ -340,6 +356,8 @@ type Querier interface {
 	// locale preference belongs to the account, not to any one family it is a
 	// member of.
 	UpdateUserLocale(ctx context.Context, arg UpdateUserLocaleParams) (User, error)
+	// Joined through items so a dismissal can only ever name this family's item.
+	UpsertAlertDismissal(ctx context.Context, arg UpsertAlertDismissalParams) (AlertDismissal, error)
 	UpsertProductCache(ctx context.Context, arg UpsertProductCacheParams) error
 	// Identity. `users` is the one global table in the schema: a Google account
 	// exists before it belongs to any family, so the queries here run *before* a

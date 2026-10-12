@@ -37,6 +37,8 @@ tags:
     description: Real possessions — in real places, optionally inside a container.
   - name: tags
     description: Family-defined labels an item can carry.
+  - name: alerts
+    description: The Attention panel and the shopping list.
   - name: lookup
     description: Barcode and ISBN lookup.
   - name: imports
@@ -1507,6 +1509,135 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /api/v1/items/{itemId}/quantity:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: adjustItemQuantity
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: Adjust a consumable's quantity
+      description: |
+        Send exactly one of `delta` (a relative +/- change) or `quantity`
+        (an absolute value). The result is clamped at zero. Writes a
+        `quantity_changed` event.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdjustQuantityRequest"
+      responses:
+        "200":
+          description: The item at its new quantity.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/alerts:
+    get:
+      operationId: listAlerts
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [alerts]
+      summary: What needs attention today
+      description: |
+        Computed on every call from the family's items, minus alerts snoozed
+        by a dismissal that is still in force.
+      responses:
+        "200":
+          description: The current alerts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/alerts/dismissals:
+    post:
+      operationId: dismissAlert
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [alerts]
+      summary: Snooze one alert for the whole family
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DismissAlertRequest"
+      responses:
+        "200":
+          description: The dismissal now in force.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertDismissal"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/alerts/dismissals/{dismissalId}:
+    delete:
+      operationId: undoAlertDismissal
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [alerts]
+      summary: Bring a snoozed alert back
+      parameters:
+        - name: dismissalId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: The dismissal is gone.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/shopping-list:
+    get:
+      operationId: getShoppingList
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [alerts]
+      summary: Everything below its minimum quantity
+      responses:
+        "200":
+          description: The shopping list.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShoppingList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   /api/v1/items/{itemId}/duplicate:
     parameters:
       - name: itemId
@@ -2958,6 +3089,12 @@ components:
         paoMonths:
           type: integer
           format: int32
+        effectiveExpiresAt:
+          type: string
+          format: date
+          description: |
+            The earlier of `expiresAt` and `openedAt` + `paoMonths`.
+            Computed; absent when neither applies.
         brand:
           type: string
         condition:
@@ -3326,6 +3463,127 @@ components:
         parentItemId:
           type: string
           format: uuid
+
+    AdjustQuantityRequest:
+      type: object
+      description: Exactly one of `delta` or `quantity`.
+      properties:
+        delta:
+          type: number
+        quantity:
+          type: number
+          minimum: 0
+
+    AlertKind:
+      type: string
+      enum: [expired, expiring, below_minimum, warranty_ending]
+
+    Alert:
+      type: object
+      required: [kind, itemId, itemName, categoryId]
+      properties:
+        kind:
+          $ref: "#/components/schemas/AlertKind"
+        itemId:
+          type: string
+          format: uuid
+        itemName:
+          type: string
+        categoryId:
+          type: string
+          format: uuid
+        dueDate:
+          type: string
+          format: date
+          description: The effective expiry or warranty end. Absent for `below_minimum`.
+        quantity:
+          type: number
+        minQuantity:
+          type: number
+        unit:
+          type: string
+
+    AlertList:
+      type: object
+      required: [alerts, counts]
+      properties:
+        alerts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Alert"
+        counts:
+          type: object
+          description: Number of visible alerts per kind; kinds with none are omitted.
+          additionalProperties:
+            type: integer
+            format: int32
+        snoozed:
+          type: array
+          description: Dismissals still in force, so the UI can offer an undo.
+          items:
+            $ref: "#/components/schemas/AlertDismissal"
+
+    DismissAlertRequest:
+      type: object
+      required: [itemId, kind, snoozeDays]
+      properties:
+        itemId:
+          type: string
+          format: uuid
+        kind:
+          $ref: "#/components/schemas/AlertKind"
+        snoozeDays:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 365
+
+    AlertDismissal:
+      type: object
+      required: [id, itemId, kind, snoozedUntil]
+      properties:
+        id:
+          type: string
+          format: uuid
+        itemId:
+          type: string
+          format: uuid
+        kind:
+          $ref: "#/components/schemas/AlertKind"
+        snoozedUntil:
+          type: string
+          format: date
+        itemName:
+          type: string
+          description: Filled in by `GET /alerts` so a snoozed list can name its items.
+
+    ShoppingListEntry:
+      type: object
+      required: [itemId, name, quantity, minQuantity]
+      properties:
+        itemId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        quantity:
+          type: number
+        minQuantity:
+          type: number
+        unit:
+          type: string
+        shortfall:
+          type: number
+          description: minQuantity minus quantity.
+
+    ShoppingList:
+      type: object
+      required: [entries]
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShoppingListEntry"
 
     SetItemStatusRequest:
       type: object

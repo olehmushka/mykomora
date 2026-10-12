@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 
 import { archive, attachTag, detachTag, duplicate } from "@/app/items/[itemId]/actions";
 import { AttachmentsSection } from "@/app/items/[itemId]/attachments-section";
@@ -9,6 +9,7 @@ import { PhotoGallery } from "@/app/items/[itemId]/photo-gallery";
 import { StatusForm } from "@/app/items/[itemId]/status-form";
 import { AppShell } from "@/components/app-shell";
 import { Notice } from "@/components/notice";
+import { QuantityStepper } from "@/components/quantity-stepper";
 import { listItemAttachments } from "@/lib/api/attachments";
 import {
   getItem,
@@ -43,6 +44,7 @@ const EVENT_KEYS: Record<string, string> = {
   moved: "event.moved",
   status_changed: "event.status_changed",
   archived: "event.archived",
+  quantity_changed: "event.quantity_changed",
 };
 
 function findCategoryName(categories: Category[], id: string): string | undefined {
@@ -61,6 +63,7 @@ export default async function ItemDetailPage(props: PageProps<"/items/[itemId]">
 
   const me = await requireMe(`/items/${itemId}`);
   const t = await getTranslations("ItemDetail");
+  const locale = await getLocale();
 
   const itemResult = await getItem(itemId);
   if (!itemResult.ok) {
@@ -155,10 +158,24 @@ export default async function ItemDetailPage(props: PageProps<"/items/[itemId]">
         <div>
           <dt className="text-muted">{t("quantityLabel")}</dt>
           <dd>
-            {item.quantity}
-            {item.unit ? ` ${item.unit}` : ""}
+            <QuantityStepper itemId={itemId} quantity={item.quantity} unit={item.unit} />
           </dd>
         </div>
+        {item.effectiveExpiresAt && (
+          <div>
+            <dt className="text-muted">{t("expiresLabel")}</dt>
+            <dd>
+              {new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" }).format(
+                new Date(item.effectiveExpiresAt),
+              )}
+              {item.openedAt && item.paoMonths && item.effectiveExpiresAt !== item.expiresAt && (
+                <span className="block text-xs text-muted">
+                  {t("paoHint", { months: item.paoMonths })}
+                </span>
+              )}
+            </dd>
+          </div>
+        )}
         {item.brand && (
           <div>
             <dt className="text-muted">{t("brandLabel")}</dt>

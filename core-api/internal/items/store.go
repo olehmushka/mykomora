@@ -34,6 +34,13 @@ type Store interface {
 	MoveItem(ctx context.Context, arg db.MoveItemParams) (db.Item, error)
 	SetItemStatus(ctx context.Context, arg db.SetItemStatusParams) (db.Item, error)
 	ArchiveItem(ctx context.Context, arg db.ArchiveItemParams) (int64, error)
+	AdjustItemQuantity(ctx context.Context, arg db.AdjustItemQuantityParams) (db.AdjustItemQuantityRow, error)
+
+	ListAlertCandidates(ctx context.Context, arg db.ListAlertCandidatesParams) ([]db.ListAlertCandidatesRow, error)
+	ListActiveAlertDismissals(ctx context.Context, arg db.ListActiveAlertDismissalsParams) ([]db.AlertDismissal, error)
+	UpsertAlertDismissal(ctx context.Context, arg db.UpsertAlertDismissalParams) (db.AlertDismissal, error)
+	DeleteAlertDismissal(ctx context.Context, arg db.DeleteAlertDismissalParams) (int64, error)
+	ListShoppingItems(ctx context.Context, familyID pgtype.UUID) ([]db.ListShoppingItemsRow, error)
 
 	CreateItemEvent(ctx context.Context, arg db.CreateItemEventParams) (db.ItemEvent, error)
 	ListItemEvents(ctx context.Context, arg db.ListItemEventsParams) ([]db.ItemEvent, error)

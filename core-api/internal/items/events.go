@@ -19,6 +19,7 @@ const (
 	eventPhotoRemoved      = "photo_removed"
 	eventAttachmentAdded   = "attachment_added"
 	eventAttachmentRemoved = "attachment_removed"
+	eventQuantityChanged   = "quantity_changed"
 )
 
 // createdPayload records what the item looked like at birth.
@@ -104,4 +105,10 @@ func attachmentAddedPayload(attachment *db.ItemAttachment) map[string]any {
 // attachmentRemovedPayload records which attachment was removed.
 func attachmentRemovedPayload(attachment *db.ItemAttachment) map[string]any {
 	return map[string]any{"attachmentId": pgconv.ToUUID(attachment.ID).String()}
+}
+
+// quantityChangedPayload records the before and after of a quick +/- or an
+// absolute set, so the timeline can say "3 → 2" without diffing rows.
+func quantityChangedPayload(from, to float64) map[string]any {
+	return map[string]any{"from": from, "to": to}
 }

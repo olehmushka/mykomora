@@ -12,8 +12,7 @@ trait validation, containment, lifecycle and a transactional audit trail (M3). T
 sign-in, family settings, invites, people, locations/rooms, the category browser, item
 create/edit/detail/move/status/contents/events, and tag management. M4 added photos and
 attachments; M5 added search, filters with keyset pagination, duplicate hints and the dashboard. M6 added batch add, duplicate,
-barcode/ISBN lookup with in-browser scanning, and CSV export and import. Consumables and the Attention panel (M7) and the
-rest have not started.
+barcode/ISBN lookup with in-browser scanning, and CSV export and import. M7 added quantity +/-, effective expiry, the computed Attention panel with family-wide snoozes, and the shopping list. Lending and the rest (M8 onward) have not started.
 
 The domain is settled and written down. Treat these as the source of truth and read them before
 proposing domain changes:

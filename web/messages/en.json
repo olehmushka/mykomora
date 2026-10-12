@@ -6,7 +6,8 @@
     "family": "Family",
     "locations": "Locations",
     "taxonomy": "Categories",
-    "tags": "Tags"
+    "tags": "Tags",
+    "shoppingList": "Shopping list"
   },
   "LocaleSwitcher": {
     "label": "Language",
@@ -224,10 +225,13 @@
       "updated": "Updated",
       "moved": "Moved",
       "status_changed": "Status changed",
-      "archived": "Archived"
+      "archived": "Archived",
+      "quantity_changed": "Quantity changed"
     },
     "duplicateButton": "Duplicate",
-    "addManyInsideButton": "Add many inside"
+    "addManyInsideButton": "Add many inside",
+    "expiresLabel": "Expires",
+    "paoHint": "Good for {months} months once opened"
   },
   "Tags": {
     "heading": "Tags",
@@ -292,7 +296,8 @@
       "created": "Added",
       "updated": "Edited",
       "moved": "Moved",
-      "status_changed": "Status changed"
+      "status_changed": "Status changed",
+      "quantity_changed": "Quantity changed"
     }
   },
   "Batch": {
@@ -395,5 +400,44 @@
       "tags": "Tags (;-separated)",
       "traits": "Extra traits (JSON)"
     }
+  },
+  "Attention": {
+    "heading": "Needs attention",
+    "allClear": "Nothing needs your attention today.",
+    "summary": "Alerts by kind",
+    "kind": {
+      "expired": "Expired",
+      "expiring": "Expiring soon",
+      "below_minimum": "Running low",
+      "warranty_ending": "Warranty ending"
+    },
+    "expiredOn": "Expired on {date}",
+    "expiresOn": "Expires on {date}",
+    "warrantyEnds": "Warranty ends on {date}",
+    "belowMinimum": "{quantity} {unit} left, minimum {min}",
+    "snooze": "Snooze",
+    "snoozeFor": {
+      "day": "1 day",
+      "week": "1 week",
+      "month": "1 month"
+    },
+    "shoppingList": "Shopping list",
+    "snoozedSummary": "{count, plural, one {# snoozed alert} other {# snoozed alerts}}",
+    "until": "until {date}",
+    "undo": "Bring back"
+  },
+  "ShoppingList": {
+    "heading": "Shopping list",
+    "intro": "Everything that has fallen below its minimum quantity.",
+    "empty": "Nothing is running low.",
+    "unavailable": "The shopping list is unavailable right now.",
+    "need": "Need {shortfall} {unit} more (minimum {min})",
+    "copy": "Copy as text",
+    "copied": "Copied",
+    "download": "Download .txt"
+  },
+  "Quantity": {
+    "decrease": "Decrease quantity",
+    "increase": "Increase quantity"
   }
 }

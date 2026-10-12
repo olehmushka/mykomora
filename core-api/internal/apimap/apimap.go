@@ -134,6 +134,7 @@ func Item(it *db.Item, effectiveLocationID uuid.UUID, effectiveRoomID *uuid.UUID
 		ExpiresAt:           date(pgconv.ToDatePtr(it.ExpiresAt)),
 		OpenedAt:            date(pgconv.ToDatePtr(it.OpenedAt)),
 		PaoMonths:           pgconv.ToInt4Ptr(it.PaoMonths),
+		EffectiveExpiresAt:  date(EffectiveExpiry(pgconv.ToDatePtr(it.ExpiresAt), pgconv.ToDatePtr(it.OpenedAt), pgconv.ToInt4Ptr(it.PaoMonths))),
 		Brand:               pgconv.ToTextPtr(it.Brand),
 		Condition:           itemCondition(it.Condition),
 		Season:              itemSeason(it.Season),
@@ -280,12 +281,49 @@ type InviteState struct {
 func InviteStatus(s InviteState, now time.Time) api.InviteStatus {
 	switch {
 	case s.AcceptedAt != nil:
-		return api.Accepted
+		return api.InviteStatusAccepted
 	case s.RevokedAt != nil:
-		return api.Revoked
+		return api.InviteStatusRevoked
 	case now.After(s.ExpiresAt):
-		return api.Expired
+		return api.InviteStatusExpired
 	default:
-		return api.Pending
+		return api.InviteStatusPending
 	}
+}
+
+// EffectiveExpiry is the earlier of the printed expiry and the
+// period-after-opening date (openedAt + paoMonths); nil when neither
+// applies. It mirrors the LEAST(...) in db/queries/alerts.sql, which the
+// Attention panel filters on, so a card and the panel can never disagree.
+func EffectiveExpiry(expiresAt, openedAt *time.Time, paoMonths *int32) *time.Time {
+	var pao *time.Time
+
+	if openedAt != nil && paoMonths != nil {
+		t := addMonthsClamped(*openedAt, int(*paoMonths))
+		pao = &t
+	}
+
+	switch {
+	case expiresAt == nil:
+		return pao
+	case pao == nil || !pao.Before(*expiresAt):
+		return expiresAt
+	default:
+		return pao
+	}
+}
+
+// addMonthsClamped adds calendar months the way Postgres does: landing on a
+// day the target month lacks clamps to its last day (31 Jan + 1 month is
+// 28 Feb), where time.AddDate would overflow into March.
+func addMonthsClamped(t time.Time, months int) time.Time {
+	y, m, d := t.Date()
+	first := time.Date(y, m+time.Month(months), 1, 0, 0, 0, 0, t.Location())
+	last := first.AddDate(0, 1, -1).Day()
+
+	if d > last {
+		d = last
+	}
+
+	return time.Date(first.Year(), first.Month(), d, 0, 0, 0, 0, t.Location())
 }

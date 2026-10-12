@@ -84,6 +84,13 @@ export function getDashboard() {
   return callApi<Ok<"getDashboard", 200>>("/api/v1/dashboard");
 }
 
+export function adjustItemQuantity(itemId: string, body: { delta: number } | { quantity: number }) {
+  return callApi<Ok<"adjustItemQuantity", 200>>(
+    `/api/v1/items/${encodeURIComponent(itemId)}/quantity`,
+    { method: "POST", body },
+  );
+}
+
 export function createItem(body: CreateItemRequest) {
   return callApi<Ok<"createItem", 201>>("/api/v1/items", { method: "POST", body });
 }

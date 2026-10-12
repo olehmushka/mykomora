@@ -764,6 +764,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/items/{itemId}/quantity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Adjust a consumable's quantity
+         * @description Send exactly one of `delta` (a relative +/- change) or `quantity`
+         *     (an absolute value). The result is clamped at zero. Writes a
+         *     `quantity_changed` event.
+         */
+        post: operations["adjustItemQuantity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What needs attention today
+         * @description Computed on every call from the family's items, minus alerts snoozed
+         *     by a dismissal that is still in force.
+         */
+        get: operations["listAlerts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/alerts/dismissals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Snooze one alert for the whole family */
+        post: operations["dismissAlert"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/alerts/dismissals/{dismissalId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Bring a snoozed alert back */
+        delete: operations["undoAlertDismissal"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shopping-list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Everything below its minimum quantity */
+        get: operations["getShoppingList"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/items/{itemId}/duplicate": {
         parameters: {
             query?: never;
@@ -1513,6 +1609,12 @@ export interface components {
             openedAt?: string;
             /** Format: int32 */
             paoMonths?: number;
+            /**
+             * Format: date
+             * @description The earlier of `expiresAt` and `openedAt` + `paoMonths`.
+             *     Computed; absent when neither applies.
+             */
+            effectiveExpiresAt?: string;
             brand?: string;
             condition?: components["schemas"]["ItemCondition"];
             season?: components["schemas"]["ItemSeason"];
@@ -1723,6 +1825,69 @@ export interface components {
             spot?: string;
             /** Format: uuid */
             parentItemId?: string;
+        };
+        /** @description Exactly one of `delta` or `quantity`. */
+        AdjustQuantityRequest: {
+            delta?: number;
+            quantity?: number;
+        };
+        /** @enum {string} */
+        AlertKind: "expired" | "expiring" | "below_minimum" | "warranty_ending";
+        Alert: {
+            kind: components["schemas"]["AlertKind"];
+            /** Format: uuid */
+            itemId: string;
+            itemName: string;
+            /** Format: uuid */
+            categoryId: string;
+            /**
+             * Format: date
+             * @description The effective expiry or warranty end. Absent for `below_minimum`.
+             */
+            dueDate?: string;
+            quantity?: number;
+            minQuantity?: number;
+            unit?: string;
+        };
+        AlertList: {
+            alerts: components["schemas"]["Alert"][];
+            /** @description Number of visible alerts per kind; kinds with none are omitted. */
+            counts: {
+                [key: string]: number;
+            };
+            /** @description Dismissals still in force, so the UI can offer an undo. */
+            snoozed?: components["schemas"]["AlertDismissal"][];
+        };
+        DismissAlertRequest: {
+            /** Format: uuid */
+            itemId: string;
+            kind: components["schemas"]["AlertKind"];
+            /** Format: int32 */
+            snoozeDays: number;
+        };
+        AlertDismissal: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            itemId: string;
+            kind: components["schemas"]["AlertKind"];
+            /** Format: date */
+            snoozedUntil: string;
+            /** @description Filled in by `GET /alerts` so a snoozed list can name its items. */
+            itemName?: string;
+        };
+        ShoppingListEntry: {
+            /** Format: uuid */
+            itemId: string;
+            name: string;
+            quantity: number;
+            minQuantity: number;
+            unit?: string;
+            /** @description minQuantity minus quantity. */
+            shortfall?: number;
+        };
+        ShoppingList: {
+            entries: components["schemas"]["ShoppingListEntry"][];
         };
         SetItemStatusRequest: {
             status: components["schemas"]["ItemStatus"];
@@ -3193,6 +3358,126 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Dashboard"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    adjustItemQuantity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdjustQuantityRequest"];
+            };
+        };
+        responses: {
+            /** @description The item at its new quantity. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Item"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listAlerts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The current alerts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    dismissAlert: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DismissAlertRequest"];
+            };
+        };
+        responses: {
+            /** @description The dismissal now in force. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertDismissal"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    undoAlertDismissal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dismissalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The dismissal is gone. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getShoppingList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The shopping list. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingList"];
                 };
             };
             401: components["responses"]["Unauthorized"];
