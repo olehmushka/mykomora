@@ -133,6 +133,13 @@ type Querier interface {
 	// Guarded by EXISTS against categories so a custom field can only attach to a
 	// category this family can actually see (its own, or a built-in).
 	CreateTraitDef(ctx context.Context, arg CreateTraitDefParams) (TraitDef, error)
+	DashboardCountsByCategory(ctx context.Context, familyID pgtype.UUID) ([]DashboardCountsByCategoryRow, error)
+	// Live items per location, by effective place: nested items count under the
+	// location of their root container.
+	DashboardCountsByLocation(ctx context.Context, familyID pgtype.UUID) ([]DashboardCountsByLocationRow, error)
+	// Purchase value of live items still owned. No conversion between
+	// currencies (multi-currency is post-v1): one row per currency.
+	DashboardValueByCurrency(ctx context.Context, familyID pgtype.UUID) ([]DashboardValueByCurrencyRow, error)
 	// Returns the deleted row so the caller can delete its object from storage.
 	DeleteItemAttachment(ctx context.Context, arg DeleteItemAttachmentParams) (ItemAttachment, error)
 	// Returns the deleted row so the caller can delete its two objects from
@@ -140,6 +147,9 @@ type Querier interface {
 	DeleteItemPhoto(ctx context.Context, arg DeleteItemPhotoParams) (ItemPhoto, error)
 	DeleteTag(ctx context.Context, arg DeleteTagParams) (int64, error)
 	DetachItemTag(ctx context.Context, arg DetachItemTagParams) (int64, error)
+	// Duplicate hints for the create form: close fuzzy matches on the name within
+	// the family. Uses the same trigram expression the index is built on.
+	FindSimilarItems(ctx context.Context, arg FindSimilarItemsParams) ([]FindSimilarItemsRow, error)
 	GetCategory(ctx context.Context, arg GetCategoryParams) (Category, error)
 	// Scoped through family_members rather than by primary key alone.
 	//
@@ -215,15 +225,16 @@ type Querier interface {
 	ListItemChildren(ctx context.Context, arg ListItemChildrenParams) ([]Item, error)
 	ListItemEvents(ctx context.Context, arg ListItemEventsParams) ([]ItemEvent, error)
 	ListItemPhotos(ctx context.Context, arg ListItemPhotosParams) ([]ItemPhoto, error)
-	// Roots only (no parent): a nested item's place columns are cosmetic, so it
-	// is reached by following a container's contents link, not by this list
-	// (00008_items.sql's header). Filters are optional; an absent one matches
-	// everything.
-	ListItems(ctx context.Context, arg ListItemsParams) ([]Item, error)
+	// For a page of search hits: each item's ancestor chain with the root's
+	// place names, in one round trip. depth 0 is the item itself; the last depth
+	// per origin_id is its root, whose location/room are the effective place.
+	// Chains are at most maxDepth+1 (5+1) long, so this stays small.
+	ListItemPlacements(ctx context.Context, arg ListItemPlacementsParams) ([]ListItemPlacementsRow, error)
 	ListLocations(ctx context.Context, arg ListLocationsParams) ([]Location, error)
 	// `include_archived` is a parameter rather than a second query so the list and
 	// its archived variant cannot drift apart.
 	ListPeople(ctx context.Context, arg ListPeopleParams) ([]Person, error)
+	ListRecentItemEvents(ctx context.Context, arg ListRecentItemEventsParams) ([]ListRecentItemEventsRow, error)
 	ListRoomsByLocation(ctx context.Context, arg ListRoomsByLocationParams) ([]Room, error)
 	ListTags(ctx context.Context, familyID pgtype.UUID) ([]Tag, error)
 	ListTagsForItem(ctx context.Context, arg ListTagsForItemParams) ([]Tag, error)
@@ -264,6 +275,25 @@ type Querier interface {
 	// successor makes reuse detectable, and the revocation keeps the live-token
 	// index honest.
 	RotateRefreshToken(ctx context.Context, arg RotateRefreshTokenParams) (int64, error)
+	// The one list/search query behind GET /items (SPEC 6, "Search"). Every
+	// filter is optional; an absent one matches everything.
+	//
+	// Text: internal/items/search.go turns the user's words into q_or (every
+	// token, prefix-matched, OR-ed), q_tokens (the same tokens, one tsquery each)
+	// and q_plain. The WHERE below is the index-friendly pre-filter (GIN on
+	// search_tsv, trigram GIN on name); the outer filter then demands that at
+	// least q_min_match tokens actually hit, or that the name is a close fuzzy
+	// match. Requiring "most" rather than "all" tokens is what lets a sentence
+	// like «зимові чоботи 32 розміру» find an item that never says "розміру".
+	//
+	// Place: room_id/location_id match the item's EFFECTIVE place, i.e. its root
+	// container's, so a boot inside a box is found under the box's room. The
+	// `placed` walk only runs when one of them is set.
+	//
+	// Pagination is keyset on (sort_key, id). sort_key is text compared in the C
+	// collation and built so that ascending order is always the wanted order
+	// (newest-first is encoded by subtracting from a constant).
+	SearchItems(ctx context.Context, arg SearchItemsParams) ([]SearchItemsRow, error)
 	// The service decides whether the target status is terminal and passes
 	// archived_at accordingly; this query just writes whatever it is given.
 	SetItemStatus(ctx context.Context, arg SetItemStatusParams) (Item, error)

@@ -58,7 +58,7 @@ INSERT INTO items (
     $24, $25, $26, $27,
     $28, $29
 )
-RETURNING id, family_id, name, category_id, location_id, room_id, spot, parent_item_id, is_container, status, quantity, unit, min_quantity, expires_at, opened_at, pao_months, brand, condition, season, size_system, size_value, size_norm_min, size_norm_max, for_person_id, serial_number, warranty_until, purchase_date, purchase_price, purchase_currency, notes, traits, created_by, created_at, updated_at, archived_at
+RETURNING id, family_id, name, category_id, location_id, room_id, spot, parent_item_id, is_container, status, quantity, unit, min_quantity, expires_at, opened_at, pao_months, brand, condition, season, size_system, size_value, size_norm_min, size_norm_max, for_person_id, serial_number, warranty_until, purchase_date, purchase_price, purchase_currency, notes, traits, created_by, created_at, updated_at, archived_at, search_tsv
 `
 
 type CreateItemParams struct {
@@ -175,12 +175,187 @@ func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (Item, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ArchivedAt,
+		&i.SearchTsv,
 	)
 	return i, err
 }
 
+const dashboardCountsByCategory = `-- name: DashboardCountsByCategory :many
+SELECT i.category_id, count(*) AS item_count
+FROM items i
+WHERE i.family_id = $1 AND i.archived_at IS NULL
+GROUP BY i.category_id
+ORDER BY item_count DESC, i.category_id
+`
+
+type DashboardCountsByCategoryRow struct {
+	CategoryID pgtype.UUID `json:"category_id"`
+	ItemCount  int64       `json:"item_count"`
+}
+
+func (q *Queries) DashboardCountsByCategory(ctx context.Context, familyID pgtype.UUID) ([]DashboardCountsByCategoryRow, error) {
+	rows, err := q.db.Query(ctx, dashboardCountsByCategory, familyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []DashboardCountsByCategoryRow{}
+	for rows.Next() {
+		var i DashboardCountsByCategoryRow
+		if err := rows.Scan(&i.CategoryID, &i.ItemCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const dashboardCountsByLocation = `-- name: DashboardCountsByLocation :many
+WITH RECURSIVE tree AS (
+    SELECT r.id, r.location_id
+    FROM items r
+    WHERE r.family_id = $1 AND r.parent_item_id IS NULL AND r.archived_at IS NULL
+    UNION ALL
+    SELECT c.id, tree.location_id
+    FROM items c
+             JOIN tree ON c.parent_item_id = tree.id
+    WHERE c.family_id = $1 AND c.archived_at IS NULL
+)
+SELECT l.id AS location_id, l.name AS location_name, count(tree.id) AS item_count
+FROM locations l
+         LEFT JOIN tree ON tree.location_id = l.id
+WHERE l.family_id = $1 AND l.archived_at IS NULL
+GROUP BY l.id, l.name, l.sort_order
+ORDER BY l.sort_order, l.name
+`
+
+type DashboardCountsByLocationRow struct {
+	LocationID   pgtype.UUID `json:"location_id"`
+	LocationName string      `json:"location_name"`
+	ItemCount    int64       `json:"item_count"`
+}
+
+// Live items per location, by effective place: nested items count under the
+// location of their root container.
+func (q *Queries) DashboardCountsByLocation(ctx context.Context, familyID pgtype.UUID) ([]DashboardCountsByLocationRow, error) {
+	rows, err := q.db.Query(ctx, dashboardCountsByLocation, familyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []DashboardCountsByLocationRow{}
+	for rows.Next() {
+		var i DashboardCountsByLocationRow
+		if err := rows.Scan(&i.LocationID, &i.LocationName, &i.ItemCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const dashboardValueByCurrency = `-- name: DashboardValueByCurrency :many
+SELECT coalesce(i.purchase_currency, '') AS currency,
+       sum(i.purchase_price * i.quantity)::numeric AS total,
+       count(*) AS item_count
+FROM items i
+WHERE i.family_id = $1
+  AND i.archived_at IS NULL
+  AND i.purchase_price IS NOT NULL
+  AND i.status IN ('in_use', 'stored', 'lent', 'to_give_away')
+GROUP BY 1
+ORDER BY 1
+`
+
+type DashboardValueByCurrencyRow struct {
+	Currency  string         `json:"currency"`
+	Total     pgtype.Numeric `json:"total"`
+	ItemCount int64          `json:"item_count"`
+}
+
+// Purchase value of live items still owned. No conversion between
+// currencies (multi-currency is post-v1): one row per currency.
+func (q *Queries) DashboardValueByCurrency(ctx context.Context, familyID pgtype.UUID) ([]DashboardValueByCurrencyRow, error) {
+	rows, err := q.db.Query(ctx, dashboardValueByCurrency, familyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []DashboardValueByCurrencyRow{}
+	for rows.Next() {
+		var i DashboardValueByCurrencyRow
+		if err := rows.Scan(&i.Currency, &i.Total, &i.ItemCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findSimilarItems = `-- name: FindSimilarItems :many
+SELECT i.id, i.name, i.category_id, i.status,
+       similarity(immutable_unaccent(lower(i.name)), immutable_unaccent(lower($1::text))) AS score
+FROM items i
+WHERE i.family_id = $2
+  AND i.archived_at IS NULL
+  AND immutable_unaccent(lower(i.name)) % immutable_unaccent(lower($1::text))
+  AND similarity(immutable_unaccent(lower(i.name)), immutable_unaccent(lower($1::text))) >= 0.4
+ORDER BY score DESC, i.id
+LIMIT 5
+`
+
+type FindSimilarItemsParams struct {
+	Name     string      `json:"name"`
+	FamilyID pgtype.UUID `json:"family_id"`
+}
+
+type FindSimilarItemsRow struct {
+	ID         pgtype.UUID `json:"id"`
+	Name       string      `json:"name"`
+	CategoryID pgtype.UUID `json:"category_id"`
+	Status     ItemStatus  `json:"status"`
+	Score      float32     `json:"score"`
+}
+
+// Duplicate hints for the create form: close fuzzy matches on the name within
+// the family. Uses the same trigram expression the index is built on.
+func (q *Queries) FindSimilarItems(ctx context.Context, arg FindSimilarItemsParams) ([]FindSimilarItemsRow, error) {
+	rows, err := q.db.Query(ctx, findSimilarItems, arg.Name, arg.FamilyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FindSimilarItemsRow{}
+	for rows.Next() {
+		var i FindSimilarItemsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.CategoryID,
+			&i.Status,
+			&i.Score,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getItem = `-- name: GetItem :one
-SELECT id, family_id, name, category_id, location_id, room_id, spot, parent_item_id, is_container, status, quantity, unit, min_quantity, expires_at, opened_at, pao_months, brand, condition, season, size_system, size_value, size_norm_min, size_norm_max, for_person_id, serial_number, warranty_until, purchase_date, purchase_price, purchase_currency, notes, traits, created_by, created_at, updated_at, archived_at
+SELECT id, family_id, name, category_id, location_id, room_id, spot, parent_item_id, is_container, status, quantity, unit, min_quantity, expires_at, opened_at, pao_months, brand, condition, season, size_system, size_value, size_norm_min, size_norm_max, for_person_id, serial_number, warranty_until, purchase_date, purchase_price, purchase_currency, notes, traits, created_by, created_at, updated_at, archived_at, search_tsv
 FROM items
 WHERE id = $1
   AND family_id = $2
@@ -230,22 +405,23 @@ func (q *Queries) GetItem(ctx context.Context, arg GetItemParams) (Item, error) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ArchivedAt,
+		&i.SearchTsv,
 	)
 	return i, err
 }
 
 const getItemAncestorChain = `-- name: GetItemAncestorChain :many
 WITH RECURSIVE chain AS (
-    SELECT i.id, i.family_id, i.name, i.category_id, i.location_id, i.room_id, i.spot, i.parent_item_id, i.is_container, i.status, i.quantity, i.unit, i.min_quantity, i.expires_at, i.opened_at, i.pao_months, i.brand, i.condition, i.season, i.size_system, i.size_value, i.size_norm_min, i.size_norm_max, i.for_person_id, i.serial_number, i.warranty_until, i.purchase_date, i.purchase_price, i.purchase_currency, i.notes, i.traits, i.created_by, i.created_at, i.updated_at, i.archived_at, 0 AS depth
+    SELECT i.id, i.family_id, i.name, i.category_id, i.location_id, i.room_id, i.spot, i.parent_item_id, i.is_container, i.status, i.quantity, i.unit, i.min_quantity, i.expires_at, i.opened_at, i.pao_months, i.brand, i.condition, i.season, i.size_system, i.size_value, i.size_norm_min, i.size_norm_max, i.for_person_id, i.serial_number, i.warranty_until, i.purchase_date, i.purchase_price, i.purchase_currency, i.notes, i.traits, i.created_by, i.created_at, i.updated_at, i.archived_at, i.search_tsv, 0 AS depth
     FROM items i
     WHERE i.id = $1 AND i.family_id = $2
     UNION ALL
-    SELECT p.id, p.family_id, p.name, p.category_id, p.location_id, p.room_id, p.spot, p.parent_item_id, p.is_container, p.status, p.quantity, p.unit, p.min_quantity, p.expires_at, p.opened_at, p.pao_months, p.brand, p.condition, p.season, p.size_system, p.size_value, p.size_norm_min, p.size_norm_max, p.for_person_id, p.serial_number, p.warranty_until, p.purchase_date, p.purchase_price, p.purchase_currency, p.notes, p.traits, p.created_by, p.created_at, p.updated_at, p.archived_at, chain.depth + 1
+    SELECT p.id, p.family_id, p.name, p.category_id, p.location_id, p.room_id, p.spot, p.parent_item_id, p.is_container, p.status, p.quantity, p.unit, p.min_quantity, p.expires_at, p.opened_at, p.pao_months, p.brand, p.condition, p.season, p.size_system, p.size_value, p.size_norm_min, p.size_norm_max, p.for_person_id, p.serial_number, p.warranty_until, p.purchase_date, p.purchase_price, p.purchase_currency, p.notes, p.traits, p.created_by, p.created_at, p.updated_at, p.archived_at, p.search_tsv, chain.depth + 1
     FROM items p
              JOIN chain ON p.id = chain.parent_item_id
     WHERE p.family_id = $2
 )
-SELECT id, family_id, name, category_id, location_id, room_id, spot, parent_item_id, is_container, status, quantity, unit, min_quantity, expires_at, opened_at, pao_months, brand, condition, season, size_system, size_value, size_norm_min, size_norm_max, for_person_id, serial_number, warranty_until, purchase_date, purchase_price, purchase_currency, notes, traits, created_by, created_at, updated_at, archived_at, depth FROM chain ORDER BY depth
+SELECT id, family_id, name, category_id, location_id, room_id, spot, parent_item_id, is_container, status, quantity, unit, min_quantity, expires_at, opened_at, pao_months, brand, condition, season, size_system, size_value, size_norm_min, size_norm_max, for_person_id, serial_number, warranty_until, purchase_date, purchase_price, purchase_currency, notes, traits, created_by, created_at, updated_at, archived_at, search_tsv, depth FROM chain ORDER BY depth
 `
 
 type GetItemAncestorChainParams struct {
@@ -289,6 +465,7 @@ type GetItemAncestorChainRow struct {
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 	ArchivedAt       pgtype.Timestamptz `json:"archived_at"`
+	SearchTsv        string             `json:"search_tsv"`
 	Depth            int32              `json:"depth"`
 }
 
@@ -342,6 +519,7 @@ func (q *Queries) GetItemAncestorChain(ctx context.Context, arg GetItemAncestorC
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.ArchivedAt,
+			&i.SearchTsv,
 			&i.Depth,
 		); err != nil {
 			return nil, err
@@ -404,7 +582,7 @@ func (q *Queries) GetItemDescendantDepths(ctx context.Context, arg GetItemDescen
 }
 
 const listItemChildren = `-- name: ListItemChildren :many
-SELECT id, family_id, name, category_id, location_id, room_id, spot, parent_item_id, is_container, status, quantity, unit, min_quantity, expires_at, opened_at, pao_months, brand, condition, season, size_system, size_value, size_norm_min, size_norm_max, for_person_id, serial_number, warranty_until, purchase_date, purchase_price, purchase_currency, notes, traits, created_by, created_at, updated_at, archived_at
+SELECT id, family_id, name, category_id, location_id, room_id, spot, parent_item_id, is_container, status, quantity, unit, min_quantity, expires_at, opened_at, pao_months, brand, condition, season, size_system, size_value, size_norm_min, size_norm_max, for_person_id, serial_number, warranty_until, purchase_date, purchase_price, purchase_currency, notes, traits, created_by, created_at, updated_at, archived_at, search_tsv
 FROM items
 WHERE family_id = $1
   AND parent_item_id = $2
@@ -463,6 +641,7 @@ func (q *Queries) ListItemChildren(ctx context.Context, arg ListItemChildrenPara
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.ArchivedAt,
+			&i.SearchTsv,
 		); err != nil {
 			return nil, err
 		}
@@ -474,86 +653,127 @@ func (q *Queries) ListItemChildren(ctx context.Context, arg ListItemChildrenPara
 	return items, nil
 }
 
-const listItems = `-- name: ListItems :many
-SELECT id, family_id, name, category_id, location_id, room_id, spot, parent_item_id, is_container, status, quantity, unit, min_quantity, expires_at, opened_at, pao_months, brand, condition, season, size_system, size_value, size_norm_min, size_norm_max, for_person_id, serial_number, warranty_until, purchase_date, purchase_price, purchase_currency, notes, traits, created_by, created_at, updated_at, archived_at
-FROM items
-WHERE family_id = $1
-  AND parent_item_id IS NULL
-  AND ($2::boolean OR archived_at IS NULL)
-  AND ($3::uuid IS NULL OR location_id = $3)
-  AND ($4::uuid IS NULL OR room_id = $4)
-  AND ($5::uuid IS NULL OR category_id = $5)
-ORDER BY created_at DESC, id
-LIMIT $7 OFFSET $6
+const listItemPlacements = `-- name: ListItemPlacements :many
+WITH RECURSIVE chain AS (
+    SELECT i.id AS origin_id, i.id, i.parent_item_id, i.name, i.location_id, i.room_id, i.spot, 0 AS depth
+    FROM items i
+    WHERE i.family_id = $1
+      AND i.id = ANY($2::uuid[])
+    UNION ALL
+    SELECT chain.origin_id, p.id, p.parent_item_id, p.name, p.location_id, p.room_id, p.spot, chain.depth + 1
+    FROM items p
+             JOIN chain ON p.id = chain.parent_item_id
+    WHERE p.family_id = $1
+)
+SELECT chain.origin_id,
+       chain.id AS ancestor_id,
+       chain.name AS ancestor_name,
+       chain.location_id,
+       chain.room_id,
+       chain.spot,
+       chain.depth,
+       l.name AS location_name,
+       r.name AS room_name
+FROM chain
+         LEFT JOIN locations l ON l.id = chain.location_id AND l.family_id = $1
+         LEFT JOIN rooms r ON r.id = chain.room_id AND r.location_id = l.id
+ORDER BY chain.origin_id, chain.depth
 `
 
-type ListItemsParams struct {
-	FamilyID        pgtype.UUID `json:"family_id"`
-	IncludeArchived bool        `json:"include_archived"`
-	LocationID      pgtype.UUID `json:"location_id"`
-	RoomID          pgtype.UUID `json:"room_id"`
-	CategoryID      pgtype.UUID `json:"category_id"`
-	ResultOffset    int32       `json:"result_offset"`
-	ResultLimit     int32       `json:"result_limit"`
+type ListItemPlacementsParams struct {
+	FamilyID pgtype.UUID   `json:"family_id"`
+	ItemIds  []pgtype.UUID `json:"item_ids"`
 }
 
-// Roots only (no parent): a nested item's place columns are cosmetic, so it
-// is reached by following a container's contents link, not by this list
-// (00008_items.sql's header). Filters are optional; an absent one matches
-// everything.
-func (q *Queries) ListItems(ctx context.Context, arg ListItemsParams) ([]Item, error) {
-	rows, err := q.db.Query(ctx, listItems,
-		arg.FamilyID,
-		arg.IncludeArchived,
-		arg.LocationID,
-		arg.RoomID,
-		arg.CategoryID,
-		arg.ResultOffset,
-		arg.ResultLimit,
-	)
+type ListItemPlacementsRow struct {
+	OriginID     pgtype.UUID `json:"origin_id"`
+	AncestorID   pgtype.UUID `json:"ancestor_id"`
+	AncestorName string      `json:"ancestor_name"`
+	LocationID   pgtype.UUID `json:"location_id"`
+	RoomID       pgtype.UUID `json:"room_id"`
+	Spot         pgtype.Text `json:"spot"`
+	Depth        int32       `json:"depth"`
+	LocationName pgtype.Text `json:"location_name"`
+	RoomName     pgtype.Text `json:"room_name"`
+}
+
+// For a page of search hits: each item's ancestor chain with the root's
+// place names, in one round trip. depth 0 is the item itself; the last depth
+// per origin_id is its root, whose location/room are the effective place.
+// Chains are at most maxDepth+1 (5+1) long, so this stays small.
+func (q *Queries) ListItemPlacements(ctx context.Context, arg ListItemPlacementsParams) ([]ListItemPlacementsRow, error) {
+	rows, err := q.db.Query(ctx, listItemPlacements, arg.FamilyID, arg.ItemIds)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Item{}
+	items := []ListItemPlacementsRow{}
 	for rows.Next() {
-		var i Item
+		var i ListItemPlacementsRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.FamilyID,
-			&i.Name,
-			&i.CategoryID,
+			&i.OriginID,
+			&i.AncestorID,
+			&i.AncestorName,
 			&i.LocationID,
 			&i.RoomID,
 			&i.Spot,
-			&i.ParentItemID,
-			&i.IsContainer,
-			&i.Status,
-			&i.Quantity,
-			&i.Unit,
-			&i.MinQuantity,
-			&i.ExpiresAt,
-			&i.OpenedAt,
-			&i.PaoMonths,
-			&i.Brand,
-			&i.Condition,
-			&i.Season,
-			&i.SizeSystem,
-			&i.SizeValue,
-			&i.SizeNormMin,
-			&i.SizeNormMax,
-			&i.ForPersonID,
-			&i.SerialNumber,
-			&i.WarrantyUntil,
-			&i.PurchaseDate,
-			&i.PurchasePrice,
-			&i.PurchaseCurrency,
-			&i.Notes,
-			&i.Traits,
-			&i.CreatedBy,
+			&i.Depth,
+			&i.LocationName,
+			&i.RoomName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRecentItemEvents = `-- name: ListRecentItemEvents :many
+SELECT e.id, e.family_id, e.item_id, e.actor_user_id, e.type, e.payload, e.created_at, i.name AS item_name
+FROM item_events e
+         JOIN items i ON i.id = e.item_id AND i.family_id = $1
+WHERE e.family_id = $1
+ORDER BY e.created_at DESC, e.id
+LIMIT $2
+`
+
+type ListRecentItemEventsParams struct {
+	FamilyID    pgtype.UUID `json:"family_id"`
+	ResultLimit int32       `json:"result_limit"`
+}
+
+type ListRecentItemEventsRow struct {
+	ID          pgtype.UUID        `json:"id"`
+	FamilyID    pgtype.UUID        `json:"family_id"`
+	ItemID      pgtype.UUID        `json:"item_id"`
+	ActorUserID pgtype.UUID        `json:"actor_user_id"`
+	Type        string             `json:"type"`
+	Payload     []byte             `json:"payload"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	ItemName    string             `json:"item_name"`
+}
+
+func (q *Queries) ListRecentItemEvents(ctx context.Context, arg ListRecentItemEventsParams) ([]ListRecentItemEventsRow, error) {
+	rows, err := q.db.Query(ctx, listRecentItemEvents, arg.FamilyID, arg.ResultLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListRecentItemEventsRow{}
+	for rows.Next() {
+		var i ListRecentItemEventsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.FamilyID,
+			&i.ItemID,
+			&i.ActorUserID,
+			&i.Type,
+			&i.Payload,
 			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.ArchivedAt,
+			&i.ItemName,
 		); err != nil {
 			return nil, err
 		}
@@ -575,7 +795,7 @@ SET location_id    = $1,
 WHERE id = $5
   AND family_id = $6
   AND archived_at IS NULL
-RETURNING id, family_id, name, category_id, location_id, room_id, spot, parent_item_id, is_container, status, quantity, unit, min_quantity, expires_at, opened_at, pao_months, brand, condition, season, size_system, size_value, size_norm_min, size_norm_max, for_person_id, serial_number, warranty_until, purchase_date, purchase_price, purchase_currency, notes, traits, created_by, created_at, updated_at, archived_at
+RETURNING id, family_id, name, category_id, location_id, room_id, spot, parent_item_id, is_container, status, quantity, unit, min_quantity, expires_at, opened_at, pao_months, brand, condition, season, size_system, size_value, size_norm_min, size_norm_max, for_person_id, serial_number, warranty_until, purchase_date, purchase_price, purchase_currency, notes, traits, created_by, created_at, updated_at, archived_at, search_tsv
 `
 
 type MoveItemParams struct {
@@ -637,8 +857,246 @@ func (q *Queries) MoveItem(ctx context.Context, arg MoveItemParams) (Item, error
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ArchivedAt,
+		&i.SearchTsv,
 	)
 	return i, err
+}
+
+const searchItems = `-- name: SearchItems :many
+WITH RECURSIVE cats AS (
+    SELECT c.id
+    FROM categories c
+    WHERE c.id = $2::uuid
+      AND (c.family_id = $1 OR c.family_id IS NULL)
+    UNION ALL
+    SELECT c.id
+    FROM categories c
+             JOIN cats ON c.parent_id = cats.id
+    WHERE c.family_id = $1 OR c.family_id IS NULL
+),
+placed AS (
+    SELECT r.id
+    FROM items r
+    WHERE r.family_id = $1
+      AND r.parent_item_id IS NULL
+      AND ($3::uuid IS NULL OR r.location_id = $3)
+      AND ($4::uuid IS NULL OR r.room_id = $4)
+    UNION ALL
+    SELECT c.id
+    FROM items c
+             JOIN placed ON c.parent_item_id = placed.id
+    WHERE c.family_id = $1
+),
+cand AS (
+    SELECT i.id, i.family_id, i.name, i.category_id, i.location_id, i.room_id, i.spot, i.parent_item_id, i.is_container, i.status, i.quantity, i.unit, i.min_quantity, i.expires_at, i.opened_at, i.pao_months, i.brand, i.condition, i.season, i.size_system, i.size_value, i.size_norm_min, i.size_norm_max, i.for_person_id, i.serial_number, i.warranty_until, i.purchase_date, i.purchase_price, i.purchase_currency, i.notes, i.traits, i.created_by, i.created_at, i.updated_at, i.archived_at, i.search_tsv,
+           CASE WHEN $5::text IS NULL THEN 0
+                ELSE (SELECT count(*)
+                      FROM unnest($6::text[]) AS t
+                      WHERE i.search_tsv @@ to_tsquery('simple', immutable_unaccent(t)))
+               END AS hits,
+           CASE WHEN $5::text IS NULL THEN 0::float4
+                ELSE word_similarity($7::text, immutable_unaccent(lower(i.name)))
+               END AS sim
+    FROM items i
+    WHERE i.family_id = $1
+      AND ($8::boolean OR i.archived_at IS NULL)
+      AND (NOT $9::boolean OR i.parent_item_id IS NULL)
+      AND ($10::uuid IS NULL OR i.parent_item_id = $10)
+      AND ($5::text IS NULL
+           OR i.search_tsv @@ to_tsquery('simple', immutable_unaccent($5))
+           OR $7::text <% immutable_unaccent(lower(i.name)))
+      AND ($2::uuid IS NULL OR i.category_id IN (SELECT id FROM cats))
+      AND (($3::uuid IS NULL AND $4::uuid IS NULL)
+           OR i.id IN (SELECT id FROM placed))
+      AND ($11::uuid IS NULL OR i.for_person_id = $11)
+      AND ($12::item_status IS NULL OR i.status = $12)
+      AND ($13::item_season IS NULL OR i.season = $13)
+      AND ($14::item_condition IS NULL OR i.condition = $14)
+      AND ($15::uuid IS NULL OR EXISTS (
+            SELECT 1 FROM item_tags it WHERE it.item_id = i.id AND it.tag_id = $15))
+      AND ($16::jsonb IS NULL OR i.traits @> $16)
+      AND ($17::date IS NULL OR i.expires_at >= $17)
+      AND ($18::date IS NULL OR i.expires_at <= $18)
+      AND ($19::date IS NULL OR i.warranty_until >= $19)
+      AND ($20::date IS NULL OR i.warranty_until <= $20)
+      AND ($21::numeric IS NULL OR i.purchase_price >= $21)
+      AND ($22::numeric IS NULL OR i.purchase_price <= $22)
+),
+keyed AS (
+    SELECT cand.id, cand.family_id, cand.name, cand.category_id, cand.location_id, cand.room_id, cand.spot, cand.parent_item_id, cand.is_container, cand.status, cand.quantity, cand.unit, cand.min_quantity, cand.expires_at, cand.opened_at, cand.pao_months, cand.brand, cand.condition, cand.season, cand.size_system, cand.size_value, cand.size_norm_min, cand.size_norm_max, cand.for_person_id, cand.serial_number, cand.warranty_until, cand.purchase_date, cand.purchase_price, cand.purchase_currency, cand.notes, cand.traits, cand.created_by, cand.created_at, cand.updated_at, cand.archived_at, cand.search_tsv, cand.hits, cand.sim,
+           (CASE $23::text
+                WHEN 'relevance' THEN
+                    lpad((1000000 - round((cand.hits::float4 / greatest($24::int, 1) + 0.5 * cand.sim) * 100000))::bigint::text, 8, '0')
+                WHEN 'name' THEN
+                    immutable_unaccent(lower(cand.name))
+                WHEN 'expires' THEN
+                    coalesce(to_char(cand.expires_at, 'YYYY-MM-DD'), '9999-12-31')
+                WHEN 'price' THEN
+                    lpad(coalesce(round(cand.purchase_price * 100)::bigint, 9999999999999999)::text, 16, '0')
+                ELSE
+                    lpad((4102444800000000 - (extract(epoch FROM cand.created_at) * 1000000)::bigint)::text, 16, '0')
+            END)::text COLLATE "C" AS sort_key
+    FROM cand
+    WHERE $5::text IS NULL
+       OR cand.hits >= $25::int
+       OR cand.sim >= 0.6
+),
+page AS (
+    SELECT keyed.id, keyed.sort_key
+    FROM keyed
+    WHERE $26::text IS NULL
+       OR (keyed.sort_key, keyed.id) > ($26::text COLLATE "C", $27::uuid)
+    ORDER BY keyed.sort_key, keyed.id
+    LIMIT $28
+)
+SELECT items.id, items.family_id, items.name, items.category_id, items.location_id, items.room_id, items.spot, items.parent_item_id, items.is_container, items.status, items.quantity, items.unit, items.min_quantity, items.expires_at, items.opened_at, items.pao_months, items.brand, items.condition, items.season, items.size_system, items.size_value, items.size_norm_min, items.size_norm_max, items.for_person_id, items.serial_number, items.warranty_until, items.purchase_date, items.purchase_price, items.purchase_currency, items.notes, items.traits, items.created_by, items.created_at, items.updated_at, items.archived_at, items.search_tsv, page.sort_key::text AS sort_key, ph.thumb_key AS primary_thumb_key
+FROM page
+         JOIN items ON items.id = page.id AND items.family_id = $1
+         LEFT JOIN item_photos ph ON ph.item_id = page.id AND ph.is_primary
+ORDER BY page.sort_key, page.id
+`
+
+type SearchItemsParams struct {
+	FamilyID        pgtype.UUID       `json:"family_id"`
+	CategoryID      pgtype.UUID       `json:"category_id"`
+	LocationID      pgtype.UUID       `json:"location_id"`
+	RoomID          pgtype.UUID       `json:"room_id"`
+	QOr             pgtype.Text       `json:"q_or"`
+	QTokens         []string          `json:"q_tokens"`
+	QPlain          pgtype.Text       `json:"q_plain"`
+	IncludeArchived bool              `json:"include_archived"`
+	RootsOnly       bool              `json:"roots_only"`
+	ParentItemID    pgtype.UUID       `json:"parent_item_id"`
+	ForPersonID     pgtype.UUID       `json:"for_person_id"`
+	Status          NullItemStatus    `json:"status"`
+	Season          NullItemSeason    `json:"season"`
+	Condition       NullItemCondition `json:"condition"`
+	TagID           pgtype.UUID       `json:"tag_id"`
+	TraitFilter     []byte            `json:"trait_filter"`
+	ExpiresFrom     pgtype.Date       `json:"expires_from"`
+	ExpiresTo       pgtype.Date       `json:"expires_to"`
+	WarrantyFrom    pgtype.Date       `json:"warranty_from"`
+	WarrantyTo      pgtype.Date       `json:"warranty_to"`
+	PriceMin        pgtype.Numeric    `json:"price_min"`
+	PriceMax        pgtype.Numeric    `json:"price_max"`
+	SortMode        string            `json:"sort_mode"`
+	QTokenCount     int32             `json:"q_token_count"`
+	QMinMatch       int32             `json:"q_min_match"`
+	CursorKey       pgtype.Text       `json:"cursor_key"`
+	CursorID        pgtype.UUID       `json:"cursor_id"`
+	ResultLimit     int32             `json:"result_limit"`
+}
+
+type SearchItemsRow struct {
+	Item            Item        `json:"item"`
+	SortKey         string      `json:"sort_key"`
+	PrimaryThumbKey pgtype.Text `json:"primary_thumb_key"`
+}
+
+// The one list/search query behind GET /items (SPEC 6, "Search"). Every
+// filter is optional; an absent one matches everything.
+//
+// Text: internal/items/search.go turns the user's words into q_or (every
+// token, prefix-matched, OR-ed), q_tokens (the same tokens, one tsquery each)
+// and q_plain. The WHERE below is the index-friendly pre-filter (GIN on
+// search_tsv, trigram GIN on name); the outer filter then demands that at
+// least q_min_match tokens actually hit, or that the name is a close fuzzy
+// match. Requiring "most" rather than "all" tokens is what lets a sentence
+// like «зимові чоботи 32 розміру» find an item that never says "розміру".
+//
+// Place: room_id/location_id match the item's EFFECTIVE place, i.e. its root
+// container's, so a boot inside a box is found under the box's room. The
+// `placed` walk only runs when one of them is set.
+//
+// Pagination is keyset on (sort_key, id). sort_key is text compared in the C
+// collation and built so that ascending order is always the wanted order
+// (newest-first is encoded by subtracting from a constant).
+func (q *Queries) SearchItems(ctx context.Context, arg SearchItemsParams) ([]SearchItemsRow, error) {
+	rows, err := q.db.Query(ctx, searchItems,
+		arg.FamilyID,
+		arg.CategoryID,
+		arg.LocationID,
+		arg.RoomID,
+		arg.QOr,
+		arg.QTokens,
+		arg.QPlain,
+		arg.IncludeArchived,
+		arg.RootsOnly,
+		arg.ParentItemID,
+		arg.ForPersonID,
+		arg.Status,
+		arg.Season,
+		arg.Condition,
+		arg.TagID,
+		arg.TraitFilter,
+		arg.ExpiresFrom,
+		arg.ExpiresTo,
+		arg.WarrantyFrom,
+		arg.WarrantyTo,
+		arg.PriceMin,
+		arg.PriceMax,
+		arg.SortMode,
+		arg.QTokenCount,
+		arg.QMinMatch,
+		arg.CursorKey,
+		arg.CursorID,
+		arg.ResultLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SearchItemsRow{}
+	for rows.Next() {
+		var i SearchItemsRow
+		if err := rows.Scan(
+			&i.Item.ID,
+			&i.Item.FamilyID,
+			&i.Item.Name,
+			&i.Item.CategoryID,
+			&i.Item.LocationID,
+			&i.Item.RoomID,
+			&i.Item.Spot,
+			&i.Item.ParentItemID,
+			&i.Item.IsContainer,
+			&i.Item.Status,
+			&i.Item.Quantity,
+			&i.Item.Unit,
+			&i.Item.MinQuantity,
+			&i.Item.ExpiresAt,
+			&i.Item.OpenedAt,
+			&i.Item.PaoMonths,
+			&i.Item.Brand,
+			&i.Item.Condition,
+			&i.Item.Season,
+			&i.Item.SizeSystem,
+			&i.Item.SizeValue,
+			&i.Item.SizeNormMin,
+			&i.Item.SizeNormMax,
+			&i.Item.ForPersonID,
+			&i.Item.SerialNumber,
+			&i.Item.WarrantyUntil,
+			&i.Item.PurchaseDate,
+			&i.Item.PurchasePrice,
+			&i.Item.PurchaseCurrency,
+			&i.Item.Notes,
+			&i.Item.Traits,
+			&i.Item.CreatedBy,
+			&i.Item.CreatedAt,
+			&i.Item.UpdatedAt,
+			&i.Item.ArchivedAt,
+			&i.Item.SearchTsv,
+			&i.SortKey,
+			&i.PrimaryThumbKey,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const setItemStatus = `-- name: SetItemStatus :one
@@ -649,7 +1107,7 @@ SET status      = $1,
 WHERE id = $3
   AND family_id = $4
   AND archived_at IS NULL
-RETURNING id, family_id, name, category_id, location_id, room_id, spot, parent_item_id, is_container, status, quantity, unit, min_quantity, expires_at, opened_at, pao_months, brand, condition, season, size_system, size_value, size_norm_min, size_norm_max, for_person_id, serial_number, warranty_until, purchase_date, purchase_price, purchase_currency, notes, traits, created_by, created_at, updated_at, archived_at
+RETURNING id, family_id, name, category_id, location_id, room_id, spot, parent_item_id, is_container, status, quantity, unit, min_quantity, expires_at, opened_at, pao_months, brand, condition, season, size_system, size_value, size_norm_min, size_norm_max, for_person_id, serial_number, warranty_until, purchase_date, purchase_price, purchase_currency, notes, traits, created_by, created_at, updated_at, archived_at, search_tsv
 `
 
 type SetItemStatusParams struct {
@@ -705,6 +1163,7 @@ func (q *Queries) SetItemStatus(ctx context.Context, arg SetItemStatusParams) (I
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ArchivedAt,
+		&i.SearchTsv,
 	)
 	return i, err
 }
@@ -736,7 +1195,7 @@ SET name              = coalesce($1, name),
 WHERE id = $22
   AND family_id = $23
   AND archived_at IS NULL
-RETURNING id, family_id, name, category_id, location_id, room_id, spot, parent_item_id, is_container, status, quantity, unit, min_quantity, expires_at, opened_at, pao_months, brand, condition, season, size_system, size_value, size_norm_min, size_norm_max, for_person_id, serial_number, warranty_until, purchase_date, purchase_price, purchase_currency, notes, traits, created_by, created_at, updated_at, archived_at
+RETURNING id, family_id, name, category_id, location_id, room_id, spot, parent_item_id, is_container, status, quantity, unit, min_quantity, expires_at, opened_at, pao_months, brand, condition, season, size_system, size_value, size_norm_min, size_norm_max, for_person_id, serial_number, warranty_until, purchase_date, purchase_price, purchase_currency, notes, traits, created_by, created_at, updated_at, archived_at, search_tsv
 `
 
 type UpdateItemParams struct {
@@ -832,6 +1291,7 @@ func (q *Queries) UpdateItem(ctx context.Context, arg UpdateItemParams) (Item, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ArchivedAt,
+		&i.SearchTsv,
 	)
 	return i, err
 }

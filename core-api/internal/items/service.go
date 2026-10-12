@@ -112,33 +112,6 @@ func (s *Service) GetItem(ctx context.Context, principal auth.Principal, itemID 
 	return s.toAPIItem(ctx, principal.FamilyID, &row)
 }
 
-// ListItems returns the family's root items.
-func (s *Service) ListItems(ctx context.Context, principal auth.Principal, params api.ListItemsParams) ([]api.Item, error) {
-	limit, offset := pageBounds(params.Limit, params.Offset)
-
-	rows, err := s.store.ListItems(ctx, db.ListItemsParams{
-		FamilyID:        pgconv.UUID(principal.FamilyID),
-		IncludeArchived: params.IncludeArchived != nil && *params.IncludeArchived,
-		LocationID:      pgconv.UUIDPtr(params.LocationId),
-		RoomID:          pgconv.UUIDPtr(params.RoomId),
-		CategoryID:      pgconv.UUIDPtr(params.CategoryId),
-		ResultOffset:    offset,
-		ResultLimit:     limit,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("list items: %w", err)
-	}
-
-	// Roots only: own place and effective place are the same, no chain walk.
-	out := make([]api.Item, 0, len(rows))
-
-	for i := range rows {
-		out = append(out, apimap.Item(&rows[i], pgconv.ToUUID(rows[i].LocationID), pgconv.ToUUIDPtr(rows[i].RoomID), pgconv.ToTextPtr(rows[i].Spot)))
-	}
-
-	return out, nil
-}
-
 // ListContents returns an item's direct children. They all sit one level
 // below the same parent, so the parent's own effective place (resolved
 // once) is every child's effective place too — no per-child chain walk.

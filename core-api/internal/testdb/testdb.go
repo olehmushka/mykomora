@@ -26,6 +26,7 @@ import (
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 
 	_ "github.com/olehmushka/mykomora/core-api/db/migrations" // registers the Go migrations
+	"github.com/olehmushka/mykomora/core-api/internal/postgres"
 )
 
 // DB is a migrated, throwaway database and the two handles onto it: the pgx
@@ -59,7 +60,14 @@ func Start(t *testing.T) *DB {
 		t.Fatalf("goose up: %v", err)
 	}
 
-	pool, err := pgxpool.New(context.Background(), dsn)
+	poolCfg, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		t.Fatalf("parse dsn: %v", err)
+	}
+
+	postgres.ConfigurePool(poolCfg)
+
+	pool, err := pgxpool.NewWithConfig(context.Background(), poolCfg)
 	if err != nil {
 		t.Fatalf("create pool: %v", err)
 	}

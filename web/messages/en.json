@@ -145,7 +145,8 @@
     "tagsLabel": "Tags",
     "savingButton": "Saving…",
     "addButton": "Add item",
-    "insideContainer": "Inside: {name}"
+    "insideContainer": "Inside: {name}",
+    "similarHeading": "You may already have something like this:"
   },
   "ItemDetail": {
     "backLink": "All items",
@@ -234,5 +235,59 @@
     "saveButton": "Save",
     "deleteButton": "Delete",
     "empty": "No tags yet."
+  },
+  "Search": {
+    "placeholder": "Search your things…",
+    "label": "Search",
+    "apply": "Search",
+    "filters": "Filters",
+    "any": "Any",
+    "category": "Category",
+    "status": "Status",
+    "room": "Room",
+    "location": "Location",
+    "person": "For",
+    "tag": "Tag",
+    "expires": "Expires",
+    "warranty": "Warranty until",
+    "price": "Price",
+    "from": "from",
+    "to": "to",
+    "sort": "Sort by",
+    "sortDefault": "Best match, then newest",
+    "sortName": "Name",
+    "sortExpires": "Expiry date",
+    "sortPrice": "Price",
+    "yes": "Yes",
+    "results": "Results",
+    "allItems": "All items",
+    "view": "View",
+    "viewList": "List",
+    "viewGrid": "Grid",
+    "noMatches": "Nothing found.",
+    "noMatchesHint": "Try fewer or shorter words, or remove a filter. Items are found by name, brand, notes, size and season.",
+    "clear": "Clear search and filters",
+    "partialDataHint": "Items without a price or date aren't included while one of those filters is on.",
+    "nextPage": "Next page"
+  },
+  "Dashboard": {
+    "inventory": "Inventory",
+    "unavailable": "The inventory summary is unavailable right now.",
+    "browse": "Browse items",
+    "add": "Add item",
+    "empty": "Nothing recorded yet. Add your first item to see it here.",
+    "total": "{count, plural, one {# item} other {# items}} recorded.",
+    "byLocation": "By location",
+    "byCategory": "By category",
+    "value": "Purchase value",
+    "valueCount": "({count, plural, one {# item} other {# items}} with a price)",
+    "valueHint": "Only items with a recorded price and still in the home are counted.",
+    "recent": "Recent activity",
+    "event": {
+      "created": "Added",
+      "updated": "Edited",
+      "moved": "Moved",
+      "status_changed": "Status changed"
+    }
   }
 }

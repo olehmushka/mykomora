@@ -43,3 +43,17 @@ export function archiveTraitDef(traitDefId: string) {
     method: "DELETE",
   });
 }
+
+export type FlatCategory = { id: string; name: string; depth: number; traits: TraitDef[] };
+
+/** The category tree as an indented list, parents before their children. */
+export function flattenCategories(categories: Category[], depth = 0): FlatCategory[] {
+  const out: FlatCategory[] = [];
+
+  for (const category of categories) {
+    out.push({ id: category.id, name: category.name, depth, traits: category.traits });
+    out.push(...flattenCategories(category.children, depth + 1));
+  }
+
+  return out;
+}

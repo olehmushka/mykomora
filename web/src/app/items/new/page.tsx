@@ -1,26 +1,15 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
-import { ItemForm, type FlatCategory } from "@/app/items/new/item-form";
+import { ItemForm } from "@/app/items/new/item-form";
 import { AppShell } from "@/components/app-shell";
 import { Notice } from "@/components/notice";
 import { getItem } from "@/lib/api/items";
 import { listPeople } from "@/lib/api/people";
 import { listLocations, listRooms } from "@/lib/api/places";
 import { requireMe } from "@/lib/api/session";
-import { getTaxonomy, type Category } from "@/lib/api/taxonomy";
+import { flattenCategories, getTaxonomy } from "@/lib/api/taxonomy";
 import { listTags } from "@/lib/api/tags";
-
-function flattenCategories(categories: Category[], depth = 0): FlatCategory[] {
-  const out: FlatCategory[] = [];
-
-  for (const category of categories) {
-    out.push({ id: category.id, name: category.name, depth, traits: category.traits });
-    out.push(...flattenCategories(category.children, depth + 1));
-  }
-
-  return out;
-}
 
 export default async function NewItemPage(props: PageProps<"/items/new">) {
   const sp = await props.searchParams;

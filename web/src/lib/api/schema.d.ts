@@ -562,15 +562,55 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The family's root items
-         * @description Items with a parent are reached through their container's own
-         *     `/contents`, not this list: a nested item's place columns are
-         *     cosmetic (SPEC 4, "Containment").
+         * Browse and search the family's items
+         * @description With no `q` and only place filters, lists root items (a nested item's
+         *     place columns are cosmetic, SPEC 4 "Containment"). With `q` or any
+         *     other filter, nested items are included, and every hit carries the
+         *     container path and room it is found in.
+         *
+         *     Pagination is keyset: pass `nextCursor` back unchanged.
          */
         get: operations["listItems"];
         put?: never;
         /** Add an item */
         post: operations["createItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items/similar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Existing items whose name is close to a new one
+         * @description Duplicate hint for the create form. Advisory only; at most five.
+         */
+        get: operations["findSimilarItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Counts, value and recent activity for the family */
+        get: operations["getDashboard"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1179,6 +1219,85 @@ export interface components {
             icon?: string;
             /** Format: int32 */
             sortOrder?: number;
+        };
+        NamedRef: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        /** @description Where an item is found, resolved from its root container. */
+        ItemPlacement: {
+            location: components["schemas"]["NamedRef"];
+            room?: components["schemas"]["NamedRef"];
+            spot?: string;
+            /** @description Containers the item sits in, outermost first. Empty for a root item. */
+            containerPath: components["schemas"]["NamedRef"][];
+        };
+        ItemHit: {
+            item: components["schemas"]["Item"];
+            placement: components["schemas"]["ItemPlacement"];
+            /**
+             * Format: uri
+             * @description Presigned GET for the primary photo's thumbnail, absent when the item has none.
+             */
+            thumbUrl?: string;
+        };
+        ItemPage: {
+            items: components["schemas"]["ItemHit"][];
+            /** @description Absent on the last page. */
+            nextCursor?: string;
+        };
+        SimilarItem: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: uuid */
+            categoryId: string;
+            status: components["schemas"]["ItemStatus"];
+            /** Format: float */
+            score: number;
+        };
+        Dashboard: {
+            /** Format: int64 */
+            totalItems: number;
+            byLocation: components["schemas"]["DashboardLocationCount"][];
+            byCategory: components["schemas"]["DashboardCategoryCount"][];
+            /** @description Purchase value of items still owned, one entry per currency; items without a price are not counted. */
+            value: components["schemas"]["DashboardValue"][];
+            recentEvents: components["schemas"]["DashboardEvent"][];
+        };
+        DashboardLocationCount: {
+            /** Format: uuid */
+            locationId: string;
+            name: string;
+            /** Format: int64 */
+            count: number;
+        };
+        DashboardCategoryCount: {
+            /** Format: uuid */
+            categoryId: string;
+            /** Format: int64 */
+            count: number;
+        };
+        DashboardValue: {
+            /** @description Empty when the purchase had no currency recorded. */
+            currency: string;
+            /** Format: double */
+            total: number;
+            /** Format: int64 */
+            itemCount: number;
+        };
+        DashboardEvent: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            itemId: string;
+            itemName: string;
+            type: string;
+            /** Format: uuid */
+            actorUserId: string;
+            /** Format: date-time */
+            createdAt: string;
         };
         /**
          * @description Wire values match the stored enum verbatim, including the
@@ -2531,12 +2650,35 @@ export interface operations {
     listItems: {
         parameters: {
             query?: {
-                locationId?: string;
-                roomId?: string;
+                /** @description Free text. Matched against name, brand, notes, size, serial number, season/condition words and traits, accent-insensitively and by word prefix. */
+                q?: string;
+                /** @description Also matches every descendant category. */
                 categoryId?: string;
+                /** @description Matches the item's effective place, i.e. its root container's. */
+                locationId?: string;
+                /** @description Matches the item's effective place, i.e. its root container's. */
+                roomId?: string;
+                /** @description Direct contents of this container. */
+                containerId?: string;
+                personId?: string;
+                tagId?: string;
+                status?: components["schemas"]["ItemStatus"];
+                season?: components["schemas"]["ItemSeason"];
+                condition?: components["schemas"]["ItemCondition"];
+                /** @description A JSON object of `trait_defs` keys marked `filterable` and the values they must equal, e.g. `{"shoe_type":"boots"}`. */
+                traits?: string;
+                expiresFrom?: string;
+                expiresTo?: string;
+                warrantyFrom?: string;
+                warrantyTo?: string;
+                priceMin?: number;
+                priceMax?: number;
+                /** @description Defaults to `relevance` when `q` is given, otherwise `created` (newest first). `expires` and `price` put items without a value last; `relevance` requires `q`. */
+                sort?: "relevance" | "created" | "name" | "expires" | "price";
+                /** @description The `nextCursor` of the previous page, with the same filters and sort. */
+                cursor?: string;
                 includeArchived?: boolean;
                 limit?: number;
-                offset?: number;
             };
             header?: never;
             path?: never;
@@ -2544,15 +2686,16 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Root items, most recently created first. */
+            /** @description One page of hits. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Item"][];
+                    "application/json": components["schemas"]["ItemPage"];
                 };
             };
+            400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
         };
     };
@@ -2581,6 +2724,51 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    findSimilarItems: {
+        parameters: {
+            query: {
+                name: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Close matches, best first; empty when there are none. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimilarItem"][];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    getDashboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The dashboard. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dashboard"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
         };
     };
     getItem: {

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/olehmushka/mykomora/core-api/internal/config"
@@ -30,6 +31,8 @@ func NewPool(cfg config.Config, log *slog.Logger) (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("parse DATABASE_URL: %w", err)
 	}
 
+	ConfigurePool(poolCfg)
+
 	pool, err := pgxpool.NewWithConfig(context.Background(), poolCfg)
 	if err != nil {
 		return nil, fmt.Errorf("create connection pool: %w", err)
@@ -42,6 +45,23 @@ func NewPool(cfg config.Config, log *slog.Logger) (*pgxpool.Pool, error) {
 	)
 
 	return pool, nil
+}
+
+// tsvectorOID is pg_type's oid for tsvector, which is fixed.
+const tsvectorOID = 3614
+
+// ConfigurePool teaches every connection the one type pgx has no codec for.
+//
+// items.search_tsv is a generated tsvector, and `SELECT *`/`RETURNING *` read
+// it. Without a codec pgx asks for the binary format and cannot scan it. The
+// text codec makes pgx request text instead; sqlc maps the column to string
+// and nothing in Go ever looks at it (search runs in SQL).
+func ConfigurePool(poolCfg *pgxpool.Config) {
+	poolCfg.AfterConnect = func(_ context.Context, conn *pgx.Conn) error {
+		conn.TypeMap().RegisterType(&pgtype.Type{Name: "tsvector", OID: tsvectorOID, Codec: pgtype.TextCodec{}})
+
+		return nil
+	}
 }
 
 // Ping verifies that the database answers, with a bounded timeout.

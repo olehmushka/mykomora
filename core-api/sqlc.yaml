@@ -21,6 +21,13 @@ sql:
         emit_interface: true
         emit_json_tags: true
         emit_empty_slices: true
+        overrides:
+          # pgx has no codec for tsvector; it travels as text. Nothing in Go reads
+          # the column (search runs in SQL), the override only keeps `SELECT *`
+          # scannable.
+          - db_type: "tsvector"
+            go_type: "string"
+            nullable: true
     rules:
       - sqlc/db-prepare
       - family-scoped

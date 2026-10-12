@@ -25,21 +25,6 @@ func NewHandler(service *Service, log *slog.Logger) *Handler {
 	return &Handler{service: service, log: log.With(slog.String("component", "items"))}
 }
 
-// ListItems returns the family's root items.
-func (h *Handler) ListItems(ctx context.Context, request api.ListItemsRequestObject) (api.ListItemsResponseObject, error) {
-	principal, ok := auth.PrincipalFrom(ctx)
-	if !ok {
-		return api.ListItems401JSONResponse{UnauthorizedJSONResponse: unauthorized()}, nil
-	}
-
-	out, err := h.service.ListItems(ctx, principal, request.Params)
-	if err != nil {
-		return nil, fmt.Errorf("list items: %w", err)
-	}
-
-	return api.ListItems200JSONResponse(out), nil
-}
-
 // CreateItem adds an item.
 //
 //nolint:dupl // only the generated request/response types differ from PresignUpload/ConfirmItemPhoto/ConfirmItemAttachment
@@ -405,4 +390,57 @@ func invalidItem(message string) api.BadRequestJSONResponse {
 
 func invalidTag(message string) api.BadRequestJSONResponse {
 	return api.BadRequestJSONResponse{Code: "invalid_tag", Message: message}
+}
+
+// ListItems browses and searches the family's items.
+func (h *Handler) ListItems(ctx context.Context, request api.ListItemsRequestObject) (api.ListItemsResponseObject, error) {
+	principal, ok := auth.PrincipalFrom(ctx)
+	if !ok {
+		return api.ListItems401JSONResponse{UnauthorizedJSONResponse: unauthorized()}, nil
+	}
+
+	page, err := h.service.ListItems(ctx, principal, request.Params)
+
+	switch {
+	case asValidation(err) != "":
+		return api.ListItems400JSONResponse{BadRequestJSONResponse: invalidItem(asValidation(err))}, nil
+	case err != nil:
+		return nil, fmt.Errorf("list items: %w", err)
+	}
+
+	return api.ListItems200JSONResponse(page), nil
+}
+
+// FindSimilarItems returns duplicate hints for a prospective item name.
+func (h *Handler) FindSimilarItems(ctx context.Context, request api.FindSimilarItemsRequestObject) (api.FindSimilarItemsResponseObject, error) {
+	principal, ok := auth.PrincipalFrom(ctx)
+	if !ok {
+		return api.FindSimilarItems401JSONResponse{UnauthorizedJSONResponse: unauthorized()}, nil
+	}
+
+	out, err := h.service.FindSimilar(ctx, principal, request.Params.Name)
+
+	switch {
+	case asValidation(err) != "":
+		return api.FindSimilarItems400JSONResponse{BadRequestJSONResponse: invalidItem(asValidation(err))}, nil
+	case err != nil:
+		return nil, fmt.Errorf("find similar items: %w", err)
+	}
+
+	return api.FindSimilarItems200JSONResponse(out), nil
+}
+
+// GetDashboard returns the family's counts, value and recent activity.
+func (h *Handler) GetDashboard(ctx context.Context, _ api.GetDashboardRequestObject) (api.GetDashboardResponseObject, error) {
+	principal, ok := auth.PrincipalFrom(ctx)
+	if !ok {
+		return api.GetDashboard401JSONResponse{UnauthorizedJSONResponse: unauthorized()}, nil
+	}
+
+	out, err := h.service.Dashboard(ctx, principal)
+	if err != nil {
+		return nil, fmt.Errorf("get dashboard: %w", err)
+	}
+
+	return api.GetDashboard200JSONResponse(out), nil
 }
