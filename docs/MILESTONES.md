@@ -243,6 +243,37 @@ This is the milestone that decides whether the app survives contact with reality
 
 **Done when:** 20 items of kids' clothing go into a box in under 10 minutes, and a shelf of books goes in by scanning.
 
+> **Delivered, with five notes.**
+>
+> *A batch is N complete create requests, not "shared fields + rows" on the wire.* `POST /items/batch`
+> takes up to 100 full `CreateItemRequest`s; the web screen merges the shared header into each row.
+> Every row goes through the same `prepareCreate` as a single create, so batch, duplicate and import
+> cannot validate differently, and one transaction writes all rows plus one `created` event each. A
+> failure names the row ("row 3: …") and creates nothing. Duplicate copies fields, traits and tags but
+> not photos, serial number, events or contents.
+>
+> *Barcode lookup asks every catalogue at once and caches misses.* Open Food/Beauty/Products Facts and,
+> for ISBNs, Google Books are queried concurrently under a 2.5 s budget; the first hit wins. Hits are
+> cached 30 days and *confirmed* misses one day in `product_cache` (a global table, so its two queries
+> are on the `family-scoped` allowlist); a catalogue outage is never cached as a miss. Not-found is a
+> 200 with `found: false`. `GOOGLE_BOOKS_API_KEY` is optional. The ZXing-wasm fallback fetches its
+> `.wasm` from a CDN by default — pin it locally before the M10 CSP work.
+>
+> *CSV export is a stream; import is upload → inspect → dry run → commit.* Export pages by id through
+> a pipe, writes places, container, person and tags by name and the category by slug, and quotes cells
+> starting `= + - @` with an apostrophe (undone on import). Import uploads to
+> `families/{id}/imports/…` by presigned PUT, so core-api reads it back (`storage.Client.GetObject`,
+> capped at 5 MiB / 2000 rows); the existing sweeper removes an abandoned file after 24 h and commit
+> deletes it. Delimiter (comma, semicolon, tab), BOM and Ukrainian headings are handled.
+>
+> *Import limits worth knowing.* Commit is all-or-nothing and refuses a file with any bad row. Tags,
+> people, locations and rooms must already exist (matched by name, case-insensitively); a `container`
+> cell must name exactly one existing container, so boxes created by the same file are not visible
+> to it. Categories are matched by slug.
+>
+> *Not built.* Scanning is wired into the item form and the batch screen only, and a scanned code is
+> not stored on the item (there is no barcode column yet).
+
 ---
 
 ## M7 — Consumables & the Attention panel *(4–5 days)*
