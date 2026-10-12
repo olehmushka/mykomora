@@ -419,3 +419,23 @@ WHERE family_id = sqlc.arg(family_id)
   AND archived_at IS NULL
   AND lower(name) = lower(sqlc.arg(name)::text)
 LIMIT 3;
+
+-- name: AdjustItemQuantity :one
+-- Sets the quantity to new_quantity, or moves it by delta, never below
+-- zero. The prior value is read under a row lock in the same statement so
+-- the quantity_changed event records what this call actually changed.
+WITH old AS (
+    SELECT i.id, i.quantity
+    FROM items i
+    WHERE i.id = sqlc.arg(id)
+      AND i.family_id = sqlc.arg(family_id)
+      AND i.archived_at IS NULL
+    FOR UPDATE OF i
+)
+UPDATE items
+SET quantity   = GREATEST(coalesce(sqlc.narg(new_quantity)::numeric, old.quantity + coalesce(sqlc.narg(delta)::numeric, 0)), 0),
+    updated_at = now()
+FROM old
+WHERE items.id = old.id
+  AND items.family_id = sqlc.arg(family_id)
+RETURNING items.*, old.quantity AS previous_quantity;

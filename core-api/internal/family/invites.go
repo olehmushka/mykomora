@@ -55,7 +55,7 @@ func (h *Handler) CreateFamilyInvite(
 	return api.CreateFamilyInvite201JSONResponse{
 		Invite: api.FamilyInvite{
 			Id:        pgconv.ToUUID(row.ID),
-			Status:    api.Pending,
+			Status:    api.InviteStatusPending,
 			CreatedAt: pgconv.ToTime(row.CreatedAt),
 			ExpiresAt: pgconv.ToTime(row.ExpiresAt),
 		},
@@ -170,7 +170,7 @@ func (h *Handler) GetInvitePreview(
 	}, time.Now())
 
 	return api.GetInvitePreview200JSONResponse{
-		Usable:     status == api.Pending,
+		Usable:     status == api.InviteStatusPending,
 		FamilyName: row.FamilyName,
 		Status:     &status,
 	}, nil

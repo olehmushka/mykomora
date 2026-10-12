@@ -11,6 +11,124 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const adjustItemQuantity = `-- name: AdjustItemQuantity :one
+WITH old AS (
+    SELECT i.id, i.quantity
+    FROM items i
+    WHERE i.id = $4
+      AND i.family_id = $3
+      AND i.archived_at IS NULL
+    FOR UPDATE OF i
+)
+UPDATE items
+SET quantity   = GREATEST(coalesce($1::numeric, old.quantity + coalesce($2::numeric, 0)), 0),
+    updated_at = now()
+FROM old
+WHERE items.id = old.id
+  AND items.family_id = $3
+RETURNING items.id, items.family_id, items.name, items.category_id, items.location_id, items.room_id, items.spot, items.parent_item_id, items.is_container, items.status, items.quantity, items.unit, items.min_quantity, items.expires_at, items.opened_at, items.pao_months, items.brand, items.condition, items.season, items.size_system, items.size_value, items.size_norm_min, items.size_norm_max, items.for_person_id, items.serial_number, items.warranty_until, items.purchase_date, items.purchase_price, items.purchase_currency, items.notes, items.traits, items.created_by, items.created_at, items.updated_at, items.archived_at, items.search_tsv, old.quantity AS previous_quantity
+`
+
+type AdjustItemQuantityParams struct {
+	NewQuantity pgtype.Numeric `json:"new_quantity"`
+	Delta       pgtype.Numeric `json:"delta"`
+	FamilyID    pgtype.UUID    `json:"family_id"`
+	ID          pgtype.UUID    `json:"id"`
+}
+
+type AdjustItemQuantityRow struct {
+	ID               pgtype.UUID        `json:"id"`
+	FamilyID         pgtype.UUID        `json:"family_id"`
+	Name             string             `json:"name"`
+	CategoryID       pgtype.UUID        `json:"category_id"`
+	LocationID       pgtype.UUID        `json:"location_id"`
+	RoomID           pgtype.UUID        `json:"room_id"`
+	Spot             pgtype.Text        `json:"spot"`
+	ParentItemID     pgtype.UUID        `json:"parent_item_id"`
+	IsContainer      bool               `json:"is_container"`
+	Status           ItemStatus         `json:"status"`
+	Quantity         pgtype.Numeric     `json:"quantity"`
+	Unit             pgtype.Text        `json:"unit"`
+	MinQuantity      pgtype.Numeric     `json:"min_quantity"`
+	ExpiresAt        pgtype.Date        `json:"expires_at"`
+	OpenedAt         pgtype.Date        `json:"opened_at"`
+	PaoMonths        pgtype.Int4        `json:"pao_months"`
+	Brand            pgtype.Text        `json:"brand"`
+	Condition        NullItemCondition  `json:"condition"`
+	Season           NullItemSeason     `json:"season"`
+	SizeSystem       NullSizeSystem     `json:"size_system"`
+	SizeValue        pgtype.Text        `json:"size_value"`
+	SizeNormMin      pgtype.Numeric     `json:"size_norm_min"`
+	SizeNormMax      pgtype.Numeric     `json:"size_norm_max"`
+	ForPersonID      pgtype.UUID        `json:"for_person_id"`
+	SerialNumber     pgtype.Text        `json:"serial_number"`
+	WarrantyUntil    pgtype.Date        `json:"warranty_until"`
+	PurchaseDate     pgtype.Date        `json:"purchase_date"`
+	PurchasePrice    pgtype.Numeric     `json:"purchase_price"`
+	PurchaseCurrency pgtype.Text        `json:"purchase_currency"`
+	Notes            pgtype.Text        `json:"notes"`
+	Traits           []byte             `json:"traits"`
+	CreatedBy        pgtype.UUID        `json:"created_by"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	ArchivedAt       pgtype.Timestamptz `json:"archived_at"`
+	SearchTsv        string             `json:"search_tsv"`
+	PreviousQuantity pgtype.Numeric     `json:"previous_quantity"`
+}
+
+// Sets the quantity to new_quantity, or moves it by delta, never below
+// zero. The prior value is read under a row lock in the same statement so
+// the quantity_changed event records what this call actually changed.
+func (q *Queries) AdjustItemQuantity(ctx context.Context, arg AdjustItemQuantityParams) (AdjustItemQuantityRow, error) {
+	row := q.db.QueryRow(ctx, adjustItemQuantity,
+		arg.NewQuantity,
+		arg.Delta,
+		arg.FamilyID,
+		arg.ID,
+	)
+	var i AdjustItemQuantityRow
+	err := row.Scan(
+		&i.ID,
+		&i.FamilyID,
+		&i.Name,
+		&i.CategoryID,
+		&i.LocationID,
+		&i.RoomID,
+		&i.Spot,
+		&i.ParentItemID,
+		&i.IsContainer,
+		&i.Status,
+		&i.Quantity,
+		&i.Unit,
+		&i.MinQuantity,
+		&i.ExpiresAt,
+		&i.OpenedAt,
+		&i.PaoMonths,
+		&i.Brand,
+		&i.Condition,
+		&i.Season,
+		&i.SizeSystem,
+		&i.SizeValue,
+		&i.SizeNormMin,
+		&i.SizeNormMax,
+		&i.ForPersonID,
+		&i.SerialNumber,
+		&i.WarrantyUntil,
+		&i.PurchaseDate,
+		&i.PurchasePrice,
+		&i.PurchaseCurrency,
+		&i.Notes,
+		&i.Traits,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ArchivedAt,
+		&i.SearchTsv,
+		&i.PreviousQuantity,
+	)
+	return i, err
+}
+
 const archiveItem = `-- name: ArchiveItem :execrows
 UPDATE items
 SET archived_at = now(),

@@ -419,6 +419,16 @@ func (ns NullTraitDataType) Value() (driver.Value, error) {
 	return string(ns.TraitDataType), nil
 }
 
+type AlertDismissal struct {
+	ID           pgtype.UUID        `json:"id"`
+	FamilyID     pgtype.UUID        `json:"family_id"`
+	ItemID       pgtype.UUID        `json:"item_id"`
+	Kind         string             `json:"kind"`
+	SnoozedUntil pgtype.Date        `json:"snoozed_until"`
+	DismissedBy  pgtype.UUID        `json:"dismissed_by"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+}
+
 type Category struct {
 	ID          pgtype.UUID        `json:"id"`
 	FamilyID    pgtype.UUID        `json:"family_id"`
