@@ -565,6 +565,13 @@ type Person struct {
 	ArchivedAt pgtype.Timestamptz `json:"archived_at"`
 }
 
+type ProductCache struct {
+	Barcode   string             `json:"barcode"`
+	Source    string             `json:"source"`
+	Payload   []byte             `json:"payload"`
+	FetchedAt pgtype.Timestamptz `json:"fetched_at"`
+}
+
 type RefreshToken struct {
 	ID        pgtype.UUID        `json:"id"`
 	UserID    pgtype.UUID        `json:"user_id"`

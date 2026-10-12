@@ -37,6 +37,10 @@ tags:
     description: Real possessions — in real places, optionally inside a container.
   - name: tags
     description: Family-defined labels an item can carry.
+  - name: lookup
+    description: Barcode and ISBN lookup.
+  - name: imports
+    description: CSV import.
   - name: uploads
     description: Presigned object-storage uploads (SPEC 6, "Photos and attachments").
 
@@ -1248,6 +1252,68 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/items/export:
+    get:
+      operationId: exportItems
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: Download the whole inventory as CSV
+      description: |
+        Every live (not archived) item, one row each, streamed. Places, the
+        container, the person and tags are written as names; the category as
+        its slug. The columns are the ones CSV import maps.
+      responses:
+        "200":
+          description: The CSV file.
+          headers:
+            Content-Disposition:
+              description: Makes the browser save it as mykomora-items.csv.
+              schema:
+                type: string
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/items/batch:
+    post:
+      operationId: createItemsBatch
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: Add several items in one transaction
+      description: |
+        Every row is a complete create request (the client merges the shared
+        fields into each row). All rows are created or none are; a rejected
+        row is named in the error ("row 3: ...").
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateItemsBatchRequest"
+      responses:
+        "201":
+          description: The created items, in request order.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Item"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/items/similar:
     get:
       operationId: findSimilarItems
@@ -1279,6 +1345,150 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /api/v1/lookup/barcode/{code}:
+    parameters:
+      - name: code
+        in: path
+        required: true
+        description: An EAN-8, UPC-A, EAN-13 or ISBN-10/13, digits only (ISBN-10 may end in X).
+        schema:
+          type: string
+          minLength: 8
+          maxLength: 14
+    get:
+      operationId: lookupBarcode
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [lookup]
+      summary: Look a barcode or ISBN up in public product catalogues
+      description: |
+        Answers from a shared cache when it can, otherwise asks Open Food
+        Facts, Open Beauty Facts, Open Products Facts and (for ISBNs) Google
+        Books at once and takes the first hit. Not found is a normal 200 with
+        `found: false`, never an error — catalogue coverage outside books,
+        food and cosmetics is patchy.
+      responses:
+        "200":
+          description: The product, or a not-found answer.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BarcodeProduct"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/imports/presign:
+    post:
+      operationId: presignImport
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [imports]
+      summary: Presigned upload for a CSV file to import
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportPresignRequest"
+      responses:
+        "200":
+          description: Where to PUT the file; pass `storageKey` to the other import calls.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresignUploadResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/imports/inspect:
+    post:
+      operationId: inspectImport
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [imports]
+      summary: Read an uploaded CSV's headers and suggest a column mapping
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportInspectRequest"
+      responses:
+        "200":
+          description: The file's shape.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportInspection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/imports/dry-run:
+    post:
+      operationId: dryRunImport
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [imports]
+      summary: Validate an import without writing anything
+      description: Reports every row's problems; creates nothing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportRequest"
+      responses:
+        "200":
+          description: The validation report.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportReport"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/imports/commit:
+    post:
+      operationId: commitImport
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [imports]
+      summary: Create the items in an uploaded CSV
+      description: |
+        All rows or none. If any row has a problem nothing is created and the
+        response is a 400 — run the dry run to see which. The uploaded file
+        is deleted on success.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportRequest"
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   /api/v1/dashboard:
     get:
       operationId: getDashboard
@@ -1296,6 +1506,46 @@ paths:
                 $ref: "#/components/schemas/Dashboard"
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/items/{itemId}/duplicate:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: duplicateItem
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: Copy an item into the same place
+      description: |
+        Copies fields, traits and tags — not photos, attachments, events or
+        contents. A copy of a lent or given-away item starts in use.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DuplicateItemRequest"
+      responses:
+        "201":
+          description: The copies.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Item"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /api/v1/items/{itemId}:
     parameters:
@@ -2762,6 +3012,161 @@ components:
         archivedAt:
           type: string
           format: date-time
+
+    BarcodeProduct:
+      type: object
+      required: [code, found]
+      properties:
+        code:
+          type: string
+        found:
+          type: boolean
+        name:
+          type: string
+        brand:
+          type: string
+          description: The brand, or for a book its authors.
+        categoryHint:
+          type: string
+          description: The catalogue's own category text, to help the user pick one.
+        imageUrl:
+          type: string
+        source:
+          type: string
+          description: Which catalogue answered.
+
+    ImportPresignRequest:
+      type: object
+      required: [contentType, contentLength]
+      properties:
+        contentType:
+          type: string
+          examples: [text/csv]
+        contentLength:
+          type: integer
+          format: int64
+          description: Exact byte size, at most 5 MiB.
+
+    ImportInspectRequest:
+      type: object
+      required: [storageKey]
+      properties:
+        storageKey:
+          type: string
+
+    ImportInspection:
+      type: object
+      required: [headers, rowCount, fields, suggestedMapping]
+      properties:
+        headers:
+          type: array
+          items:
+            type: string
+        rowCount:
+          type: integer
+        fields:
+          type: array
+          description: The item fields a column can be mapped to.
+          items:
+            type: string
+        suggestedMapping:
+          type: object
+          description: Item field to the file's header that probably holds it.
+          additionalProperties:
+            type: string
+
+    ImportDefaults:
+      type: object
+      description: Used for rows whose own cell is empty or unmapped.
+      properties:
+        categoryId:
+          type: string
+          format: uuid
+        locationId:
+          type: string
+          format: uuid
+        roomId:
+          type: string
+          format: uuid
+
+    ImportRequest:
+      type: object
+      required: [storageKey, mapping]
+      properties:
+        storageKey:
+          type: string
+        mapping:
+          type: object
+          description: Item field to the file's header that holds it.
+          additionalProperties:
+            type: string
+        defaults:
+          $ref: "#/components/schemas/ImportDefaults"
+
+    ImportRowError:
+      type: object
+      required: [row, message]
+      properties:
+        row:
+          type: integer
+          description: 1-based data row, not counting the header.
+        message:
+          type: string
+
+    ImportPreviewRow:
+      type: object
+      required: [row, name]
+      properties:
+        row:
+          type: integer
+        name:
+          type: string
+
+    ImportReport:
+      type: object
+      required: [totalRows, validRows, errors, preview]
+      properties:
+        totalRows:
+          type: integer
+        validRows:
+          type: integer
+        errors:
+          type: array
+          description: At most the first 100 problems.
+          items:
+            $ref: "#/components/schemas/ImportRowError"
+        preview:
+          type: array
+          description: The first few valid rows.
+          items:
+            $ref: "#/components/schemas/ImportPreviewRow"
+
+    ImportResult:
+      type: object
+      required: [created]
+      properties:
+        created:
+          type: integer
+
+    CreateItemsBatchRequest:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/CreateItemRequest"
+
+    DuplicateItemRequest:
+      type: object
+      properties:
+        count:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 1
 
     CreateItemRequest:
       type: object

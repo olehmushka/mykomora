@@ -13,6 +13,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -33,6 +34,10 @@ const presignExpiry = 10 * time.Minute
 // either it was never uploaded, or something else already removed it.
 var ErrObjectNotFound = errors.New("object not found")
 
+// ErrObjectTooLarge is returned by GetObject when the object exceeds the
+// caller's limit.
+var ErrObjectTooLarge = errors.New("object too large")
+
 // Object is one key the bucket holds, as reported by ListObjects.
 type Object struct {
 	Key          string
@@ -51,6 +56,11 @@ type Client interface {
 	// whatever a client claims it uploaded.
 	HeadObject(ctx context.Context, key string) (contentType string, size int64, err error)
 	DeleteObject(ctx context.Context, key string) error
+	// GetObject reads a whole object into memory, failing with
+	// ErrObjectTooLarge rather than reading past maxBytes. Only for small
+	// server-processed files such as CSV imports; photos and attachments
+	// never pass through Go.
+	GetObject(ctx context.Context, key string, maxBytes int64) ([]byte, error)
 	// ListObjects returns every key the bucket holds. Used only by the
 	// cleanup sweeper (cleanup.go); nothing else needs the whole bucket.
 	ListObjects(ctx context.Context) ([]Object, error)
@@ -152,6 +162,40 @@ func (c *awsClient) DeleteObject(ctx context.Context, key string) error {
 	}
 
 	return nil
+}
+
+func (c *awsClient) GetObject(ctx context.Context, key string, maxBytes int64) (data []byte, err error) {
+	out, err := c.ops.GetObject(ctx, &s3.GetObjectInput{Bucket: aws.String(c.bucket), Key: aws.String(key)})
+	if err != nil {
+		if isNotFound(err) || isNoSuchKey(err) {
+			return nil, ErrObjectNotFound
+		}
+
+		return nil, fmt.Errorf("get object: %w", err)
+	}
+
+	defer func() {
+		if cerr := out.Body.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("close object: %w", cerr)
+		}
+	}()
+
+	data, err = io.ReadAll(io.LimitReader(out.Body, maxBytes+1))
+	if err != nil {
+		return nil, fmt.Errorf("read object: %w", err)
+	}
+
+	if int64(len(data)) > maxBytes {
+		return nil, ErrObjectTooLarge
+	}
+
+	return data, nil
+}
+
+func isNoSuchKey(err error) bool {
+	var noSuchKey *types.NoSuchKey
+
+	return errors.As(err, &noSuchKey)
 }
 
 func (c *awsClient) ListObjects(ctx context.Context) ([]Object, error) {

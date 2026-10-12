@@ -18,6 +18,7 @@ import (
 	"github.com/olehmushka/mykomora/core-api/internal/items"
 	"github.com/olehmushka/mykomora/core-api/internal/locale"
 	"github.com/olehmushka/mykomora/core-api/internal/logging"
+	"github.com/olehmushka/mykomora/core-api/internal/lookup"
 	"github.com/olehmushka/mykomora/core-api/internal/people"
 	"github.com/olehmushka/mykomora/core-api/internal/places"
 	"github.com/olehmushka/mykomora/core-api/internal/postgres"
@@ -40,6 +41,7 @@ func main() {
 		taxonomy.Module,
 		storage.Module,
 		items.Module,
+		lookup.Module,
 		httpapi.Module,
 		httpserver.Module,
 	).Run()

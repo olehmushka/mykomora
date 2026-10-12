@@ -580,6 +580,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/items/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download the whole inventory as CSV
+         * @description Every live (not archived) item, one row each, streamed. Places, the
+         *     container, the person and tags are written as names; the category as
+         *     its slug. The columns are the ones CSV import maps.
+         */
+        get: operations["exportItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add several items in one transaction
+         * @description Every row is a complete create request (the client merges the shared
+         *     fields into each row). All rows are created or none are; a rejected
+         *     row is named in the error ("row 3: ...").
+         */
+        post: operations["createItemsBatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/items/similar": {
         parameters: {
             query?: never;
@@ -600,6 +644,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/lookup/barcode/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description An EAN-8, UPC-A, EAN-13 or ISBN-10/13, digits only (ISBN-10 may end in X). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Look a barcode or ISBN up in public product catalogues
+         * @description Answers from a shared cache when it can, otherwise asks Open Food
+         *     Facts, Open Beauty Facts, Open Products Facts and (for ISBNs) Google
+         *     Books at once and takes the first hit. Not found is a normal 200 with
+         *     `found: false`, never an error — catalogue coverage outside books,
+         *     food and cosmetics is patchy.
+         */
+        get: operations["lookupBarcode"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/presign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Presigned upload for a CSV file to import */
+        post: operations["presignImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/inspect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read an uploaded CSV's headers and suggest a column mapping */
+        post: operations["inspectImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/dry-run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Validate an import without writing anything
+         * @description Reports every row's problems; creates nothing.
+         */
+        post: operations["dryRunImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/commit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create the items in an uploaded CSV
+         * @description All rows or none. If any row has a problem nothing is created and the
+         *     response is a 400 — run the dry run to see which. The uploaded file
+         *     is deleted on success.
+         */
+        post: operations["commitImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dashboard": {
         parameters: {
             query?: never;
@@ -611,6 +758,29 @@ export interface paths {
         get: operations["getDashboard"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items/{itemId}/duplicate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Copy an item into the same place
+         * @description Copies fields, traits and tags — not photos, attachments, events or
+         *     contents. A copy of a lent or given-away item starts in use.
+         */
+        post: operations["duplicateItem"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1379,6 +1549,84 @@ export interface components {
             updatedAt: string;
             /** Format: date-time */
             archivedAt?: string;
+        };
+        BarcodeProduct: {
+            code: string;
+            found: boolean;
+            name?: string;
+            /** @description The brand, or for a book its authors. */
+            brand?: string;
+            /** @description The catalogue's own category text, to help the user pick one. */
+            categoryHint?: string;
+            imageUrl?: string;
+            /** @description Which catalogue answered. */
+            source?: string;
+        };
+        ImportPresignRequest: {
+            /** @example text/csv */
+            contentType: string;
+            /**
+             * Format: int64
+             * @description Exact byte size, at most 5 MiB.
+             */
+            contentLength: number;
+        };
+        ImportInspectRequest: {
+            storageKey: string;
+        };
+        ImportInspection: {
+            headers: string[];
+            rowCount: number;
+            /** @description The item fields a column can be mapped to. */
+            fields: string[];
+            /** @description Item field to the file's header that probably holds it. */
+            suggestedMapping: {
+                [key: string]: string;
+            };
+        };
+        /** @description Used for rows whose own cell is empty or unmapped. */
+        ImportDefaults: {
+            /** Format: uuid */
+            categoryId?: string;
+            /** Format: uuid */
+            locationId?: string;
+            /** Format: uuid */
+            roomId?: string;
+        };
+        ImportRequest: {
+            storageKey: string;
+            /** @description Item field to the file's header that holds it. */
+            mapping: {
+                [key: string]: string;
+            };
+            defaults?: components["schemas"]["ImportDefaults"];
+        };
+        ImportRowError: {
+            /** @description 1-based data row, not counting the header. */
+            row: number;
+            message: string;
+        };
+        ImportPreviewRow: {
+            row: number;
+            name: string;
+        };
+        ImportReport: {
+            totalRows: number;
+            validRows: number;
+            /** @description At most the first 100 problems. */
+            errors: components["schemas"]["ImportRowError"][];
+            /** @description The first few valid rows. */
+            preview: components["schemas"]["ImportPreviewRow"][];
+        };
+        ImportResult: {
+            created: number;
+        };
+        CreateItemsBatchRequest: {
+            items: components["schemas"]["CreateItemRequest"][];
+        };
+        DuplicateItemRequest: {
+            /** @default 1 */
+            count: number;
         };
         /**
          * @description Exactly one of `locationId` or `parentItemId` must be given — a new
@@ -2726,6 +2974,56 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    exportItems: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The CSV file. */
+            200: {
+                headers: {
+                    /** @description Makes the browser save it as mykomora-items.csv. */
+                    "Content-Disposition"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    createItemsBatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateItemsBatchRequest"];
+            };
+        };
+        responses: {
+            /** @description The created items, in request order. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Item"][];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     findSimilarItems: {
         parameters: {
             query: {
@@ -2744,6 +3042,135 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SimilarItem"][];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    lookupBarcode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description An EAN-8, UPC-A, EAN-13 or ISBN-10/13, digits only (ISBN-10 may end in X). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The product, or a not-found answer. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BarcodeProduct"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    presignImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportPresignRequest"];
+            };
+        };
+        responses: {
+            /** @description Where to PUT the file; pass `storageKey` to the other import calls. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PresignUploadResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    inspectImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportInspectRequest"];
+            };
+        };
+        responses: {
+            /** @description The file's shape. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportInspection"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    dryRunImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportRequest"];
+            };
+        };
+        responses: {
+            /** @description The validation report. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportReport"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    commitImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportRequest"];
+            };
+        };
+        responses: {
+            /** @description Created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResult"];
                 };
             };
             400: components["responses"]["BadRequest"];
@@ -2769,6 +3196,35 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+        };
+    };
+    duplicateItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DuplicateItemRequest"];
+            };
+        };
+        responses: {
+            /** @description The copies. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Item"][];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
         };
     };
     getItem: {

@@ -358,3 +358,64 @@ SET archived_at = now(),
 WHERE id = sqlc.arg(id)
   AND family_id = sqlc.arg(family_id)
   AND archived_at IS NULL;
+
+-- name: ExportItems :many
+-- One keyset page of the family's live items for CSV export, with every
+-- reference resolved to something a person can read (the category as its
+-- stable slug, so a re-import finds it again). Ordered by id so the caller can
+-- pass the last id back as after_id.
+SELECT i.id,
+       i.name,
+       c.slug AS category_slug,
+       l.name AS location_name,
+       r.name AS room_name,
+       p.name AS container_name,
+       i.spot,
+       i.is_container,
+       i.status,
+       i.quantity,
+       i.unit,
+       i.min_quantity,
+       i.expires_at,
+       i.opened_at,
+       i.pao_months,
+       i.brand,
+       i.condition,
+       i.season,
+       i.size_system,
+       i.size_value,
+       pe.name AS person_name,
+       i.serial_number,
+       i.warranty_until,
+       i.purchase_date,
+       i.purchase_price,
+       i.purchase_currency,
+       i.notes,
+       i.traits,
+       COALESCE((SELECT string_agg(t.name, ';' ORDER BY t.name)
+                 FROM item_tags it
+                          JOIN tags t ON t.id = it.tag_id AND t.family_id = sqlc.arg(family_id)
+                 WHERE it.item_id = i.id), '')::text AS tag_names
+FROM items i
+         JOIN categories c ON c.id = i.category_id
+         LEFT JOIN locations l ON l.id = i.location_id AND l.family_id = sqlc.arg(family_id)
+         LEFT JOIN rooms r ON r.id = i.room_id AND r.location_id = l.id
+         LEFT JOIN items p ON p.id = i.parent_item_id AND p.family_id = sqlc.arg(family_id)
+         LEFT JOIN people pe ON pe.id = i.for_person_id AND pe.family_id = sqlc.arg(family_id)
+WHERE i.family_id = sqlc.arg(family_id)
+  AND i.archived_at IS NULL
+  AND i.id > sqlc.arg(after_id)
+ORDER BY i.id
+LIMIT sqlc.arg(page_size);
+
+-- name: ListContainersByName :many
+-- CSV import resolves a "container" cell by name. Matching is
+-- case-insensitive; the caller treats anything but exactly one hit as an
+-- error, so two boxes called "Box" are never silently confused.
+SELECT id, name
+FROM items
+WHERE family_id = sqlc.arg(family_id)
+  AND is_container
+  AND archived_at IS NULL
+  AND lower(name) = lower(sqlc.arg(name)::text)
+LIMIT 3;

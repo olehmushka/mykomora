@@ -184,25 +184,47 @@ func (s *Service) ListEvents(
 func (s *Service) CreateItem(ctx context.Context, principal auth.Principal, body api.CreateItemRequest) (api.Item, error) {
 	familyID := pgconv.UUID(principal.FamilyID)
 
-	name, status, err := validateCreateBasics(body)
+	params, tagIDs, err := s.prepareCreate(ctx, principal, &body)
 	if err != nil {
 		return api.Item{}, err
+	}
+
+	created, err := s.createItemTx(ctx, principal, familyID, params, tagIDs)
+	if err != nil {
+		return api.Item{}, err
+	}
+
+	return s.toAPIItem(ctx, principal.FamilyID, &created)
+}
+
+// prepareCreate validates a create request against the caller's family and
+// turns it into the insert parameters plus the tags to attach. It writes
+// nothing, so batch creation can prepare every row before opening its one
+// transaction.
+func (s *Service) prepareCreate(
+	ctx context.Context, principal auth.Principal, body *api.CreateItemRequest,
+) (*db.CreateItemParams, []uuid.UUID, error) {
+	familyID := pgconv.UUID(principal.FamilyID)
+
+	name, status, err := validateCreateBasics(*body)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	category, err := s.store.GetCategory(ctx, db.GetCategoryParams{ID: pgconv.UUID(body.CategoryId), FamilyID: familyID})
 	if wrapped := wrapNotFound(err, "category"); wrapped != nil {
-		return api.Item{}, wrapped
+		return nil, nil, wrapped
 	}
 
-	locationID, roomID, parentID, spot, err := s.resolveCreatePlace(ctx, familyID, body)
+	locationID, roomID, parentID, spot, err := s.resolveCreatePlace(ctx, familyID, *body)
 	if err != nil {
-		return api.Item{}, err
+		return nil, nil, err
 	}
 
 	if body.ForPersonId != nil {
 		_, err := s.store.GetPerson(ctx, db.GetPersonParams{ID: pgconv.UUID(*body.ForPersonId), FamilyID: familyID})
 		if wrapped := wrapNotFound(err, "person"); wrapped != nil {
-			return api.Item{}, wrapped
+			return nil, nil, wrapped
 		}
 	}
 
@@ -211,17 +233,17 @@ func (s *Service) CreateItem(ctx context.Context, principal auth.Principal, body
 		traits = *body.Traits
 	}
 
-	longTail, err := s.validateTraits(ctx, familyID, category.ID, traits, hotFieldsFromCreate(body))
+	longTail, err := s.validateTraits(ctx, familyID, category.ID, traits, hotFieldsFromCreate(*body))
 	if err != nil {
-		return api.Item{}, err
+		return nil, nil, err
 	}
 
 	tagIDs, err := s.checkTagIDs(ctx, familyID, body.TagIds)
 	if err != nil {
-		return api.Item{}, err
+		return nil, nil, err
 	}
 
-	params := db.CreateItemParams{
+	return &db.CreateItemParams{
 		FamilyID: familyID, Name: name, CategoryID: category.ID,
 		LocationID: locationID, RoomID: roomID, Spot: spot, ParentItemID: parentID,
 		IsContainer:      body.IsContainer,
@@ -246,14 +268,7 @@ func (s *Service) CreateItem(ctx context.Context, principal auth.Principal, body
 		Notes:            pgconv.TextPtr(body.Notes),
 		Traits:           pgconv.JSONB(longTail),
 		CreatedBy:        pgconv.UUID(principal.UserID),
-	}
-
-	created, err := s.createItemTx(ctx, principal, familyID, &params, tagIDs)
-	if err != nil {
-		return api.Item{}, err
-	}
-
-	return s.toAPIItem(ctx, principal.FamilyID, &created)
+	}, tagIDs, nil
 }
 
 // validateCreateBasics checks the fields CreateItem can validate with no
@@ -354,30 +369,51 @@ func (s *Service) createItemTx(
 	var created db.Item
 
 	err := s.tx.InTx(ctx, func(q *db.Queries) error {
-		row, err := q.CreateItem(ctx, *params)
-		if err != nil {
-			return fmt.Errorf("create item: %w", err)
-		}
-
+		row, err := insertItem(ctx, q, principal, familyID, newItem{params: params, tagIDs: tagIDs})
 		created = row
 
-		for _, tagID := range tagIDs {
-			if err := q.AttachItemTag(ctx, db.AttachItemTagParams{ItemID: row.ID, TagID: pgconv.UUID(tagID), FamilyID: familyID}); err != nil {
-				return fmt.Errorf("attach tag: %w", err)
-			}
-		}
-
-		if _, err := q.CreateItemEvent(ctx, db.CreateItemEventParams{
-			FamilyID: familyID, ItemID: row.ID, ActorUserID: pgconv.UUID(principal.UserID),
-			Type: eventCreated, Payload: pgconv.JSONB(createdPayload(&row)),
-		}); err != nil {
-			return fmt.Errorf("create item event: %w", err)
-		}
-
-		return nil
+		return err
 	})
 
 	return created, err
+}
+
+// newItem is one validated row ready to insert: its parameters, its tags,
+// and anything extra the created event should record.
+type newItem struct {
+	params *db.CreateItemParams
+	tagIDs []uuid.UUID
+	extra  map[string]any
+}
+
+// insertItem writes one item, its tags and its created event through q, so
+// that single and batch creation share the same audit trail and can run
+// inside one transaction.
+func insertItem(ctx context.Context, q *db.Queries, principal auth.Principal, familyID pgtype.UUID, n newItem) (db.Item, error) {
+	row, err := q.CreateItem(ctx, *n.params)
+	if err != nil {
+		return db.Item{}, fmt.Errorf("create item: %w", err)
+	}
+
+	for _, tagID := range n.tagIDs {
+		if err := q.AttachItemTag(ctx, db.AttachItemTagParams{ItemID: row.ID, TagID: pgconv.UUID(tagID), FamilyID: familyID}); err != nil {
+			return db.Item{}, fmt.Errorf("attach tag: %w", err)
+		}
+	}
+
+	payload := createdPayload(&row)
+	for k, v := range n.extra {
+		payload[k] = v
+	}
+
+	if _, err := q.CreateItemEvent(ctx, db.CreateItemEventParams{
+		FamilyID: familyID, ItemID: row.ID, ActorUserID: pgconv.UUID(principal.UserID),
+		Type: eventCreated, Payload: pgconv.JSONB(payload),
+	}); err != nil {
+		return db.Item{}, fmt.Errorf("create item event: %w", err)
+	}
+
+	return row, nil
 }
 
 // --- update ------------------------------------------------------------

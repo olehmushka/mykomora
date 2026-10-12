@@ -147,6 +147,11 @@ type Querier interface {
 	DeleteItemPhoto(ctx context.Context, arg DeleteItemPhotoParams) (ItemPhoto, error)
 	DeleteTag(ctx context.Context, arg DeleteTagParams) (int64, error)
 	DetachItemTag(ctx context.Context, arg DetachItemTagParams) (int64, error)
+	// One keyset page of the family's live items for CSV export, with every
+	// reference resolved to something a person can read (the category as its
+	// stable slug, so a re-import finds it again). Ordered by id so the caller can
+	// pass the last id back as after_id.
+	ExportItems(ctx context.Context, arg ExportItemsParams) ([]ExportItemsRow, error)
 	// Duplicate hints for the create form: close fuzzy matches on the name within
 	// the family. Uses the same trigram expression the index is built on.
 	FindSimilarItems(ctx context.Context, arg FindSimilarItemsParams) ([]FindSimilarItemsRow, error)
@@ -187,6 +192,10 @@ type Querier interface {
 	GetItemPhoto(ctx context.Context, arg GetItemPhotoParams) (ItemPhoto, error)
 	GetLocation(ctx context.Context, arg GetLocationParams) (Location, error)
 	GetPerson(ctx context.Context, arg GetPersonParams) (Person, error)
+	// Barcode lookup cache. `product_cache` is global public metadata with no
+	// tenant column, so neither query takes family_id; both are on the
+	// family-scoped allowlist in sqlc.yaml.
+	GetProductCache(ctx context.Context, barcode string) (ProductCache, error)
 	// `rotated_to` is what makes reuse detectable: a non-NULL value means this
 	// token was already exchanged, and the presenter should not still have it.
 	GetRefreshTokenByHash(ctx context.Context, tokenHash []byte) (GetRefreshTokenByHashRow, error)
@@ -219,6 +228,10 @@ type Querier interface {
 	// row. Built-ins exist solely via the seed migration (00006) — there is no
 	// create/update/archive path for them.
 	ListCategories(ctx context.Context, arg ListCategoriesParams) ([]Category, error)
+	// CSV import resolves a "container" cell by name. Matching is
+	// case-insensitive; the caller treats anything but exactly one hit as an
+	// error, so two boxes called "Box" are never silently confused.
+	ListContainersByName(ctx context.Context, arg ListContainersByNameParams) ([]ListContainersByNameRow, error)
 	ListFamilyInvites(ctx context.Context, familyID pgtype.UUID) ([]ListFamilyInvitesRow, error)
 	ListFamilyMembers(ctx context.Context, familyID pgtype.UUID) ([]ListFamilyMembersRow, error)
 	ListItemAttachments(ctx context.Context, arg ListItemAttachmentsParams) ([]ItemAttachment, error)
@@ -327,6 +340,7 @@ type Querier interface {
 	// locale preference belongs to the account, not to any one family it is a
 	// member of.
 	UpdateUserLocale(ctx context.Context, arg UpdateUserLocaleParams) (User, error)
+	UpsertProductCache(ctx context.Context, arg UpsertProductCacheParams) error
 	// Identity. `users` is the one global table in the schema: a Google account
 	// exists before it belongs to any family, so the queries here run *before* a
 	// tenant is known and cannot be scoped by one.

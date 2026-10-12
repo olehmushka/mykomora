@@ -52,6 +52,72 @@ func (h *Handler) CreateItem(ctx context.Context, request api.CreateItemRequestO
 	return api.CreateItem201JSONResponse(item), nil
 }
 
+// CreateItemsBatch adds several items in one transaction.
+func (h *Handler) CreateItemsBatch(ctx context.Context, request api.CreateItemsBatchRequestObject) (api.CreateItemsBatchResponseObject, error) {
+	principal, ok := auth.PrincipalFrom(ctx)
+	if !ok {
+		return api.CreateItemsBatch401JSONResponse{UnauthorizedJSONResponse: unauthorized()}, nil
+	}
+
+	if request.Body == nil {
+		return api.CreateItemsBatch400JSONResponse{BadRequestJSONResponse: invalidItem("a batch needs at least one item")}, nil
+	}
+
+	items, err := h.service.CreateItems(ctx, principal, request.Body.Items)
+
+	switch {
+	case asNotFound(err) != "":
+		return api.CreateItemsBatch404JSONResponse{NotFoundJSONResponse: notFound(asNotFound(err))}, nil
+	case asValidation(err) != "":
+		return api.CreateItemsBatch400JSONResponse{BadRequestJSONResponse: invalidItem(asValidation(err))}, nil
+	case err != nil:
+		return nil, fmt.Errorf("create items batch: %w", err)
+	}
+
+	return api.CreateItemsBatch201JSONResponse(items), nil
+}
+
+// DuplicateItem copies an item into the same place.
+func (h *Handler) DuplicateItem(ctx context.Context, request api.DuplicateItemRequestObject) (api.DuplicateItemResponseObject, error) {
+	principal, ok := auth.PrincipalFrom(ctx)
+	if !ok {
+		return api.DuplicateItem401JSONResponse{UnauthorizedJSONResponse: unauthorized()}, nil
+	}
+
+	count := 1
+	if request.Body != nil && request.Body.Count != nil {
+		count = *request.Body.Count
+	}
+
+	items, err := h.service.DuplicateItem(ctx, principal, request.ItemId, count)
+
+	switch {
+	case asNotFound(err) != "":
+		return api.DuplicateItem404JSONResponse{NotFoundJSONResponse: notFound(asNotFound(err))}, nil
+	case asValidation(err) != "":
+		return api.DuplicateItem400JSONResponse{BadRequestJSONResponse: invalidItem(asValidation(err))}, nil
+	case err != nil:
+		return nil, fmt.Errorf("duplicate item: %w", err)
+	}
+
+	return api.DuplicateItem201JSONResponse(items), nil
+}
+
+// ExportItems streams the inventory as CSV.
+func (h *Handler) ExportItems(ctx context.Context, _ api.ExportItemsRequestObject) (api.ExportItemsResponseObject, error) {
+	principal, ok := auth.PrincipalFrom(ctx)
+	if !ok {
+		return api.ExportItems401JSONResponse{UnauthorizedJSONResponse: unauthorized()}, nil
+	}
+
+	disposition := `attachment; filename="mykomora-items.csv"`
+
+	return api.ExportItems200TextcsvResponse{
+		Body:    h.service.ExportCSV(ctx, principal),
+		Headers: api.ExportItems200ResponseHeaders{ContentDisposition: &disposition},
+	}, nil
+}
+
 // GetItem returns one item.
 func (h *Handler) GetItem(ctx context.Context, request api.GetItemRequestObject) (api.GetItemResponseObject, error) {
 	principal, ok := auth.PrincipalFrom(ctx)
