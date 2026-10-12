@@ -85,11 +85,17 @@ type Service struct {
 	tx      *postgres.TxRunner
 	storage storage.Client
 	log     *slog.Logger
+	// now is the clock the Attention panel measures "today" against; tests
+	// pin it.
+	now func() time.Time
 }
 
 // NewService builds the items service.
 func NewService(store Store, tx *postgres.TxRunner, storageClient storage.Client, log *slog.Logger) *Service {
-	return &Service{store: store, tx: tx, storage: storageClient, log: log.With(slog.String("component", "items"))}
+	return &Service{
+		store: store, tx: tx, storage: storageClient, now: time.Now,
+		log: log.With(slog.String("component", "items")),
+	}
 }
 
 // present reports whether a hot field will have a value after this request:

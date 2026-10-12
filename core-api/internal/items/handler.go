@@ -510,3 +510,106 @@ func (h *Handler) GetDashboard(ctx context.Context, _ api.GetDashboardRequestObj
 
 	return api.GetDashboard200JSONResponse(out), nil
 }
+
+// AdjustItemQuantity applies a quick +/- or an absolute quantity.
+//
+//nolint:dupl // only the generated request/response types differ from UpdateItem/MoveItem/SetItemStatus
+func (h *Handler) AdjustItemQuantity(ctx context.Context, request api.AdjustItemQuantityRequestObject) (api.AdjustItemQuantityResponseObject, error) {
+	principal, ok := auth.PrincipalFrom(ctx)
+	if !ok {
+		return api.AdjustItemQuantity401JSONResponse{UnauthorizedJSONResponse: unauthorized()}, nil
+	}
+
+	if request.Body == nil {
+		return api.AdjustItemQuantity400JSONResponse{BadRequestJSONResponse: invalidItem("the request body is empty")}, nil
+	}
+
+	item, err := h.service.AdjustQuantity(ctx, principal, request.ItemId, *request.Body)
+
+	switch {
+	case asNotFound(err) != "":
+		return api.AdjustItemQuantity404JSONResponse{NotFoundJSONResponse: notFound(asNotFound(err))}, nil
+	case asValidation(err) != "":
+		return api.AdjustItemQuantity400JSONResponse{BadRequestJSONResponse: invalidItem(asValidation(err))}, nil
+	case err != nil:
+		return nil, fmt.Errorf("adjust item quantity: %w", err)
+	}
+
+	return api.AdjustItemQuantity200JSONResponse(item), nil
+}
+
+// ListAlerts reports what needs attention today.
+func (h *Handler) ListAlerts(ctx context.Context, _ api.ListAlertsRequestObject) (api.ListAlertsResponseObject, error) {
+	principal, ok := auth.PrincipalFrom(ctx)
+	if !ok {
+		return api.ListAlerts401JSONResponse{UnauthorizedJSONResponse: unauthorized()}, nil
+	}
+
+	list, err := h.service.ListAlerts(ctx, principal)
+	if err != nil {
+		return nil, fmt.Errorf("list alerts: %w", err)
+	}
+
+	return api.ListAlerts200JSONResponse(list), nil
+}
+
+// DismissAlert snoozes one alert.
+//
+//nolint:dupl // only the generated request/response types differ from AdjustItemQuantity and the other body-taking handlers
+func (h *Handler) DismissAlert(ctx context.Context, request api.DismissAlertRequestObject) (api.DismissAlertResponseObject, error) {
+	principal, ok := auth.PrincipalFrom(ctx)
+	if !ok {
+		return api.DismissAlert401JSONResponse{UnauthorizedJSONResponse: unauthorized()}, nil
+	}
+
+	if request.Body == nil {
+		return api.DismissAlert400JSONResponse{BadRequestJSONResponse: invalidItem("the request body is empty")}, nil
+	}
+
+	dismissal, err := h.service.DismissAlert(ctx, principal, *request.Body)
+
+	switch {
+	case asNotFound(err) != "":
+		return api.DismissAlert404JSONResponse{NotFoundJSONResponse: notFound(asNotFound(err))}, nil
+	case asValidation(err) != "":
+		return api.DismissAlert400JSONResponse{BadRequestJSONResponse: invalidItem(asValidation(err))}, nil
+	case err != nil:
+		return nil, fmt.Errorf("dismiss alert: %w", err)
+	}
+
+	return api.DismissAlert200JSONResponse(dismissal), nil
+}
+
+// UndoAlertDismissal brings a snoozed alert back.
+func (h *Handler) UndoAlertDismissal(ctx context.Context, request api.UndoAlertDismissalRequestObject) (api.UndoAlertDismissalResponseObject, error) {
+	principal, ok := auth.PrincipalFrom(ctx)
+	if !ok {
+		return api.UndoAlertDismissal401JSONResponse{UnauthorizedJSONResponse: unauthorized()}, nil
+	}
+
+	err := h.service.UndoAlertDismissal(ctx, principal, request.DismissalId)
+
+	switch {
+	case asNotFound(err) != "":
+		return api.UndoAlertDismissal404JSONResponse{NotFoundJSONResponse: notFound(asNotFound(err))}, nil
+	case err != nil:
+		return nil, fmt.Errorf("undo alert dismissal: %w", err)
+	}
+
+	return api.UndoAlertDismissal204Response{}, nil
+}
+
+// GetShoppingList lists everything below its minimum quantity.
+func (h *Handler) GetShoppingList(ctx context.Context, _ api.GetShoppingListRequestObject) (api.GetShoppingListResponseObject, error) {
+	principal, ok := auth.PrincipalFrom(ctx)
+	if !ok {
+		return api.GetShoppingList401JSONResponse{UnauthorizedJSONResponse: unauthorized()}, nil
+	}
+
+	list, err := h.service.ShoppingList(ctx, principal)
+	if err != nil {
+		return nil, fmt.Errorf("shopping list: %w", err)
+	}
+
+	return api.GetShoppingList200JSONResponse(list), nil
+}
