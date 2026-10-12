@@ -2,13 +2,21 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 
-import { archive, attachTag, detachTag, duplicate } from "@/app/items/[itemId]/actions";
+import {
+  archive,
+  attachTag,
+  detachTag,
+  duplicate,
+  markReturned,
+} from "@/app/items/[itemId]/actions";
 import { AttachmentsSection } from "@/app/items/[itemId]/attachments-section";
 import { MoveForm } from "@/app/items/[itemId]/move-form";
 import { PhotoGallery } from "@/app/items/[itemId]/photo-gallery";
 import { SeasonFlip } from "@/app/items/[itemId]/season-flip";
+import { LendForm } from "@/app/items/[itemId]/lend-form";
 import { StatusForm } from "@/app/items/[itemId]/status-form";
 import { AppShell } from "@/components/app-shell";
+import { ItemTimeline } from "@/components/item-timeline";
 import { Notice } from "@/components/notice";
 import { QuantityStepper } from "@/components/quantity-stepper";
 import { listItemAttachments } from "@/lib/api/attachments";
@@ -18,9 +26,11 @@ import {
   listItemEvents,
   listItemTags,
   listItems,
-  type ItemEvent,
   type ItemStatus,
 } from "@/lib/api/items";
+import { listFamilyMembers } from "@/lib/api/family";
+import { listItemLoans } from "@/lib/api/loans";
+import { listPeople } from "@/lib/api/people";
 import { listItemPhotos } from "@/lib/api/photos";
 import { listLocations, listRooms } from "@/lib/api/places";
 import { requireMe } from "@/lib/api/session";
@@ -39,15 +49,6 @@ const STATUS_KEYS: Record<ItemStatus, string> = {
   lost: "status.lost",
 };
 
-const EVENT_KEYS: Record<string, string> = {
-  created: "event.created",
-  updated: "event.updated",
-  moved: "event.moved",
-  status_changed: "event.status_changed",
-  archived: "event.archived",
-  quantity_changed: "event.quantity_changed",
-};
-
 function findCategoryName(categories: Category[], id: string): string | undefined {
   for (const category of categories) {
     if (category.id === id) return category.name;
@@ -64,6 +65,7 @@ export default async function ItemDetailPage(props: PageProps<"/items/[itemId]">
 
   const me = await requireMe(`/items/${itemId}`);
   const t = await getTranslations("ItemDetail");
+  const tLoans = await getTranslations("Loans");
   const locale = await getLocale();
 
   const itemResult = await getItem(itemId);
@@ -85,6 +87,9 @@ export default async function ItemDetailPage(props: PageProps<"/items/[itemId]">
     parentResult,
     photosResult,
     attachmentsResult,
+    peopleResult,
+    membersResult,
+    loansResult,
   ] = await Promise.all([
     getTaxonomy(),
     item.isContainer ? listItemContents(itemId) : Promise.resolve(undefined),
@@ -96,6 +101,9 @@ export default async function ItemDetailPage(props: PageProps<"/items/[itemId]">
     item.parentItemId ? getItem(item.parentItemId) : Promise.resolve(undefined),
     listItemPhotos(itemId),
     listItemAttachments(itemId),
+    listPeople(),
+    listFamilyMembers(),
+    listItemLoans(itemId),
   ]);
 
   const categoryName = taxonomy.ok
@@ -119,6 +127,10 @@ export default async function ItemDetailPage(props: PageProps<"/items/[itemId]">
   const availableTags = (allTagsResult.ok ? allTagsResult.data : []).filter(
     (tag) => !itemTagIds.has(tag.id),
   );
+
+  const openLoan = loansResult.ok ? loansResult.data.find((loan) => !loan.returnedAt) : undefined;
+  const dateOnly = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" });
+  const returnThisItem = markReturned.bind(null, itemId);
 
   const detachInThisItem = detachTag.bind(null, itemId);
   const attachInThisItem = attachTag.bind(null, itemId);
@@ -237,6 +249,46 @@ export default async function ItemDetailPage(props: PageProps<"/items/[itemId]">
         ) : (
           <>
             <p className="mt-3 text-sm">{t(STATUS_KEYS[item.status])}</p>
+
+            {item.status === "lent" && openLoan && (
+              <div className="mt-3">
+                <Notice
+                  tone={openLoan.overdue ? "warning" : "neutral"}
+                  title={tLoans("lentBanner", { name: openLoan.borrowerName ?? "—" })}
+                >
+                  {openLoan.dueAt
+                    ? openLoan.overdue
+                      ? tLoans("overdueSince", { date: dateOnly.format(new Date(openLoan.dueAt)) })
+                      : tLoans("dueOn", { date: dateOnly.format(new Date(openLoan.dueAt)) })
+                    : tLoans("noDueDate")}
+                  {openLoan.note ? ` · ${openLoan.note}` : ""}
+                </Notice>
+                <form action={returnThisItem} className="mt-3">
+                  <button
+                    type="submit"
+                    className="inline-flex min-h-11 items-center rounded-md border border-border px-4 text-sm font-medium hover:bg-border/60"
+                  >
+                    {tLoans("returnButton")}
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {item.status !== "lent" && (
+              <details className="mt-3">
+                <summary className="cursor-pointer text-sm font-medium">
+                  {tLoans("lendHeading")}
+                </summary>
+                <LendForm
+                  itemId={itemId}
+                  people={(peopleResult.ok ? peopleResult.data : []).map((p) => ({
+                    id: p.id,
+                    name: p.name,
+                  }))}
+                />
+              </details>
+            )}
+
             <StatusForm itemId={itemId} current={item.status} />
 
             <form action={duplicateThisItem} className="mt-3">
@@ -387,24 +439,14 @@ export default async function ItemDetailPage(props: PageProps<"/items/[itemId]">
         )}
 
         {eventsResult.ok && eventsResult.data.length > 0 && (
-          <ul className="mt-3 divide-y divide-border rounded-lg border border-border">
-            {eventsResult.data.map((event) => (
-              <li key={event.id} className="px-4 py-3 text-sm">
-                {eventLabel(event, t)}
-                <span className="ml-2 text-muted">
-                  {new Date(event.createdAt).toLocaleString()}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <ItemTimeline
+            events={eventsResult.data}
+            members={membersResult.ok ? membersResult.data : []}
+            locale={locale}
+            statusLabel={(value) => t(`status.${value}`)}
+          />
         )}
       </section>
     </AppShell>
   );
-}
-
-function eventLabel(event: ItemEvent, t: (key: string) => string): string {
-  const key = EVENT_KEYS[event.type];
-
-  return key ? t(key) : event.type;
 }

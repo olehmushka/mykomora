@@ -79,9 +79,10 @@ func withDue(a api.Alert, kind api.AlertKind, due time.Time) api.Alert {
 // alertRank orders kinds by urgency in the panel.
 var alertRank = map[api.AlertKind]int{
 	api.AlertKindExpired:        0,
-	api.AlertKindExpiring:       1,
-	api.AlertKindBelowMinimum:   2,
-	api.AlertKindWarrantyEnding: 3,
+	api.AlertKindLoanOverdue:    1,
+	api.AlertKindExpiring:       2,
+	api.AlertKindBelowMinimum:   3,
+	api.AlertKindWarrantyEnding: 4,
 }
 
 // utcDay truncates a moment to the UTC calendar day it falls in.
@@ -125,30 +126,80 @@ func (s *Service) ListAlerts(ctx context.Context, principal auth.Principal) (api
 		snoozed[key{pgconv.ToUUID(dismissals[i].ItemID), api.AlertKind(dismissals[i].Kind)}] = dismissals[i]
 	}
 
-	out := api.AlertList{Alerts: []api.Alert{}, Counts: map[string]int32{}}
-	hidden := []api.AlertDismissal{}
+	loans, err := s.store.ListOpenLoans(ctx, familyID)
+	if err != nil {
+		return api.AlertList{}, fmt.Errorf("list open loans: %w", err)
+	}
+
+	type named struct {
+		alert api.Alert
+		name  string
+	}
+
+	var all []named
 
 	for i := range rows {
 		c := candidateFromRow(&rows[i])
 
 		for _, a := range classify(&c, today) {
-			if d, ok := snoozed[key{a.ItemId, a.Kind}]; ok {
-				named := dismissalToAPI(&d)
-				named.ItemName = &c.name
-				hidden = append(hidden, named)
-
-				continue
-			}
-
-			out.Alerts = append(out.Alerts, a)
-			out.Counts[string(a.Kind)]++
+			all = append(all, named{a, c.name})
 		}
+	}
+
+	for _, a := range loanAlerts(loans, today) {
+		all = append(all, named{a, a.ItemName})
+	}
+
+	out := api.AlertList{Alerts: []api.Alert{}, Counts: map[string]int32{}}
+	hidden := []api.AlertDismissal{}
+
+	for _, n := range all {
+		a := n.alert
+
+		if d, ok := snoozed[key{a.ItemId, a.Kind}]; ok {
+			dismissal := dismissalToAPI(&d)
+			itemName := n.name
+			dismissal.ItemName = &itemName
+			hidden = append(hidden, dismissal)
+
+			continue
+		}
+
+		out.Alerts = append(out.Alerts, a)
+		out.Counts[string(a.Kind)]++
 	}
 
 	sortAlerts(out.Alerts)
 	out.Snoozed = &hidden
 
 	return out, nil
+}
+
+// loanAlerts raises loan_overdue for every open loan whose due date has
+// passed.
+func loanAlerts(loans []db.ListOpenLoansRow, today time.Time) []api.Alert {
+	var out []api.Alert
+
+	for i := range loans {
+		l := &loans[i]
+
+		due := pgconv.ToDatePtr(l.DueAt)
+		if due == nil || !due.Before(today) {
+			continue
+		}
+
+		borrower := pgconv.ToTextPtr(l.PersonName)
+		if borrower == nil {
+			borrower = pgconv.ToTextPtr(l.BorrowerName)
+		}
+
+		out = append(out, api.Alert{
+			Kind: api.AlertKindLoanOverdue, ItemId: pgconv.ToUUID(l.ItemID), ItemName: l.ItemName,
+			CategoryId: pgconv.ToUUID(l.CategoryID), DueDate: &openapi_types.Date{Time: *due}, Borrower: borrower,
+		})
+	}
+
+	return out
 }
 
 func sortAlerts(alerts []api.Alert) {

@@ -353,6 +353,22 @@ This is the milestone that decides whether the app survives contact with reality
 
 **Done when:** "who took the drill and when is it coming back" is one tap away.
 
+> **Delivered.** `loans` (migration 00014) with `POST /items/{id}/lend`, `POST /items/{id}/return`,
+> `GET /items/{id}/loans` and `GET /loans`; the web app has a lend form and return button on the item,
+> a "Currently lent out" page, and a localised item timeline with actor avatars.
+>
+> *Loans own `lent`.* Lending sets the status and remembers the one before it (`restore_status`);
+> returning restores it. Setting or clearing `lent` through the generic status endpoint, bulk status,
+> create or duplicate is refused. A lent item may still reach a terminal status, which closes the loan.
+>
+> *One open loan per item*, enforced by a partial unique index. The borrower is a family person or a
+> free-text name, never both. Lending a container covers its contents implicitly; they get no loans.
+>
+> *Overdue* is an open loan whose due date is before today (UTC); it raises a `loan_overdue` alert,
+> snoozable like the others. Timeline actors are resolved in the web app from the members list.
+>
+> *Deferred.* The browser check of lending, the loans page and the timeline is still owed.
+
 ---
 
 ## M10 — Hardening & go-live *(4–5 days)*

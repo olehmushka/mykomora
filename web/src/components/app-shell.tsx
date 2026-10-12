@@ -32,6 +32,7 @@ export function AppShell({ me, children }: { me: Me; children: React.ReactNode }
               <NavItem href="/">{t("inventory")}</NavItem>
               <NavItem href="/items">{t("items")}</NavItem>
               <NavItem href="/shopping-list">{t("shoppingList")}</NavItem>
+              <NavItem href="/loans">{t("loans")}</NavItem>
               <NavItem href="/people">{t("people")}</NavItem>
               <NavItem href="/locations">{t("locations")}</NavItem>
               <NavItem href="/settings/taxonomy">{t("taxonomy")}</NavItem>

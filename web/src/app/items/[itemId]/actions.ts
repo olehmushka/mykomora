@@ -26,6 +26,7 @@ import {
   type ConfirmItemPhotoRequest,
   type UpdateItemPhotoRequest,
 } from "@/lib/api/photos";
+import { lendItem, returnItem } from "@/lib/api/loans";
 import { flipItemSeason, undoItemBatch } from "@/lib/api/sizes";
 import { presignUpload, type PresignUploadRequest } from "@/lib/api/uploads";
 
@@ -219,4 +220,42 @@ export async function undoFlip(itemId: string, batchId: string): Promise<ActionS
   revalidatePath(`/items/${itemId}`);
 
   return {};
+}
+
+export async function lend(itemId: string, _: ActionState, form: FormData): Promise<ActionState> {
+  const personId = optStr(form, "personId");
+  const name = optStr(form, "borrowerName");
+  const dueAt = optStr(form, "dueAt");
+  const note = optStr(form, "note");
+
+  if (!personId && !name) {
+    return { error: "Choose who it is lent to." };
+  }
+
+  const result = await lendItem(itemId, {
+    ...(personId ? { borrowerPersonId: personId } : { borrowerName: name }),
+    ...(dueAt ? { dueAt } : {}),
+    ...(note ? { note } : {}),
+  });
+
+  if (!result.ok) {
+    return {
+      error:
+        result.reason === "unavailable"
+          ? "mykomora could not reach its API. Try again in a moment."
+          : result.detail,
+    };
+  }
+
+  revalidatePath(`/items/${itemId}`);
+  revalidatePath("/loans");
+
+  return {};
+}
+
+export async function markReturned(itemId: string): Promise<void> {
+  await returnItem(itemId);
+
+  revalidatePath(`/items/${itemId}`);
+  revalidatePath("/loans");
 }

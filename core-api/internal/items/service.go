@@ -299,6 +299,10 @@ func validateCreateBasics(body api.CreateItemRequest) (name string, status api.I
 		return "", "", &ValidationError{Msg: "status must be an active status when creating an item"}
 	}
 
+	if status == api.Lent {
+		return "", "", &ValidationError{Msg: lendInsteadMsg}
+	}
+
 	if body.Quantity < 0 {
 		return "", "", &ValidationError{Msg: "quantity must not be negative"}
 	}
@@ -731,6 +735,10 @@ func (s *Service) SetStatus(
 		return api.Item{}, &ValidationError{Msg: "illegal status transition"}
 	}
 
+	if err := checkLoanOwnedStatus(from, body.Status); err != nil {
+		return api.Item{}, err
+	}
+
 	var archivedAt pgtype.Timestamptz
 	if IsTerminal(body.Status) {
 		archivedAt = pgconv.Timestamptz(time.Now())
@@ -767,7 +775,7 @@ func (s *Service) setStatusTx(
 			return fmt.Errorf("create item event: %w", err)
 		}
 
-		return nil
+		return closeLoanIfLent(ctx, q, familyID, row.ID, from)
 	})
 
 	return updated, err

@@ -91,7 +91,7 @@ func (s *Service) DuplicateItem(
 // terminal-status item (lent, sold...) starts as in_use again.
 func duplicateParams(src *db.Item, principal auth.Principal) *db.CreateItemParams {
 	status := src.Status
-	if !IsActive(api.ItemStatus(status)) {
+	if !IsActive(api.ItemStatus(status)) || api.ItemStatus(status) == api.Lent {
 		status = db.ItemStatus(api.InUse)
 	}
 

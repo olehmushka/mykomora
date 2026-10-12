@@ -7,7 +7,8 @@
     "locations": "Місця",
     "taxonomy": "Категорії",
     "tags": "Теги",
-    "shoppingList": "Покупки"
+    "shoppingList": "Покупки",
+    "loans": "Позичено"
   },
   "LocaleSwitcher": {
     "label": "Мова",
@@ -226,7 +227,13 @@
       "moved": "Переміщено",
       "status_changed": "Статус змінено",
       "archived": "Заархівовано",
-      "quantity_changed": "Кількість змінено"
+      "quantity_changed": "Кількість змінено",
+      "lent": "Позичено",
+      "returned": "Повернено",
+      "photo_added": "Додано фото",
+      "photo_removed": "Видалено фото",
+      "attachment_added": "Додано документ",
+      "attachment_removed": "Видалено документ"
     },
     "duplicateButton": "Дублювати",
     "addManyInsideButton": "Додати багато всередину",
@@ -409,7 +416,8 @@
       "expired": "Прострочено",
       "expiring": "Скоро спливає термін",
       "below_minimum": "Закінчується",
-      "warranty_ending": "Гарантія спливає"
+      "warranty_ending": "Гарантія спливає",
+      "loan_overdue": "Прострочене позичення"
     },
     "expiredOn": "Прострочено {date}",
     "expiresOn": "Термін спливає {date}",
@@ -424,7 +432,8 @@
     "shoppingList": "Список покупок",
     "snoozedSummary": "{count, plural, one {# відкладене сповіщення} few {# відкладені сповіщення} many {# відкладених сповіщень} other {# відкладеного сповіщення}}",
     "until": "до {date}",
-    "undo": "Повернути"
+    "undo": "Повернути",
+    "loanOverdue": "Мали повернути {date}, у {borrower}"
   },
   "ShoppingList": {
     "heading": "Список покупок",
@@ -479,5 +488,49 @@
     "packButton": "Спакувати (використовується → зберігається)",
     "unpackButton": "Розпакувати (зберігається → використовується)",
     "flipDone": "Змінено: {count, plural, one {# річ} few {# речі} many {# речей} other {# речі}}."
+  },
+  "Loans": {
+    "heading": "Позичання",
+    "lendHeading": "Позичити річ",
+    "borrowerPerson": "Член родини або людина",
+    "noPerson": "— хтось інший —",
+    "borrowerName": "Або хтось поза родиною",
+    "borrowerNameHint": "Використовується, якщо людину не вибрано.",
+    "dueAt": "Повернути до",
+    "note": "Примітка",
+    "lendButton": "Позичити",
+    "lending": "Позичаємо…",
+    "currentHeading": "Позичено",
+    "lentBanner": "Позичено: {name}",
+    "dueOn": "Повернути до {date}",
+    "overdueSince": "Прострочено — мали повернути {date}",
+    "noDueDate": "Без терміну повернення",
+    "since": "з {date}",
+    "returnButton": "Позначити поверненою",
+    "viewAll": "Усе позичене",
+    "pageHeading": "Зараз позичено",
+    "pageIntro": "Усе, що зараз поза домом, прострочене — першим.",
+    "empty": "Нічого не позичено.",
+    "unavailable": "Не вдалося завантажити позичення.",
+    "lentTo": "У {name}"
+  },
+  "Timeline": {
+    "someone": "Хтось",
+    "created": "Створено",
+    "updated": "Змінено",
+    "moved": "Переміщено",
+    "archived": "В архіві",
+    "quantity_changed": "Змінено кількість",
+    "photo_added": "Додано фото",
+    "photo_removed": "Видалено фото",
+    "attachment_added": "Додано документ",
+    "attachment_removed": "Видалено документ",
+    "status_changed": "Змінено статус",
+    "status_changed_from_to": "Статус змінено: {from} → {to}",
+    "lent": "Позичено",
+    "lent_to": "Позичено: {name}",
+    "lent_due": "Позичено, повернути до {date}",
+    "lent_to_due": "Позичено: {name}, повернути до {date}",
+    "returned": "Повернено"
   }
 }

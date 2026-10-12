@@ -33,6 +33,8 @@ tags:
     description: Locations and rooms — where things physically are.
   - name: taxonomy
     description: The category tree and its trait schema, built-in and family-defined.
+  - name: loans
+    description: Lending items out and getting them back.
   - name: items
     description: Real possessions — in real places, optionally inside a container.
   - name: tags
@@ -2064,6 +2066,125 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/items/{itemId}/lend:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: lendItem
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [loans]
+      summary: Lend an item out
+      description: |
+        Opens a loan and moves the item to `lent`. The borrower is a family
+        person or a free-text name, exactly one of the two. An item has at
+        most one open loan; lending a container covers its contents.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LendItemRequest"
+      responses:
+        "201":
+          description: The new loan.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loan"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/items/{itemId}/return:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: returnItem
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [loans]
+      summary: Mark a lent item as returned
+      description: Closes the open loan and restores the status the item had before it was lent.
+      responses:
+        "200":
+          description: The closed loan.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loan"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/items/{itemId}/loans:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: listItemLoans
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [loans]
+      summary: An item's loan history, newest first
+      responses:
+        "200":
+          description: Loans.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Loan"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/loans:
+    get:
+      operationId: listOpenLoans
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [loans]
+      summary: Everything currently lent out
+      description: Open loans, overdue first, then by due date; undated loans last.
+      responses:
+        "200":
+          description: Open loans.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Loan"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   /api/v1/items/{itemId}/events:
     parameters:
       - name: itemId
@@ -3683,7 +3804,7 @@ components:
 
     AlertKind:
       type: string
-      enum: [expired, expiring, below_minimum, warranty_ending]
+      enum: [expired, expiring, below_minimum, warranty_ending, loan_overdue]
 
     Alert:
       type: object
@@ -3702,7 +3823,10 @@ components:
         dueDate:
           type: string
           format: date
-          description: The effective expiry or warranty end. Absent for `below_minimum`.
+          description: The effective expiry, warranty end or loan due date. Absent for `below_minimum`.
+        borrower:
+          type: string
+          description: Who has the item. Only for `loan_overdue`.
         quantity:
           type: number
         minQuantity:
@@ -3907,6 +4031,59 @@ components:
         skipped:
           type: integer
 
+    LendItemRequest:
+      type: object
+      description: Exactly one of `borrowerPersonId` and `borrowerName`.
+      properties:
+        borrowerPersonId:
+          type: string
+          format: uuid
+        borrowerName:
+          type: string
+        dueAt:
+          type: string
+          format: date
+        note:
+          type: string
+
+    Loan:
+      type: object
+      required: [id, itemId, lentAt, overdue]
+      properties:
+        id:
+          type: string
+          format: uuid
+        itemId:
+          type: string
+          format: uuid
+        itemName:
+          type: string
+          description: Filled in by `GET /loans`.
+        categoryId:
+          type: string
+          format: uuid
+          description: Filled in by `GET /loans`.
+        borrowerPersonId:
+          type: string
+          format: uuid
+        borrowerName:
+          type: string
+          description: The person's name, or the free-text name given.
+        lentAt:
+          type: string
+          format: date-time
+        dueAt:
+          type: string
+          format: date
+        returnedAt:
+          type: string
+          format: date-time
+        note:
+          type: string
+        overdue:
+          type: boolean
+          description: Open, with a due date before today (UTC).
+
     ItemEvent:
       type: object
       required: [id, itemId, actorUserId, type, payload, createdAt]
@@ -3922,7 +4099,7 @@ components:
           format: uuid
         type:
           type: string
-          description: '`created`, `updated`, `moved`, `status_changed` or `archived` in this milestone; later milestones add more.'
+          description: '`created`, `updated`, `moved`, `status_changed`, `archived`, `quantity_changed`, `photo_added`, `photo_removed`, `attachment_added`, `attachment_removed`, `lent` or `returned`.'
         payload:
           type: object
           additionalProperties: true
