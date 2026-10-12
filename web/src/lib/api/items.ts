@@ -88,6 +88,20 @@ export function createItem(body: CreateItemRequest) {
   return callApi<Ok<"createItem", 201>>("/api/v1/items", { method: "POST", body });
 }
 
+export function createItemsBatch(items: CreateItemRequest[]) {
+  return callApi<Ok<"createItemsBatch", 201>>("/api/v1/items/batch", {
+    method: "POST",
+    body: { items },
+  });
+}
+
+export function duplicateItem(itemId: string, count = 1) {
+  return callApi<Ok<"duplicateItem", 201>>(
+    `/api/v1/items/${encodeURIComponent(itemId)}/duplicate`,
+    { method: "POST", body: { count } },
+  );
+}
+
 export function getItem(itemId: string) {
   return callApi<Ok<"getItem", 200>>(`/api/v1/items/${encodeURIComponent(itemId)}`);
 }

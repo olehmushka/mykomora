@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import {
   confirmItemAttachment,
@@ -12,6 +13,7 @@ import {
   archiveItem,
   attachItemTag,
   detachItemTag,
+  duplicateItem,
   moveItem,
   setItemStatus,
   type ItemStatus,
@@ -96,6 +98,20 @@ export async function changeStatus(
 export async function archive(itemId: string): Promise<void> {
   await archiveItem(itemId);
   revalidatePath(`/items/${itemId}`);
+}
+
+export async function duplicate(itemId: string): Promise<void> {
+  const result = await duplicateItem(itemId, 1);
+  if (!result.ok) {
+    throw new Error(
+      result.reason === "unavailable" ? "mykomora could not reach its API." : result.detail,
+    );
+  }
+
+  revalidatePath("/items");
+
+  const copy = result.data[0];
+  redirect(copy ? `/items/${copy.id}` : "/items");
 }
 
 export async function attachTag(itemId: string, form: FormData): Promise<void> {

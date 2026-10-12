@@ -580,6 +580,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/items/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add several items in one transaction
+         * @description Every row is a complete create request (the client merges the shared
+         *     fields into each row). All rows are created or none are; a rejected
+         *     row is named in the error ("row 3: ...").
+         */
+        post: operations["createItemsBatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/items/similar": {
         parameters: {
             query?: never;
@@ -611,6 +633,29 @@ export interface paths {
         get: operations["getDashboard"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items/{itemId}/duplicate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Copy an item into the same place
+         * @description Copies fields, traits and tags — not photos, attachments, events or
+         *     contents. A copy of a lent or given-away item starts in use.
+         */
+        post: operations["duplicateItem"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1379,6 +1424,13 @@ export interface components {
             updatedAt: string;
             /** Format: date-time */
             archivedAt?: string;
+        };
+        CreateItemsBatchRequest: {
+            items: components["schemas"]["CreateItemRequest"][];
+        };
+        DuplicateItemRequest: {
+            /** @default 1 */
+            count: number;
         };
         /**
          * @description Exactly one of `locationId` or `parentItemId` must be given — a new
@@ -2726,6 +2778,33 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    createItemsBatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateItemsBatchRequest"];
+            };
+        };
+        responses: {
+            /** @description The created items, in request order. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Item"][];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     findSimilarItems: {
         parameters: {
             query: {
@@ -2769,6 +2848,35 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+        };
+    };
+    duplicateItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DuplicateItemRequest"];
+            };
+        };
+        responses: {
+            /** @description The copies. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Item"][];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
         };
     };
     getItem: {

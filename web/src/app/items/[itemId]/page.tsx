@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
-import { archive, attachTag, detachTag } from "@/app/items/[itemId]/actions";
+import { archive, attachTag, detachTag, duplicate } from "@/app/items/[itemId]/actions";
 import { AttachmentsSection } from "@/app/items/[itemId]/attachments-section";
 import { MoveForm } from "@/app/items/[itemId]/move-form";
 import { PhotoGallery } from "@/app/items/[itemId]/photo-gallery";
@@ -119,6 +119,7 @@ export default async function ItemDetailPage(props: PageProps<"/items/[itemId]">
   const detachInThisItem = detachTag.bind(null, itemId);
   const attachInThisItem = attachTag.bind(null, itemId);
   const archiveInThisItem = archive.bind(null, itemId);
+  const duplicateThisItem = duplicate.bind(null, itemId);
 
   return (
     <AppShell me={me}>
@@ -220,6 +221,15 @@ export default async function ItemDetailPage(props: PageProps<"/items/[itemId]">
             <p className="mt-3 text-sm">{t(STATUS_KEYS[item.status])}</p>
             <StatusForm itemId={itemId} current={item.status} />
 
+            <form action={duplicateThisItem} className="mt-3">
+              <button
+                type="submit"
+                className="inline-flex min-h-11 items-center rounded-md border border-border px-4 text-sm hover:bg-border/60"
+              >
+                {t("duplicateButton")}
+              </button>
+            </form>
+
             <form action={archiveInThisItem} className="mt-3">
               <button
                 type="submit"
@@ -280,6 +290,12 @@ export default async function ItemDetailPage(props: PageProps<"/items/[itemId]">
             className="mt-3 inline-flex min-h-11 items-center rounded-md border border-border px-4 text-sm font-medium hover:bg-border/60"
           >
             {t("addInsideButton")}
+          </Link>
+          <Link
+            href={`/items/batch?parentItemId=${encodeURIComponent(itemId)}`}
+            className="ml-2 mt-3 inline-flex min-h-11 items-center rounded-md border border-border px-4 text-sm font-medium hover:bg-border/60"
+          >
+            {t("addManyInsideButton")}
           </Link>
         </section>
       )}

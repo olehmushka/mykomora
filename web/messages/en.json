@@ -95,7 +95,8 @@
       "sold": "Sold",
       "discarded": "Discarded",
       "lost": "Lost"
-    }
+    },
+    "batchButton": "Add many"
   },
   "ItemForm": {
     "heading": "Add an item",
@@ -222,7 +223,9 @@
       "moved": "Moved",
       "status_changed": "Status changed",
       "archived": "Archived"
-    }
+    },
+    "duplicateButton": "Duplicate",
+    "addManyInsideButton": "Add many inside"
   },
   "Tags": {
     "heading": "Tags",
@@ -289,5 +292,36 @@
       "moved": "Moved",
       "status_changed": "Status changed"
     }
+  },
+  "Batch": {
+    "heading": "Add many items",
+    "backLink": "All items",
+    "noCategories": "No categories are set up yet.",
+    "noLocations": "No locations are set up yet.",
+    "addLocationLink": "Add a location first",
+    "sharedHeading": "Same for every item",
+    "locationLabel": "Location",
+    "roomLabel": "Room",
+    "noRoom": "No specific room",
+    "categoryLabel": "Category",
+    "seasonLabel": "Season",
+    "noSeason": "Not set",
+    "insideContainer": "Inside {name}",
+    "rowsHeading": "Items",
+    "nameLabel": "Name",
+    "sizeLabel": "Size",
+    "quantityLabel": "Qty",
+    "brandLabel": "Brand",
+    "addRow": "Add row",
+    "removeRow": "Remove row",
+    "submit": "Create {count, plural, one {# item} other {# items}}",
+    "season": {
+      "summer": "Summer",
+      "winter": "Winter",
+      "demi": "Demi-season",
+      "all_season": "All seasons"
+    },
+    "empty": "Give at least one row a name.",
+    "unavailable": "mykomora could not reach its API. Try again in a moment."
   }
 }

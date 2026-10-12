@@ -95,7 +95,8 @@
       "sold": "Продано",
       "discarded": "Викинуто",
       "lost": "Втрачено"
-    }
+    },
+    "batchButton": "Додати багато"
   },
   "ItemForm": {
     "heading": "Додати річ",
@@ -222,7 +223,9 @@
       "moved": "Переміщено",
       "status_changed": "Статус змінено",
       "archived": "Заархівовано"
-    }
+    },
+    "duplicateButton": "Дублювати",
+    "addManyInsideButton": "Додати багато всередину"
   },
   "Tags": {
     "heading": "Теги",
@@ -289,5 +292,36 @@
       "moved": "Переміщено",
       "status_changed": "Змінено статус"
     }
+  },
+  "Batch": {
+    "heading": "Додати багато речей",
+    "backLink": "Усі речі",
+    "noCategories": "Категорій ще немає.",
+    "noLocations": "Локацій ще немає.",
+    "addLocationLink": "Спершу додайте локацію",
+    "sharedHeading": "Однакове для всіх речей",
+    "locationLabel": "Локація",
+    "roomLabel": "Кімната",
+    "noRoom": "Без конкретної кімнати",
+    "categoryLabel": "Категорія",
+    "seasonLabel": "Сезон",
+    "noSeason": "Не вказано",
+    "insideContainer": "Усередині: {name}",
+    "rowsHeading": "Речі",
+    "nameLabel": "Назва",
+    "sizeLabel": "Розмір",
+    "quantityLabel": "К-сть",
+    "brandLabel": "Бренд",
+    "addRow": "Додати рядок",
+    "removeRow": "Прибрати рядок",
+    "submit": "Створити: {count, plural, one {# річ} few {# речі} many {# речей} other {# речі}}",
+    "season": {
+      "summer": "Літо",
+      "winter": "Зима",
+      "demi": "Демісезон",
+      "all_season": "Цілий рік"
+    },
+    "empty": "Назвіть хоча б один рядок.",
+    "unavailable": "mykomora не може зв’язатися з API. Спробуйте за мить."
   }
 }

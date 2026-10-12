@@ -1248,6 +1248,40 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/items/batch:
+    post:
+      operationId: createItemsBatch
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: Add several items in one transaction
+      description: |
+        Every row is a complete create request (the client merges the shared
+        fields into each row). All rows are created or none are; a rejected
+        row is named in the error ("row 3: ...").
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateItemsBatchRequest"
+      responses:
+        "201":
+          description: The created items, in request order.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Item"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/items/similar:
     get:
       operationId: findSimilarItems
@@ -1296,6 +1330,46 @@ paths:
                 $ref: "#/components/schemas/Dashboard"
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/items/{itemId}/duplicate:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: duplicateItem
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: Copy an item into the same place
+      description: |
+        Copies fields, traits and tags — not photos, attachments, events or
+        contents. A copy of a lent or given-away item starts in use.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DuplicateItemRequest"
+      responses:
+        "201":
+          description: The copies.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Item"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /api/v1/items/{itemId}:
     parameters:
@@ -2762,6 +2836,26 @@ components:
         archivedAt:
           type: string
           format: date-time
+
+    CreateItemsBatchRequest:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/CreateItemRequest"
+
+    DuplicateItemRequest:
+      type: object
+      properties:
+        count:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 1
 
     CreateItemRequest:
       type: object
