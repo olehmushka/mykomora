@@ -26,6 +26,7 @@ import {
   type ConfirmItemPhotoRequest,
   type UpdateItemPhotoRequest,
 } from "@/lib/api/photos";
+import { flipItemSeason, undoItemBatch } from "@/lib/api/sizes";
 import { presignUpload, type PresignUploadRequest } from "@/lib/api/uploads";
 
 export type ActionState = { error?: string };
@@ -187,4 +188,35 @@ export async function deleteAttachment(itemId: string, attachmentId: string) {
   if (result.ok) revalidatePath(`/items/${itemId}`);
 
   return result;
+}
+
+export type FlipState = { error?: string; batchId?: string; changed?: number; skipped?: number };
+
+const UNAVAILABLE = "mykomora could not reach its API. Try again in a moment.";
+
+/** Pack (in_use → stored) or unpack (stored → in_use) a container's contents. */
+export async function flipSeason(itemId: string, direction: "pack" | "unpack"): Promise<FlipState> {
+  const result = await flipItemSeason(itemId, direction);
+  if (!result.ok) {
+    return { error: result.reason === "unavailable" ? UNAVAILABLE : result.detail };
+  }
+
+  revalidatePath(`/items/${itemId}`);
+
+  return {
+    batchId: result.data.batchId,
+    changed: result.data.changed,
+    skipped: result.data.skipped,
+  };
+}
+
+export async function undoFlip(itemId: string, batchId: string): Promise<ActionState> {
+  const result = await undoItemBatch(batchId);
+  if (!result.ok) {
+    return { error: result.reason === "unavailable" ? UNAVAILABLE : result.detail };
+  }
+
+  revalidatePath(`/items/${itemId}`);
+
+  return {};
 }

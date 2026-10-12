@@ -321,6 +321,28 @@ This is the milestone that decides whether the app survives contact with reality
 
 **Done when:** before buying anything for a child, one screen shows what already fits, what fits next, and where it physically is.
 
+> **Delivered, with five notes.**
+>
+> *Normalisation is a database rule.* Migration 00013 adds `size_norm_range()` and a trigger on `items`
+> (and on `person_sizes`), so create, update, batch add and CSV import all normalise identically and the
+> migration backfilled existing items. Besides an exact `size_lookup` hit it resolves ranges (`104–110`)
+> and, for `kids_eu`, ignores an age suffix (`5T`, `6y`). An unmapped label stores with a NULL range.
+>
+> *Fits are strict overlaps.* `GET /people/{id}/fits?offset=0|1` returns one set per size type, each item
+> with its effective place (the same `ItemHit` as search). An item fits when its range overlaps the
+> person's strictly, so touching at a bracket edge is not a fit. "Next size up" is the range of the same
+> width directly above the current one. Items earmarked for someone else, and anything not `stored` or
+> `in_use`, are left out. An item is shoe-sized when its system is `shoe_*`, else clothing.
+>
+> *Head sizes are recorded but not matched*: an item carries no head size, so there is nothing to match.
+>
+> *One batch id, one undo.* `item_events.batch_id` groups the events of `POST /items/bulk-status` (active
+> statuses only) and `POST /items/{id}/season-flip` (direct contents only: `in_use` ⇄ `stored`).
+> `POST /item-batches/{id}/undo` restores each item still at the status the batch gave it and counts the
+> rest as skipped.
+>
+> *Deferred.* The browser check of the new screens (child profile, fits, pack/unpack) is still owed.
+
 ---
 
 ## M9 — Lending & timeline *(3 days)*

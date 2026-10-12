@@ -166,8 +166,33 @@ func ItemEvent(e db.ItemEvent) api.ItemEvent {
 		ActorUserId: pgconv.ToUUID(e.ActorUserID),
 		Type:        e.Type,
 		Payload:     pgconv.ToJSONB(e.Payload),
+		BatchId:     pgconv.ToUUIDPtr(e.BatchID),
 		CreatedAt:   pgconv.ToTime(e.CreatedAt),
 	}
+}
+
+// PersonSize renders one entry of a person's size history.
+func PersonSize(s *db.PersonSize) api.PersonSize {
+	return api.PersonSize{
+		Id:          pgconv.ToUUID(s.ID),
+		PersonId:    pgconv.ToUUID(s.PersonID),
+		SizeType:    api.SizeType(s.SizeType),
+		SizeSystem:  api.SizeSystem(s.SizeSystem),
+		SizeValue:   s.SizeValue,
+		SizeNormMin: float32Ptr(pgconv.ToNumericPtr(s.SizeNormMin)),
+		SizeNormMax: float32Ptr(pgconv.ToNumericPtr(s.SizeNormMax)),
+		RecordedAt:  pgconv.ToTime(s.RecordedAt),
+	}
+}
+
+func float32Ptr(f *float64) *float32 {
+	if f == nil {
+		return nil
+	}
+
+	v := float32(*f)
+
+	return &v
 }
 
 // ItemPhoto renders one photo of an item's gallery. url/thumbUrl are

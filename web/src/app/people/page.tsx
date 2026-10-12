@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { AppShell } from "@/components/app-shell";
 import { Notice } from "@/components/notice";
 import { archive } from "@/app/people/actions";
@@ -62,7 +64,12 @@ export default async function PeoplePage() {
                 className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{person.name}</p>
+                  <Link
+                    href={`/people/${person.id}`}
+                    className="truncate text-sm font-medium hover:underline"
+                  >
+                    {person.name}
+                  </Link>
                   <p className="truncate text-sm text-muted">
                     {person.isChild ? "Child" : "Adult"}
                     {person.birthdate ? ` · born ${person.birthdate}` : ""}

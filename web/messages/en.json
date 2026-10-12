@@ -439,5 +439,45 @@
   "Quantity": {
     "decrease": "Decrease quantity",
     "increase": "Increase quantity"
+  },
+  "Sizes": {
+    "backLink": "Back",
+    "whatFitsButton": "What fits now",
+    "whatFitsNextButton": "What fits next",
+    "currentHeading": "Current sizes",
+    "noSizes": "No sizes recorded yet. Add one below.",
+    "unmapped": "Not in the size table — won't match items",
+    "recordHeading": "Record a new size",
+    "historyHeading": "History",
+    "typeLabel": "Type",
+    "systemLabel": "System",
+    "valueLabel": "Size",
+    "recordButton": "Record",
+    "type": {
+      "clothing": "Clothing",
+      "shoe": "Shoes",
+      "head": "Hats"
+    },
+    "system": {
+      "kids_cm": "Height (cm)",
+      "kids_eu": "Age (years)",
+      "intl_letter": "Letters (S, M, L)",
+      "eu_adult": "EU adult",
+      "shoe_eu": "Shoe EU",
+      "shoe_uk": "Shoe UK",
+      "shoe_us": "Shoe US",
+      "one_size": "One size"
+    },
+    "fitsHeading": "What already fits",
+    "fitsNow": "Fits now",
+    "fitsNext": "Next size up",
+    "noFitSets": "Record a clothing or shoe size first, and what already fits will appear here.",
+    "nothingFits": "Nothing owned fits this size.",
+    "outgrownButton": "Outgrown ({count})",
+    "outgrownDone": "{count, plural, one {# item} other {# items}} marked to give away.",
+    "undo": "Undo",
+    "packButton": "Pack away (in use → stored)",
+    "unpackButton": "Unpack (stored → in use)",
+    "flipDone": "{count, plural, one {# item} other {# items}} changed."
   }
 }

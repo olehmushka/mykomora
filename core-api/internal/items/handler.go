@@ -613,3 +613,148 @@ func (h *Handler) GetShoppingList(ctx context.Context, _ api.GetShoppingListRequ
 
 	return api.GetShoppingList200JSONResponse(list), nil
 }
+
+// ListPersonSizes returns a person's size history.
+func (h *Handler) ListPersonSizes(ctx context.Context, request api.ListPersonSizesRequestObject) (api.ListPersonSizesResponseObject, error) {
+	principal, ok := auth.PrincipalFrom(ctx)
+	if !ok {
+		return api.ListPersonSizes401JSONResponse{UnauthorizedJSONResponse: unauthorized()}, nil
+	}
+
+	sizes, err := h.service.ListPersonSizes(ctx, principal, request.PersonId)
+
+	switch {
+	case asNotFound(err) != "":
+		return api.ListPersonSizes404JSONResponse{NotFoundJSONResponse: notFound(asNotFound(err))}, nil
+	case err != nil:
+		return nil, fmt.Errorf("list person sizes: %w", err)
+	}
+
+	return api.ListPersonSizes200JSONResponse(sizes), nil
+}
+
+// RecordPersonSize appends to a person's size history.
+//
+//nolint:dupl // only the generated request/response types differ from the other body-taking handlers
+func (h *Handler) RecordPersonSize(ctx context.Context, request api.RecordPersonSizeRequestObject) (api.RecordPersonSizeResponseObject, error) {
+	principal, ok := auth.PrincipalFrom(ctx)
+	if !ok {
+		return api.RecordPersonSize401JSONResponse{UnauthorizedJSONResponse: unauthorized()}, nil
+	}
+
+	if request.Body == nil {
+		return api.RecordPersonSize400JSONResponse{BadRequestJSONResponse: invalidItem("the request body is empty")}, nil
+	}
+
+	size, err := h.service.RecordPersonSize(ctx, principal, request.PersonId, *request.Body)
+
+	switch {
+	case asNotFound(err) != "":
+		return api.RecordPersonSize404JSONResponse{NotFoundJSONResponse: notFound(asNotFound(err))}, nil
+	case asValidation(err) != "":
+		return api.RecordPersonSize400JSONResponse{BadRequestJSONResponse: invalidItem(asValidation(err))}, nil
+	case err != nil:
+		return nil, fmt.Errorf("record person size: %w", err)
+	}
+
+	return api.RecordPersonSize201JSONResponse(size), nil
+}
+
+// GetPersonFits answers what already fits a person, or fits next.
+func (h *Handler) GetPersonFits(ctx context.Context, request api.GetPersonFitsRequestObject) (api.GetPersonFitsResponseObject, error) {
+	principal, ok := auth.PrincipalFrom(ctx)
+	if !ok {
+		return api.GetPersonFits401JSONResponse{UnauthorizedJSONResponse: unauthorized()}, nil
+	}
+
+	offset := 0
+	if request.Params.Offset != nil {
+		offset = int(*request.Params.Offset)
+	}
+
+	fits, err := h.service.PersonFits(ctx, principal, request.PersonId, offset)
+
+	switch {
+	case asNotFound(err) != "":
+		return api.GetPersonFits404JSONResponse{NotFoundJSONResponse: notFound(asNotFound(err))}, nil
+	case asValidation(err) != "":
+		return api.GetPersonFits400JSONResponse{BadRequestJSONResponse: invalidItem(asValidation(err))}, nil
+	case err != nil:
+		return nil, fmt.Errorf("person fits: %w", err)
+	}
+
+	return api.GetPersonFits200JSONResponse(fits), nil
+}
+
+// BulkSetItemStatus moves many items between active statuses.
+//
+//nolint:dupl // only the generated request/response types differ from the other body-taking handlers
+func (h *Handler) BulkSetItemStatus(ctx context.Context, request api.BulkSetItemStatusRequestObject) (api.BulkSetItemStatusResponseObject, error) {
+	principal, ok := auth.PrincipalFrom(ctx)
+	if !ok {
+		return api.BulkSetItemStatus401JSONResponse{UnauthorizedJSONResponse: unauthorized()}, nil
+	}
+
+	if request.Body == nil {
+		return api.BulkSetItemStatus400JSONResponse{BadRequestJSONResponse: invalidItem("the request body is empty")}, nil
+	}
+
+	result, err := h.service.BulkSetStatus(ctx, principal, *request.Body)
+
+	switch {
+	case asNotFound(err) != "":
+		return api.BulkSetItemStatus404JSONResponse{NotFoundJSONResponse: notFound(asNotFound(err))}, nil
+	case asValidation(err) != "":
+		return api.BulkSetItemStatus400JSONResponse{BadRequestJSONResponse: invalidItem(asValidation(err))}, nil
+	case err != nil:
+		return nil, fmt.Errorf("bulk set status: %w", err)
+	}
+
+	return api.BulkSetItemStatus200JSONResponse(result), nil
+}
+
+// FlipItemSeason packs or unpacks a container's contents.
+//
+//nolint:dupl // only the generated request/response types differ from the other body-taking handlers
+func (h *Handler) FlipItemSeason(ctx context.Context, request api.FlipItemSeasonRequestObject) (api.FlipItemSeasonResponseObject, error) {
+	principal, ok := auth.PrincipalFrom(ctx)
+	if !ok {
+		return api.FlipItemSeason401JSONResponse{UnauthorizedJSONResponse: unauthorized()}, nil
+	}
+
+	if request.Body == nil {
+		return api.FlipItemSeason400JSONResponse{BadRequestJSONResponse: invalidItem("the request body is empty")}, nil
+	}
+
+	result, err := h.service.FlipSeason(ctx, principal, request.ItemId, *request.Body)
+
+	switch {
+	case asNotFound(err) != "":
+		return api.FlipItemSeason404JSONResponse{NotFoundJSONResponse: notFound(asNotFound(err))}, nil
+	case asValidation(err) != "":
+		return api.FlipItemSeason400JSONResponse{BadRequestJSONResponse: invalidItem(asValidation(err))}, nil
+	case err != nil:
+		return nil, fmt.Errorf("flip season: %w", err)
+	}
+
+	return api.FlipItemSeason200JSONResponse(result), nil
+}
+
+// UndoItemBatch reverses a bulk status action.
+func (h *Handler) UndoItemBatch(ctx context.Context, request api.UndoItemBatchRequestObject) (api.UndoItemBatchResponseObject, error) {
+	principal, ok := auth.PrincipalFrom(ctx)
+	if !ok {
+		return api.UndoItemBatch401JSONResponse{UnauthorizedJSONResponse: unauthorized()}, nil
+	}
+
+	result, err := h.service.UndoBatch(ctx, principal, request.BatchId)
+
+	switch {
+	case asNotFound(err) != "":
+		return api.UndoItemBatch404JSONResponse{NotFoundJSONResponse: notFound(asNotFound(err))}, nil
+	case err != nil:
+		return nil, fmt.Errorf("undo batch: %w", err)
+	}
+
+	return api.UndoItemBatch200JSONResponse(result), nil
+}

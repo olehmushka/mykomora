@@ -6,6 +6,7 @@ import { archive, attachTag, detachTag, duplicate } from "@/app/items/[itemId]/a
 import { AttachmentsSection } from "@/app/items/[itemId]/attachments-section";
 import { MoveForm } from "@/app/items/[itemId]/move-form";
 import { PhotoGallery } from "@/app/items/[itemId]/photo-gallery";
+import { SeasonFlip } from "@/app/items/[itemId]/season-flip";
 import { StatusForm } from "@/app/items/[itemId]/status-form";
 import { AppShell } from "@/components/app-shell";
 import { Notice } from "@/components/notice";
@@ -285,6 +286,8 @@ export default async function ItemDetailPage(props: PageProps<"/items/[itemId]">
               <Notice>{t("noContents")}</Notice>
             </div>
           )}
+
+          {contentsResult?.ok && contentsResult.data.length > 0 && <SeasonFlip itemId={itemId} />}
 
           {contentsResult?.ok && contentsResult.data.length > 0 && (
             <ul className="mt-3 divide-y divide-border rounded-lg border border-border">

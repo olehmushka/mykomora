@@ -6,8 +6,9 @@
 -- milestone writes are "created", "updated", "moved" and "status_changed".
 
 -- name: CreateItemEvent :one
-INSERT INTO item_events (family_id, item_id, actor_user_id, type, payload)
-VALUES (sqlc.arg(family_id), sqlc.arg(item_id), sqlc.arg(actor_user_id), sqlc.arg(type), sqlc.arg(payload))
+INSERT INTO item_events (family_id, item_id, actor_user_id, type, payload, batch_id)
+VALUES (sqlc.arg(family_id), sqlc.arg(item_id), sqlc.arg(actor_user_id), sqlc.arg(type), sqlc.arg(payload),
+        sqlc.narg(batch_id))
 RETURNING *;
 
 -- name: ListItemEvents :many

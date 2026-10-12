@@ -31,3 +31,7 @@ export function updatePerson(personId: string, body: UpdatePersonRequest) {
 export function archivePerson(personId: string) {
   return callApi<void>(`/api/v1/people/${encodeURIComponent(personId)}`, { method: "DELETE" });
 }
+
+export function getPerson(personId: string) {
+  return callApi<Ok<"getPerson", 200>>(`/api/v1/people/${encodeURIComponent(personId)}`);
+}
