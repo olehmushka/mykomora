@@ -758,3 +758,85 @@ func (h *Handler) UndoItemBatch(ctx context.Context, request api.UndoItemBatchRe
 
 	return api.UndoItemBatch200JSONResponse(result), nil
 }
+
+// LendItem opens a loan on an item.
+//
+//nolint:dupl // only the generated request/response types differ from SetItemStatus and the other body-taking handlers
+func (h *Handler) LendItem(ctx context.Context, request api.LendItemRequestObject) (api.LendItemResponseObject, error) {
+	principal, ok := auth.PrincipalFrom(ctx)
+	if !ok {
+		return api.LendItem401JSONResponse{UnauthorizedJSONResponse: unauthorized()}, nil
+	}
+
+	if request.Body == nil {
+		return api.LendItem400JSONResponse{BadRequestJSONResponse: invalidItem("the request body is empty")}, nil
+	}
+
+	loan, err := h.service.Lend(ctx, principal, request.ItemId, *request.Body)
+
+	switch {
+	case asNotFound(err) != "":
+		return api.LendItem404JSONResponse{NotFoundJSONResponse: notFound(asNotFound(err))}, nil
+	case asValidation(err) != "":
+		return api.LendItem400JSONResponse{BadRequestJSONResponse: invalidItem(asValidation(err))}, nil
+	case err != nil:
+		return nil, fmt.Errorf("lend item: %w", err)
+	}
+
+	return api.LendItem201JSONResponse(loan), nil
+}
+
+// ReturnItem closes an item's open loan.
+func (h *Handler) ReturnItem(ctx context.Context, request api.ReturnItemRequestObject) (api.ReturnItemResponseObject, error) {
+	principal, ok := auth.PrincipalFrom(ctx)
+	if !ok {
+		return api.ReturnItem401JSONResponse{UnauthorizedJSONResponse: unauthorized()}, nil
+	}
+
+	loan, err := h.service.Return(ctx, principal, request.ItemId)
+
+	switch {
+	case asNotFound(err) != "":
+		return api.ReturnItem404JSONResponse{NotFoundJSONResponse: notFound(asNotFound(err))}, nil
+	case asValidation(err) != "":
+		return api.ReturnItem400JSONResponse{BadRequestJSONResponse: invalidItem(asValidation(err))}, nil
+	case err != nil:
+		return nil, fmt.Errorf("return item: %w", err)
+	}
+
+	return api.ReturnItem200JSONResponse(loan), nil
+}
+
+// ListItemLoans returns an item's loan history.
+func (h *Handler) ListItemLoans(ctx context.Context, request api.ListItemLoansRequestObject) (api.ListItemLoansResponseObject, error) {
+	principal, ok := auth.PrincipalFrom(ctx)
+	if !ok {
+		return api.ListItemLoans401JSONResponse{UnauthorizedJSONResponse: unauthorized()}, nil
+	}
+
+	loans, err := h.service.ListItemLoans(ctx, principal, request.ItemId)
+
+	switch {
+	case asNotFound(err) != "":
+		return api.ListItemLoans404JSONResponse{NotFoundJSONResponse: notFound(asNotFound(err))}, nil
+	case err != nil:
+		return nil, fmt.Errorf("list item loans: %w", err)
+	}
+
+	return api.ListItemLoans200JSONResponse(loans), nil
+}
+
+// ListOpenLoans returns everything currently lent out.
+func (h *Handler) ListOpenLoans(ctx context.Context, _ api.ListOpenLoansRequestObject) (api.ListOpenLoansResponseObject, error) {
+	principal, ok := auth.PrincipalFrom(ctx)
+	if !ok {
+		return api.ListOpenLoans401JSONResponse{UnauthorizedJSONResponse: unauthorized()}, nil
+	}
+
+	loans, err := h.service.ListOpenLoans(ctx, principal)
+	if err != nil {
+		return nil, fmt.Errorf("list open loans: %w", err)
+	}
+
+	return api.ListOpenLoans200JSONResponse(loans), nil
+}

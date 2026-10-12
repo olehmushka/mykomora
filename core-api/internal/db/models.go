@@ -551,6 +551,20 @@ type ItemTag struct {
 	TagID  pgtype.UUID `json:"tag_id"`
 }
 
+type Loan struct {
+	ID               pgtype.UUID        `json:"id"`
+	FamilyID         pgtype.UUID        `json:"family_id"`
+	ItemID           pgtype.UUID        `json:"item_id"`
+	BorrowerPersonID pgtype.UUID        `json:"borrower_person_id"`
+	BorrowerName     pgtype.Text        `json:"borrower_name"`
+	LentAt           pgtype.Timestamptz `json:"lent_at"`
+	DueAt            pgtype.Date        `json:"due_at"`
+	ReturnedAt       pgtype.Timestamptz `json:"returned_at"`
+	Note             pgtype.Text        `json:"note"`
+	RestoreStatus    ItemStatus         `json:"restore_status"`
+	CreatedBy        pgtype.UUID        `json:"created_by"`
+}
+
 type Location struct {
 	ID         pgtype.UUID        `json:"id"`
 	FamilyID   pgtype.UUID        `json:"family_id"`

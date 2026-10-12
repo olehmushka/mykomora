@@ -239,7 +239,7 @@ func TestMovingAContainerCarriesItsContentsWithIt(t *testing.T) {
 	}
 }
 
-// The full active set moves freely among itself, then a terminal status
+// The active set (lent aside: loans own it) moves freely among itself, then a terminal status
 // archives the item and locks it: no further status, move or edit succeeds.
 func TestLifecycleWalkThenTerminalLocksTheItem(t *testing.T) {
 	f := newFixture(t)
@@ -248,7 +248,7 @@ func TestLifecycleWalkThenTerminalLocksTheItem(t *testing.T) {
 		Name: "Drill", CategoryId: f.categoryID, LocationId: &f.locationID, Quantity: 1,
 	})
 
-	for _, status := range []api.ItemStatus{api.Stored, api.Lent, api.Stored} {
+	for _, status := range []api.ItemStatus{api.Stored, api.ToGiveAway, api.InUse} {
 		resp, err := f.h.SetItemStatus(f.ctx, api.SetItemStatusRequestObject{
 			ItemId: item.Id, Body: &api.SetItemStatusRequest{Status: status},
 		})

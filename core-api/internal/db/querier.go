@@ -96,6 +96,12 @@ type Querier interface {
 	// this) rather than computed here, the same preference for Go-level logic
 	// over a cleverer INSERT that CreateItem/MoveItem already established.
 	CreateItemPhoto(ctx context.Context, arg CreateItemPhotoParams) (ItemPhoto, error)
+	// Lending (MILESTONES M9). Loans own the `lent` item status; the status
+	// change and the item event are written by internal/items in the same
+	// transaction as these statements.
+	// Joined through items and (when given) people so a loan can only ever name
+	// this family's rows. No row is returned if the item is not the family's.
+	CreateLoan(ctx context.Context, arg CreateLoanParams) (Loan, error)
 	// Locations: one of the family's physical places (SPEC 3, "Concepts").
 	//
 	// Scoped directly on family_id, same shape as people.sql.
@@ -199,6 +205,7 @@ type Querier interface {
 	GetItemDescendantDepths(ctx context.Context, arg GetItemDescendantDepthsParams) ([]GetItemDescendantDepthsRow, error)
 	GetItemPhoto(ctx context.Context, arg GetItemPhotoParams) (ItemPhoto, error)
 	GetLocation(ctx context.Context, arg GetLocationParams) (Location, error)
+	GetOpenLoanForItem(ctx context.Context, arg GetOpenLoanForItemParams) (Loan, error)
 	GetPerson(ctx context.Context, arg GetPersonParams) (Person, error)
 	// Barcode lookup cache. `product_cache` is global public metadata with no
 	// tenant column, so neither query takes family_id; both are on the
@@ -264,6 +271,7 @@ type Querier interface {
 	ListItemAttachments(ctx context.Context, arg ListItemAttachmentsParams) ([]ItemAttachment, error)
 	ListItemChildren(ctx context.Context, arg ListItemChildrenParams) ([]Item, error)
 	ListItemEvents(ctx context.Context, arg ListItemEventsParams) ([]ItemEvent, error)
+	ListItemLoans(ctx context.Context, arg ListItemLoansParams) ([]ListItemLoansRow, error)
 	ListItemPhotos(ctx context.Context, arg ListItemPhotosParams) ([]ItemPhoto, error)
 	// For a page of search hits: each item's ancestor chain with the root's
 	// place names, in one round trip. depth 0 is the item itself; the last depth
@@ -271,6 +279,8 @@ type Querier interface {
 	// Chains are at most maxDepth+1 (5+1) long, so this stays small.
 	ListItemPlacements(ctx context.Context, arg ListItemPlacementsParams) ([]ListItemPlacementsRow, error)
 	ListLocations(ctx context.Context, arg ListLocationsParams) ([]Location, error)
+	// Overdue first (oldest due date), then undated and future by due date.
+	ListOpenLoans(ctx context.Context, familyID pgtype.UUID) ([]ListOpenLoansRow, error)
 	// `include_archived` is a parameter rather than a second query so the list and
 	// its archived variant cannot drift apart.
 	ListPeople(ctx context.Context, arg ListPeopleParams) ([]Person, error)
@@ -306,6 +316,7 @@ type Querier interface {
 	// removing the last owner would leave the family unadministrable, and there is
 	// no role-change endpoint in M1. Zero affected rows is the caller's signal.
 	RemoveFamilyMember(ctx context.Context, arg RemoveFamilyMemberParams) (int64, error)
+	ReturnLoan(ctx context.Context, arg ReturnLoanParams) (Loan, error)
 	// TENANCY: deliberately account-wide, and the only write allowlisted in
 	// sqlc.yaml's `family-scoped` rule.
 	//

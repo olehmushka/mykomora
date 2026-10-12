@@ -20,6 +20,8 @@ const (
 	eventAttachmentAdded   = "attachment_added"
 	eventAttachmentRemoved = "attachment_removed"
 	eventQuantityChanged   = "quantity_changed"
+	eventLent              = "lent"
+	eventReturned          = "returned"
 )
 
 // createdPayload records what the item looked like at birth.

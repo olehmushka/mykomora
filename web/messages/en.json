@@ -7,7 +7,8 @@
     "locations": "Locations",
     "taxonomy": "Categories",
     "tags": "Tags",
-    "shoppingList": "Shopping list"
+    "shoppingList": "Shopping list",
+    "loans": "Lent out"
   },
   "LocaleSwitcher": {
     "label": "Language",
@@ -226,7 +227,13 @@
       "moved": "Moved",
       "status_changed": "Status changed",
       "archived": "Archived",
-      "quantity_changed": "Quantity changed"
+      "quantity_changed": "Quantity changed",
+      "lent": "Lent out",
+      "returned": "Returned",
+      "photo_added": "Photo added",
+      "photo_removed": "Photo removed",
+      "attachment_added": "Document added",
+      "attachment_removed": "Document removed"
     },
     "duplicateButton": "Duplicate",
     "addManyInsideButton": "Add many inside",
@@ -409,7 +416,8 @@
       "expired": "Expired",
       "expiring": "Expiring soon",
       "below_minimum": "Running low",
-      "warranty_ending": "Warranty ending"
+      "warranty_ending": "Warranty ending",
+      "loan_overdue": "Lent item overdue"
     },
     "expiredOn": "Expired on {date}",
     "expiresOn": "Expires on {date}",
@@ -424,7 +432,8 @@
     "shoppingList": "Shopping list",
     "snoozedSummary": "{count, plural, one {# snoozed alert} other {# snoozed alerts}}",
     "until": "until {date}",
-    "undo": "Bring back"
+    "undo": "Bring back",
+    "loanOverdue": "Was due back on {date}, with {borrower}"
   },
   "ShoppingList": {
     "heading": "Shopping list",
@@ -479,5 +488,49 @@
     "packButton": "Pack away (in use → stored)",
     "unpackButton": "Unpack (stored → in use)",
     "flipDone": "{count, plural, one {# item} other {# items}} changed."
+  },
+  "Loans": {
+    "heading": "Lending",
+    "lendHeading": "Lend this item",
+    "borrowerPerson": "Family member or person",
+    "noPerson": "— someone else —",
+    "borrowerName": "Or someone outside the family",
+    "borrowerNameHint": "Used when no person is chosen.",
+    "dueAt": "Due back",
+    "note": "Note",
+    "lendButton": "Lend",
+    "lending": "Lending…",
+    "currentHeading": "Lent out",
+    "lentBanner": "Lent to {name}",
+    "dueOn": "Due back {date}",
+    "overdueSince": "Overdue — was due {date}",
+    "noDueDate": "No return date",
+    "since": "since {date}",
+    "returnButton": "Mark returned",
+    "viewAll": "All lent items",
+    "pageHeading": "Currently lent out",
+    "pageIntro": "Everything that is out of the house, overdue first.",
+    "empty": "Nothing is lent out.",
+    "unavailable": "Loans could not be loaded.",
+    "lentTo": "With {name}"
+  },
+  "Timeline": {
+    "someone": "Someone",
+    "created": "Created",
+    "updated": "Edited",
+    "moved": "Moved",
+    "archived": "Archived",
+    "quantity_changed": "Quantity changed",
+    "photo_added": "Photo added",
+    "photo_removed": "Photo removed",
+    "attachment_added": "Document added",
+    "attachment_removed": "Document removed",
+    "status_changed": "Status changed",
+    "status_changed_from_to": "Status changed from {from} to {to}",
+    "lent": "Lent out",
+    "lent_to": "Lent to {name}",
+    "lent_due": "Lent out, due {date}",
+    "lent_to_due": "Lent to {name}, due {date}",
+    "returned": "Returned"
   }
 }

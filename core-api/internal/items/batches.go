@@ -30,6 +30,10 @@ func (s *Service) BulkSetStatus(
 		return api.BatchResult{}, &ValidationError{Msg: "bulk changes only accept active statuses"}
 	}
 
+	if body.Status == api.Lent {
+		return api.BatchResult{}, &ValidationError{Msg: lendInsteadMsg}
+	}
+
 	ids := make([]uuid.UUID, 0, len(body.ItemIds))
 	seen := make(map[uuid.UUID]bool, len(body.ItemIds))
 
@@ -169,6 +173,11 @@ func moveToStatus(
 	}
 
 	if !CanTransition(api.ItemStatus(item.Status), to) {
+		return false, nil
+	}
+
+	// A lent item changes status only through its loan.
+	if checkLoanOwnedStatus(api.ItemStatus(item.Status), to) != nil {
 		return false, nil
 	}
 

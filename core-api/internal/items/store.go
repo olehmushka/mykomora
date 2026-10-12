@@ -48,6 +48,12 @@ type Store interface {
 	ListFitItems(ctx context.Context, arg db.ListFitItemsParams) ([]db.ListFitItemsRow, error)
 	ListBatchEvents(ctx context.Context, arg db.ListBatchEventsParams) ([]db.ItemEvent, error)
 
+	CreateLoan(ctx context.Context, arg db.CreateLoanParams) (db.Loan, error)
+	GetOpenLoanForItem(ctx context.Context, arg db.GetOpenLoanForItemParams) (db.Loan, error)
+	ReturnLoan(ctx context.Context, arg db.ReturnLoanParams) (db.Loan, error)
+	ListItemLoans(ctx context.Context, arg db.ListItemLoansParams) ([]db.ListItemLoansRow, error)
+	ListOpenLoans(ctx context.Context, familyID pgtype.UUID) ([]db.ListOpenLoansRow, error)
+
 	CreateItemEvent(ctx context.Context, arg db.CreateItemEventParams) (db.ItemEvent, error)
 	ListItemEvents(ctx context.Context, arg db.ListItemEventsParams) ([]db.ItemEvent, error)
 

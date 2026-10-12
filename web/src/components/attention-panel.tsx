@@ -5,7 +5,13 @@ import { snooze, unsnooze } from "@/app/attention-actions";
 import type { Alert, AlertKind, AlertList } from "@/lib/api/alerts";
 import { SNOOZE_PRESETS } from "@/lib/shopping-text";
 
-const KINDS: AlertKind[] = ["expired", "expiring", "below_minimum", "warranty_ending"];
+const KINDS: AlertKind[] = [
+  "expired",
+  "loan_overdue",
+  "expiring",
+  "below_minimum",
+  "warranty_ending",
+];
 
 const buttonClass =
   "inline-flex min-h-11 items-center rounded-md border border-border px-3 text-sm hover:bg-border/60";
@@ -129,6 +135,8 @@ function describe(
       return t("expiresOn", { date: date(alert.dueDate ?? "") });
     case "warranty_ending":
       return t("warrantyEnds", { date: date(alert.dueDate ?? "") });
+    case "loan_overdue":
+      return t("loanOverdue", { date: date(alert.dueDate ?? ""), borrower: alert.borrower ?? "—" });
     case "below_minimum":
       return t("belowMinimum", {
         quantity: Math.round((alert.quantity ?? 0) * 1000) / 1000,

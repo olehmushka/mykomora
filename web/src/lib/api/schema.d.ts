@@ -1103,6 +1103,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/items/{itemId}/lend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Lend an item out
+         * @description Opens a loan and moves the item to `lent`. The borrower is a family
+         *     person or a free-text name, exactly one of the two. An item has at
+         *     most one open loan; lending a container covers its contents.
+         */
+        post: operations["lendItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items/{itemId}/return": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark a lent item as returned
+         * @description Closes the open loan and restores the status the item had before it was lent.
+         */
+        post: operations["returnItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items/{itemId}/loans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        /** An item's loan history, newest first */
+        get: operations["listItemLoans"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/loans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Everything currently lent out
+         * @description Open loans, overdue first, then by due date; undated loans last.
+         */
+        get: operations["listOpenLoans"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/items/{itemId}/events": {
         parameters: {
             query?: never;
@@ -1956,7 +2041,7 @@ export interface components {
             quantity?: number;
         };
         /** @enum {string} */
-        AlertKind: "expired" | "expiring" | "below_minimum" | "warranty_ending";
+        AlertKind: "expired" | "expiring" | "below_minimum" | "warranty_ending" | "loan_overdue";
         Alert: {
             kind: components["schemas"]["AlertKind"];
             /** Format: uuid */
@@ -1966,9 +2051,11 @@ export interface components {
             categoryId: string;
             /**
              * Format: date
-             * @description The effective expiry or warranty end. Absent for `below_minimum`.
+             * @description The effective expiry, warranty end or loan due date. Absent for `below_minimum`.
              */
             dueDate?: string;
+            /** @description Who has the item. Only for `loan_overdue`. */
+            borrower?: string;
             quantity?: number;
             minQuantity?: number;
             unit?: string;
@@ -2065,6 +2152,41 @@ export interface components {
             changed: number;
             skipped: number;
         };
+        /** @description Exactly one of `borrowerPersonId` and `borrowerName`. */
+        LendItemRequest: {
+            /** Format: uuid */
+            borrowerPersonId?: string;
+            borrowerName?: string;
+            /** Format: date */
+            dueAt?: string;
+            note?: string;
+        };
+        Loan: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            itemId: string;
+            /** @description Filled in by `GET /loans`. */
+            itemName?: string;
+            /**
+             * Format: uuid
+             * @description Filled in by `GET /loans`.
+             */
+            categoryId?: string;
+            /** Format: uuid */
+            borrowerPersonId?: string;
+            /** @description The person's name, or the free-text name given. */
+            borrowerName?: string;
+            /** Format: date-time */
+            lentAt: string;
+            /** Format: date */
+            dueAt?: string;
+            /** Format: date-time */
+            returnedAt?: string;
+            note?: string;
+            /** @description Open, with a due date before today (UTC). */
+            overdue: boolean;
+        };
         ItemEvent: {
             /** Format: uuid */
             id: string;
@@ -2072,7 +2194,7 @@ export interface components {
             itemId: string;
             /** Format: uuid */
             actorUserId: string;
-            /** @description `created`, `updated`, `moved`, `status_changed` or `archived` in this milestone; later milestones add more. */
+            /** @description `created`, `updated`, `moved`, `status_changed`, `archived`, `quantity_changed`, `photo_added`, `photo_removed`, `attachment_added`, `attachment_removed`, `lent` or `returned`. */
             type: string;
             payload: {
                 [key: string]: unknown;
@@ -4005,6 +4127,105 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    lendItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LendItemRequest"];
+            };
+        };
+        responses: {
+            /** @description The new loan. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Loan"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    returnItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The closed loan. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Loan"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listItemLoans: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Loans. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Loan"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listOpenLoans: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Open loans. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Loan"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
         };
     };
     listItemEvents: {

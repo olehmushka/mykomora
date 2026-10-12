@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-M0–M8 have landed. core-api performs the Google OAuth2 exchange and issues its own tokens;
+M0–M9 have landed. core-api performs the Google OAuth2 exchange and issues its own tokens;
 `users`, `families`, `family_members`, `family_invites`, `refresh_tokens` and `people` exist
 (M1); `locations`, `rooms`, `categories` and `trait_defs` exist, seeded with all 23 built-in
 categories, with uk/en i18n (M2); `items`, `item_events`, `tags` and `item_tags` exist, with
@@ -12,7 +12,7 @@ trait validation, containment, lifecycle and a transactional audit trail (M3). T
 sign-in, family settings, invites, people, locations/rooms, the category browser, item
 create/edit/detail/move/status/contents/events, and tag management. M4 added photos and
 attachments; M5 added search, filters with keyset pagination, duplicate hints and the dashboard. M6 added batch add, duplicate,
-barcode/ISBN lookup with in-browser scanning, and CSV export and import. M7 added quantity +/-, effective expiry, the computed Attention panel with family-wide snoozes, and the shopping list. M8 added person size history, database-side size normalisation, the fits-now / next-size screen, the outgrown sweep and seasonal pack/unpack with one-step undo. Lending and the rest (M9 onward) have not started.
+barcode/ISBN lookup with in-browser scanning, and CSV export and import. M7 added quantity +/-, effective expiry, the computed Attention panel with family-wide snoozes, and the shopping list. M8 added person size history, database-side size normalisation, the fits-now / next-size screen, the outgrown sweep and seasonal pack/unpack with one-step undo. M9 added lending (loans own the `lent` status, overdue feeds the Attention panel), the "currently lent out" page and the localised item timeline. Hardening (M10) has not started.
 
 The domain is settled and written down. Treat these as the source of truth and read them before
 proposing domain changes:
