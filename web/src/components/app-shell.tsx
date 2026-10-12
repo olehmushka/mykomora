@@ -19,13 +19,14 @@ export function AppShell({ me, children }: { me: Me; children: React.ReactNode }
     <>
       <header className="border-b border-border">
         <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
+          {/* eslint-disable-next-line i18next/no-literal-string -- the product name */}
           <Link href="/" className="text-base font-semibold tracking-tight">
             mykomora
           </Link>
           <span className="text-sm text-muted">{me.family.name}</span>
 
           <nav
-            aria-label="Main"
+            aria-label={t("main")}
             className="-mx-2 order-last w-full overflow-x-auto sm:order-none sm:ml-auto sm:w-auto sm:overflow-visible"
           >
             <ul className="flex items-center gap-1">

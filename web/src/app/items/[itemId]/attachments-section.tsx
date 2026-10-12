@@ -12,6 +12,7 @@ import {
 import { Notice } from "@/components/notice";
 import { Select } from "@/components/ui/select";
 import type { AttachmentKind, ItemAttachment } from "@/lib/api/attachments";
+import { UploadError } from "@/lib/upload-error";
 
 const KINDS: AttachmentKind[] = ["receipt", "manual", "warranty", "other"];
 
@@ -24,6 +25,7 @@ export function AttachmentsSection({
   attachments: ItemAttachment[];
 }) {
   const t = useTranslations("ItemDetail");
+  const tError = useTranslations("Errors");
   const [attachments, setAttachments] = useState(initial);
   const [kind, setKind] = useState<AttachmentKind>("receipt");
   const [busy, setBusy] = useState(false);
@@ -55,7 +57,7 @@ export function AttachmentsSection({
         headers: presign.data.uploadHeaders,
         body: file,
       });
-      if (!putResponse.ok) throw new Error(`upload failed (${putResponse.status})`);
+      if (!putResponse.ok) throw new UploadError(putResponse.status);
 
       const confirmed = await confirmAttachment(itemId, {
         storageKey: presign.data.storageKey,
@@ -68,7 +70,13 @@ export function AttachmentsSection({
 
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(
+        err instanceof UploadError
+          ? tError("uploadFailed", { status: err.status })
+          : err instanceof Error
+            ? err.message
+            : String(err),
+      );
     } finally {
       setBusy(false);
       if (inputRef.current) inputRef.current.value = "";

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useActionState, useRef } from "react";
 
 import { addPerson, type ActionState } from "@/app/people/actions";
@@ -12,6 +13,7 @@ import { addPerson, type ActionState } from "@/app/people/actions";
  * record and the rest can be added when it is actually known.
  */
 export function AddPersonForm() {
+  const t = useTranslations("People");
   const form = useRef<HTMLFormElement>(null);
 
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
@@ -31,7 +33,7 @@ export function AddPersonForm() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="flex-1">
           <label htmlFor="person-name" className="text-sm font-medium">
-            Name
+            {t("name")}
           </label>
           <input
             id="person-name"
@@ -44,7 +46,7 @@ export function AddPersonForm() {
 
         <div>
           <label htmlFor="person-birthdate" className="text-sm font-medium">
-            Birthdate <span className="font-normal text-muted">(optional)</span>
+            {t("birthdate")} <span className="font-normal text-muted">({t("optional")})</span>
           </label>
           <input
             id="person-birthdate"
@@ -57,7 +59,8 @@ export function AddPersonForm() {
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <label className="inline-flex min-h-11 items-center gap-2 text-sm">
-          <input name="isChild" type="checkbox" className="size-4" />A child
+          <input name="isChild" type="checkbox" className="size-4" />
+          {t("aChild")}
         </label>
 
         <button
@@ -65,7 +68,7 @@ export function AddPersonForm() {
           disabled={pending}
           className="inline-flex min-h-11 items-center rounded-md border border-border px-4 text-sm font-medium hover:bg-border/60 disabled:opacity-60"
         >
-          {pending ? "Adding…" : "Add person"}
+          {pending ? t("adding") : t("add")}
         </button>
       </div>
 

@@ -8,6 +8,7 @@ import {
   revokeFamilyInvite,
   updateFamily,
 } from "@/lib/api/family";
+import { apiError, errorText } from "@/lib/api-error";
 
 const SETTINGS_PATH = "/settings/family";
 
@@ -18,12 +19,12 @@ export async function renameFamily(_: ActionState, form: FormData): Promise<Acti
   const name = String(form.get("name") ?? "").trim();
 
   if (name === "") {
-    return { error: "A family needs a name." };
+    return { error: await errorText("familyName") };
   }
 
   const result = await updateFamily({ name });
   if (!result.ok) {
-    return { error: describe(result.reason, result.detail) };
+    return { error: await apiError(result) };
   }
 
   revalidatePath(SETTINGS_PATH);
@@ -42,7 +43,7 @@ export async function renameFamily(_: ActionState, form: FormData): Promise<Acti
 export async function createInvite(): Promise<ActionState> {
   const result = await createFamilyInvite();
   if (!result.ok) {
-    return { error: describe(result.reason, result.detail) };
+    return { error: await apiError(result) };
   }
 
   revalidatePath(SETTINGS_PATH);
@@ -63,23 +64,5 @@ export async function removeMember(form: FormData): Promise<void> {
   if (id !== "") {
     await removeFamilyMember(id);
     revalidatePath(SETTINGS_PATH);
-  }
-}
-
-/**
- * Turns a failure into something worth reading.
- *
- * core-api's own message is used when there is one, because it is the side
- * that knows what was wrong; the reason only supplies a sentence for the
- * cases where the message would be too terse to act on.
- */
-function describe(reason: string, detail: string): string {
-  switch (reason) {
-    case "forbidden":
-      return "Only the family owner can do this.";
-    case "unavailable":
-      return "mykomora could not reach its API. Try again in a moment.";
-    default:
-      return detail;
   }
 }

@@ -49,6 +49,7 @@ export async function FilterPanel({
 }) {
   const t = await getTranslations("Search");
   const tItem = await getTranslations("ItemForm");
+  const tOption = await getTranslations("TraitOption");
   const tItems = await getTranslations("Items");
 
   const category = lookups.categories.find((c) => c.id === values.categoryId);
@@ -219,7 +220,10 @@ export async function FilterPanel({
                 const options =
                   def.dataType === "bool"
                     ? [{ value: "true", label: t("yes") }]
-                    : (def.enumOptions ?? []).map((o) => ({ value: o, label: o }));
+                    : (def.enumOptions ?? []).map((o) => ({
+                        value: o,
+                        label: tOption.has(`${def.key}.${o}`) ? tOption(`${def.key}.${o}`) : o,
+                      }));
 
                 return (
                   <FieldRow key={def.id} label={def.label} htmlFor={id}>

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -9,7 +10,11 @@ import { getPerson } from "@/lib/api/people";
 import { requireMe } from "@/lib/api/session";
 import { listPersonSizes, type PersonSize } from "@/lib/api/sizes";
 
-export const metadata = { title: "Person — mykomora" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Meta");
+
+  return { title: t("person") };
+}
 
 /** Current size per type: the history is newest first, so the first of each type wins. */
 function currentSizes(history: PersonSize[]): PersonSize[] {

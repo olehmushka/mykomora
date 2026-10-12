@@ -1,8 +1,14 @@
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+
 import { AppShell } from "@/components/app-shell";
 import { getPing } from "@/lib/api/client";
 import { requireMe } from "@/lib/api/session";
 
-export const metadata = { title: "Stack status — mykomora" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Status");
+  return { title: t("metaTitle") };
+}
 
 /**
  * The walking skeleton's screen, kept as a diagnostic.
@@ -12,39 +18,37 @@ export const metadata = { title: "Stack status — mykomora" };
  * and the unreachable path render as a normal screen.
  */
 export default async function StatusPage() {
+  const t = await getTranslations("Status");
   const me = await requireMe("/status");
   const ping = await getPing();
 
   return (
     <AppShell me={me}>
-      <h1 className="text-2xl font-semibold tracking-tight">Stack status</h1>
-      <p className="mt-2 text-sm text-muted">
-        What this page proves: the browser reached the web app, the web app reached core-api, and
-        core-api reached Postgres.
-      </p>
+      <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+      <p className="mt-2 text-sm text-muted">{t("intro")}</p>
 
       <dl className="mt-8 divide-y divide-border rounded-lg border border-border">
         <Row label="web">
-          <Status tone="ok">running</Status>
+          <Status tone="ok">{t("running")}</Status>
         </Row>
 
         <Row label="core-api">
           {ping.ok ? (
-            <Status tone="ok">reachable</Status>
+            <Status tone="ok">{t("reachable")}</Status>
           ) : (
-            <Status tone="degraded">unreachable</Status>
+            <Status tone="degraded">{t("unreachable")}</Status>
           )}
         </Row>
 
         <Row label="postgres">
           {ping.ok ? (
-            <Status tone="ok">answering</Status>
+            <Status tone="ok">{t("answering")}</Status>
           ) : (
-            <Status tone="degraded">unknown</Status>
+            <Status tone="degraded">{t("unknown")}</Status>
           )}
         </Row>
 
-        <Row label="database clock">
+        <Row label={t("databaseClock")}>
           {ping.ok ? (
             <time dateTime={ping.data.now} className="font-mono text-sm">
               {ping.data.now}

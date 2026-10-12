@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { archiveRoom, createRoom } from "@/lib/api/places";
+import { apiError, errorText } from "@/lib/api-error";
 
 export type ActionState = { error?: string };
 
@@ -13,17 +14,14 @@ export async function addRoom(
 ): Promise<ActionState> {
   const name = String(form.get("name") ?? "").trim();
   if (name === "") {
-    return { error: "A room needs a name." };
+    return { error: await errorText("roomName") };
   }
 
   const result = await createRoom(locationId, { name, sortOrder: 0 });
 
   if (!result.ok) {
     return {
-      error:
-        result.reason === "unavailable"
-          ? "mykomora could not reach its API. Try again in a moment."
-          : result.detail,
+      error: await apiError(result),
     };
   }
 

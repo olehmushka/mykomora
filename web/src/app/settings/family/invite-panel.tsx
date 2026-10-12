@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 
 import { createInvite, type ActionState } from "@/app/settings/family/actions";
@@ -13,6 +14,7 @@ import { createInvite, type ActionState } from "@/app/settings/family/actions";
  * post the link would be gone before anyone could copy it.
  */
 export function InvitePanel() {
+  const t = useTranslations("Family");
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
     async () => createInvite(),
     {},
@@ -26,7 +28,7 @@ export function InvitePanel() {
           disabled={pending}
           className="inline-flex min-h-11 items-center rounded-md border border-border px-4 text-sm font-medium hover:bg-border/60 disabled:opacity-60"
         >
-          {pending ? "Creating…" : "Create an invite link"}
+          {pending ? t("creating") : t("createInvite")}
         </button>
       </form>
 
@@ -39,12 +41,9 @@ export function InvitePanel() {
       {state.inviteUrl && (
         <div className="mt-4">
           <label htmlFor="invite-url" className="text-sm font-medium">
-            Share this link
+            {t("shareLink")}
           </label>
-          <p className="mt-1 text-sm text-muted">
-            It works once, expires in seven days, and is shown only now — mykomora keeps no copy of
-            it.
-          </p>
+          <p className="mt-1 text-sm text-muted">{t("shareLinkNote")}</p>
           <input
             id="invite-url"
             readOnly

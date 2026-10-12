@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { archiveCategory, createCategory } from "@/lib/api/taxonomy";
+import { apiError, errorText } from "@/lib/api-error";
 
 const TAXONOMY_PATH = "/settings/taxonomy";
 
@@ -15,22 +16,19 @@ export async function addCategory(_: ActionState, form: FormData): Promise<Actio
     .trim()
     .toLowerCase();
   if (!SLUG_PATTERN.test(slug)) {
-    return { error: "A key must be lowercase letters, digits, underscores or hyphens." };
+    return { error: await errorText("keyFormat") };
   }
 
   const nameCustom = String(form.get("nameCustom") ?? "").trim();
   if (nameCustom === "") {
-    return { error: "A category needs a name." };
+    return { error: await errorText("categoryName") };
   }
 
   const result = await createCategory({ slug, nameCustom, sortOrder: 0 });
 
   if (!result.ok) {
     return {
-      error:
-        result.reason === "unavailable"
-          ? "mykomora could not reach its API. Try again in a moment."
-          : result.detail,
+      error: await apiError(result),
     };
   }
 

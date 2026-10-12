@@ -8,7 +8,9 @@
     "taxonomy": "Categories",
     "tags": "Tags",
     "shoppingList": "Shopping list",
-    "loans": "Lent out"
+    "loans": "Lent out",
+    "main": "Main",
+    "signOut": "Sign out"
   },
   "LocaleSwitcher": {
     "label": "Language",
@@ -304,8 +306,21 @@
       "updated": "Edited",
       "moved": "Moved",
       "status_changed": "Status changed",
-      "quantity_changed": "Quantity changed"
-    }
+      "quantity_changed": "Quantity changed",
+      "archived": "Archived",
+      "lent": "Lent out",
+      "returned": "Returned",
+      "photo_added": "Photo added",
+      "photo_removed": "Photo removed",
+      "attachment_added": "File added",
+      "attachment_removed": "File removed"
+    },
+    "signedInAs": "Signed in as {name}",
+    "ownerSuffix": "owner",
+    "sharing": "Sharing",
+    "access": "{count, plural, one {# person has} other {# people have}} access to this family.",
+    "membersUnavailable": "The member list is unavailable right now.",
+    "familySettings": "Family settings"
   },
   "Batch": {
     "heading": "Add many items",
@@ -532,5 +547,226 @@
     "lent_due": "Lent out, due {date}",
     "lent_to_due": "Lent to {name}, due {date}",
     "returned": "Returned"
+  },
+  "SignIn": {
+    "metaTitle": "Sign in",
+    "tagline": "A family inventory for households spread across several places.",
+    "continue": "Continue with Google",
+    "privacy": "Google is the only way in. mykomora never sees your password, and stores only your name, email address and profile picture.",
+    "reason": {
+      "denied": {
+        "title": "Sign-in was cancelled",
+        "detail": "You did not grant access on Google's screen. Nothing was shared."
+      },
+      "expired": {
+        "title": "That sign-in took too long",
+        "detail": "The link expired or was already used. Start again below."
+      },
+      "unverified_email": {
+        "title": "That Google account has no verified email",
+        "detail": "A family recognises its members by their address, so an unverified one cannot be used."
+      },
+      "exchange_failed": {
+        "title": "Google did not complete the sign-in",
+        "detail": "Something went wrong between here and Google. Trying again usually works."
+      },
+      "unavailable": {
+        "title": "Sign-in is not set up on this deployment",
+        "detail": "This copy of mykomora has no Google OAuth client configured. See “Google sign-in” in the README."
+      }
+    }
+  },
+  "Join": {
+    "metaTitle": "Join a family",
+    "missingTitle": "This invite link does not exist",
+    "missingDetail": "Check that you copied the whole link, or ask whoever invited you for a new one.",
+    "unusableTitle": "This invite to {family} is no longer usable",
+    "usedDetail": "It has already been used — an invite admits one person.",
+    "expiredDetail": "It has expired or been cancelled. Ask for a new link.",
+    "title": "Join {family}",
+    "intro": "Sign in with Google and you will share this family's inventory. Everyone in a family sees and edits everything.",
+    "continue": "Continue with Google"
+  },
+  "People": {
+    "metaTitle": "People",
+    "title": "People",
+    "intro": "Anyone this family keeps things for — a child, a grandparent. They do not need an account, and items can be recorded against them.",
+    "addHeading": "Add someone",
+    "listHeading": "In this family",
+    "unavailable": "The list is unavailable",
+    "emptyTitle": "Nobody recorded yet",
+    "emptyDetail": "Add the children whose sizes you want to track, and anyone else you buy for.",
+    "child": "Child",
+    "adult": "Adult",
+    "born": "born {date}",
+    "archive": "Archive",
+    "name": "Name",
+    "birthdate": "Birthdate",
+    "optional": "optional",
+    "aChild": "A child",
+    "adding": "Adding…",
+    "add": "Add person"
+  },
+  "Family": {
+    "metaTitle": "Family",
+    "title": "Family",
+    "intro": "Everyone here sees and edits everything. The owner additionally manages the family itself.",
+    "nameHeading": "Name",
+    "membersHeading": "Members",
+    "role": {
+      "owner": "owner",
+      "member": "member"
+    },
+    "remove": "Remove",
+    "membersUnavailable": "The member list is unavailable",
+    "invitesHeading": "Invites",
+    "invitesIntro": "mykomora sends no email. Create a link and share it however your family already talks.",
+    "inviteStatus": {
+      "pending": "Pending",
+      "accepted": "Accepted",
+      "revoked": "Cancelled",
+      "expired": "Expired"
+    },
+    "expires": "Expires {date}",
+    "created": "Created {date}",
+    "cancel": "Cancel",
+    "familyName": "Family name",
+    "saving": "Saving…",
+    "save": "Save",
+    "creating": "Creating…",
+    "createInvite": "Create an invite link",
+    "shareLink": "Share this link",
+    "shareLinkNote": "It works once, expires in seven days, and is shown only now — mykomora keeps no copy of it."
+  },
+  "Status": {
+    "metaTitle": "Stack status",
+    "title": "Stack status",
+    "intro": "What this page proves: the browser reached the web app, the web app reached core-api, and core-api reached Postgres.",
+    "running": "running",
+    "reachable": "reachable",
+    "unreachable": "unreachable",
+    "answering": "answering",
+    "unknown": "unknown",
+    "databaseClock": "database clock"
+  },
+  "Errors": {
+    "unavailable": "mykomora could not reach its API. Try again in a moment.",
+    "forbidden": "You do not have permission to do this.",
+    "sizeRequired": "Enter a size.",
+    "tickItem": "Tick at least one item.",
+    "personName": "A person needs a name.",
+    "familyName": "A family needs a name.",
+    "keyFormat": "A key must be lowercase letters, digits, underscores or hyphens.",
+    "categoryName": "A category needs a name.",
+    "fieldLabel": "A field needs a label.",
+    "chooseType": "Choose a type.",
+    "choiceOptions": "A choice field needs at least one comma-separated option.",
+    "tagName": "A tag needs a name.",
+    "locationName": "A location needs a name.",
+    "chooseKind": "Choose a kind.",
+    "roomName": "A room needs a name.",
+    "placeOrContainer": "Choose a place or a container.",
+    "chooseStatus": "Choose a status.",
+    "lentTo": "Choose who it is lent to.",
+    "itemName": "An item needs a name.",
+    "chooseCategory": "Choose a category.",
+    "quantityNegative": "Quantity must not be negative.",
+    "chooseLocation": "Choose a location.",
+    "uploadFailed": "The upload failed ({status}).",
+    "code": {
+      "not_found": "That no longer exists in this family.",
+      "no_session": "Your session has ended. Sign in again.",
+      "unauthorized": "Sign in to continue.",
+      "owner_required": "Only the family owner can do this.",
+      "invalid_barcode": "That is not a valid barcode or ISBN."
+    }
+  },
+  "TraitOption": {
+    "gender_age": {
+      "unisex": "Unisex",
+      "boys": "Boys",
+      "girls": "Girls",
+      "men": "Men",
+      "women": "Women"
+    },
+    "battery_type": {
+      "AA": "AA",
+      "AAA": "AAA",
+      "CR2032": "CR2032",
+      "rechargeable": "Rechargeable",
+      "none": "None"
+    },
+    "language": {
+      "en": "English",
+      "uk": "Ukrainian",
+      "other": "Other"
+    },
+    "format": {
+      "paperback": "Paperback",
+      "hardcover": "Hardcover",
+      "ebook": "E-book",
+      "audiobook": "Audiobook",
+      "other": "Other"
+    },
+    "read_status": {
+      "unread": "Unread",
+      "reading": "Reading",
+      "finished": "Finished"
+    },
+    "tool_type": {
+      "hand": "Hand tool",
+      "power": "Power tool",
+      "measuring": "Measuring",
+      "other": "Other"
+    },
+    "power_source": {
+      "manual": "Manual",
+      "corded": "Corded",
+      "battery": "Battery",
+      "other": "Other"
+    },
+    "skin_type": {
+      "normal": "Normal",
+      "dry": "Dry",
+      "oily": "Oily",
+      "combination": "Combination",
+      "sensitive": "Sensitive"
+    },
+    "form": {
+      "tablet": "Tablet",
+      "capsule": "Capsule",
+      "syrup": "Syrup",
+      "ointment": "Ointment",
+      "drops": "Drops",
+      "injection": "Injection",
+      "other": "Other"
+    },
+    "storage_kind": {
+      "pantry": "Pantry",
+      "fridge": "Fridge",
+      "freezer": "Freezer"
+    },
+    "bedding_size": {
+      "single": "Single",
+      "double": "Double",
+      "queen": "Queen",
+      "king": "King",
+      "other": "Other"
+    },
+    "pet": {
+      "dog": "Dog",
+      "cat": "Cat",
+      "bird": "Bird",
+      "fish": "Fish",
+      "other": "Other"
+    }
+  },
+  "Meta": {
+    "description": "A family inventory for households spread across several places.",
+    "person": "Person",
+    "categories": "Categories",
+    "fits": "What fits",
+    "locations": "Locations",
+    "tags": "Tags"
   }
 }

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
 import { AddCategoryForm } from "@/app/settings/taxonomy/add-category-form";
@@ -7,7 +8,11 @@ import { Notice } from "@/components/notice";
 import { getTaxonomy } from "@/lib/api/taxonomy";
 import { requireMe } from "@/lib/api/session";
 
-export const metadata = { title: "Categories — mykomora" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Meta");
+
+  return { title: t("categories") };
+}
 
 /**
  * The category tree: built-in ∪ this family's own, each with its resolved

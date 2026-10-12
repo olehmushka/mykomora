@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { dismissAlert, undoAlertDismissal, type AlertKind } from "@/lib/api/alerts";
 import { adjustItemQuantity } from "@/lib/api/items";
+import { apiError } from "@/lib/api-error";
 
 export async function snooze(itemId: string, kind: AlertKind, days: number): Promise<void> {
   await dismissAlert(itemId, kind, days);
@@ -23,10 +24,7 @@ export async function changeQuantity(itemId: string, delta: number): Promise<Qua
 
   if (!result.ok) {
     return {
-      error:
-        result.reason === "unavailable"
-          ? "mykomora could not reach its API. Try again in a moment."
-          : result.detail,
+      error: await apiError(result),
     };
   }
 

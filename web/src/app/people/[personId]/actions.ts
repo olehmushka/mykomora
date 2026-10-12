@@ -4,12 +4,11 @@ import { revalidatePath } from "next/cache";
 
 import { bulkSetItemStatus, recordPersonSize, undoItemBatch } from "@/lib/api/sizes";
 import type { SizeSystem, SizeType } from "@/lib/api/sizes";
+import { apiError, errorText } from "@/lib/api-error";
 
 export type ActionState = { error?: string };
 
 export type BatchState = { error?: string; batchId?: string; changed?: number };
-
-const UNAVAILABLE = "mykomora could not reach its API. Try again in a moment.";
 
 export async function recordSize(
   personId: string,
@@ -18,7 +17,7 @@ export async function recordSize(
 ): Promise<ActionState> {
   const sizeValue = String(form.get("sizeValue") ?? "").trim();
   if (sizeValue === "") {
-    return { error: "Enter a size." };
+    return { error: await errorText("sizeRequired") };
   }
 
   const result = await recordPersonSize(personId, {
@@ -28,7 +27,7 @@ export async function recordSize(
   });
 
   if (!result.ok) {
-    return { error: result.reason === "unavailable" ? UNAVAILABLE : result.detail };
+    return { error: await apiError(result) };
   }
 
   revalidatePath(`/people/${personId}`, "layout");
@@ -39,12 +38,12 @@ export async function recordSize(
 /** The "outgrown" sweep: everything ticked goes to to_give_away, undoable as one. */
 export async function markOutgrown(personId: string, itemIds: string[]): Promise<BatchState> {
   if (itemIds.length === 0) {
-    return { error: "Tick at least one item." };
+    return { error: await errorText("tickItem") };
   }
 
   const result = await bulkSetItemStatus(itemIds, "to_give_away");
   if (!result.ok) {
-    return { error: result.reason === "unavailable" ? UNAVAILABLE : result.detail };
+    return { error: await apiError(result) };
   }
 
   revalidatePath(`/people/${personId}/fits`);
@@ -55,7 +54,7 @@ export async function markOutgrown(personId: string, itemIds: string[]): Promise
 export async function undoOutgrown(personId: string, batchId: string): Promise<ActionState> {
   const result = await undoItemBatch(batchId);
   if (!result.ok) {
-    return { error: result.reason === "unavailable" ? UNAVAILABLE : result.detail };
+    return { error: await apiError(result) };
   }
 
   revalidatePath(`/people/${personId}/fits`);

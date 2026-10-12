@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
@@ -8,7 +9,11 @@ import { Notice } from "@/components/notice";
 import { listLocations } from "@/lib/api/places";
 import { requireMe } from "@/lib/api/session";
 
-export const metadata = { title: "Locations — mykomora" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Meta");
+
+  return { title: t("locations") };
+}
 
 /**
  * The family's physical places (SPEC 4, "Places"). Location -> room -> free

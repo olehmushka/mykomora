@@ -360,6 +360,9 @@ export function ItemForm({
 
 function TraitField({ trait }: { trait: TraitDef }) {
   const t = useTranslations("ItemForm");
+  const tOption = useTranslations("TraitOption");
+  const optionLabel = (option: string) =>
+    tOption.has(`${trait.key}.${option}`) ? tOption(`${trait.key}.${option}`) : option;
   const name = `trait__${trait.key}__${trait.dataType}`;
   const id = `trait-${trait.key}`;
   const hint = trait.required ? undefined : t("optionalHint");
@@ -375,7 +378,7 @@ function TraitField({ trait }: { trait: TraitDef }) {
           <option value=""></option>
           {(trait.enumOptions ?? []).map((option) => (
             <option key={option} value={option}>
-              {option}
+              {optionLabel(option)}
             </option>
           ))}
         </Select>
