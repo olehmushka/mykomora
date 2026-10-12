@@ -1031,7 +1031,7 @@ func (q *Queries) ListItemPlacements(ctx context.Context, arg ListItemPlacements
 }
 
 const listRecentItemEvents = `-- name: ListRecentItemEvents :many
-SELECT e.id, e.family_id, e.item_id, e.actor_user_id, e.type, e.payload, e.created_at, i.name AS item_name
+SELECT e.id, e.family_id, e.item_id, e.actor_user_id, e.type, e.payload, e.created_at, e.batch_id, i.name AS item_name
 FROM item_events e
          JOIN items i ON i.id = e.item_id AND i.family_id = $1
 WHERE e.family_id = $1
@@ -1052,6 +1052,7 @@ type ListRecentItemEventsRow struct {
 	Type        string             `json:"type"`
 	Payload     []byte             `json:"payload"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	BatchID     pgtype.UUID        `json:"batch_id"`
 	ItemName    string             `json:"item_name"`
 }
 
@@ -1072,6 +1073,7 @@ func (q *Queries) ListRecentItemEvents(ctx context.Context, arg ListRecentItemEv
 			&i.Type,
 			&i.Payload,
 			&i.CreatedAt,
+			&i.BatchID,
 			&i.ItemName,
 		); err != nil {
 			return nil, err

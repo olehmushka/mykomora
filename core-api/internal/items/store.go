@@ -42,6 +42,12 @@ type Store interface {
 	DeleteAlertDismissal(ctx context.Context, arg db.DeleteAlertDismissalParams) (int64, error)
 	ListShoppingItems(ctx context.Context, familyID pgtype.UUID) ([]db.ListShoppingItemsRow, error)
 
+	ListPersonSizes(ctx context.Context, arg db.ListPersonSizesParams) ([]db.PersonSize, error)
+	CreatePersonSize(ctx context.Context, arg db.CreatePersonSizeParams) (db.PersonSize, error)
+	ListCurrentPersonSizes(ctx context.Context, arg db.ListCurrentPersonSizesParams) ([]db.PersonSize, error)
+	ListFitItems(ctx context.Context, arg db.ListFitItemsParams) ([]db.ListFitItemsRow, error)
+	ListBatchEvents(ctx context.Context, arg db.ListBatchEventsParams) ([]db.ItemEvent, error)
+
 	CreateItemEvent(ctx context.Context, arg db.CreateItemEventParams) (db.ItemEvent, error)
 	ListItemEvents(ctx context.Context, arg db.ListItemEventsParams) ([]db.ItemEvent, error)
 

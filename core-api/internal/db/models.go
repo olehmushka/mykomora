@@ -528,6 +528,7 @@ type ItemEvent struct {
 	Type        string             `json:"type"`
 	Payload     []byte             `json:"payload"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	BatchID     pgtype.UUID        `json:"batch_id"`
 }
 
 type ItemPhoto struct {
@@ -573,6 +574,17 @@ type Person struct {
 	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
 	ArchivedAt pgtype.Timestamptz `json:"archived_at"`
+}
+
+type PersonSize struct {
+	ID          pgtype.UUID        `json:"id"`
+	PersonID    pgtype.UUID        `json:"person_id"`
+	SizeType    SizeType           `json:"size_type"`
+	SizeSystem  SizeSystem         `json:"size_system"`
+	SizeValue   string             `json:"size_value"`
+	SizeNormMin pgtype.Numeric     `json:"size_norm_min"`
+	SizeNormMax pgtype.Numeric     `json:"size_norm_max"`
+	RecordedAt  pgtype.Timestamptz `json:"recorded_at"`
 }
 
 type ProductCache struct {

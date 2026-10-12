@@ -439,5 +439,45 @@
   "Quantity": {
     "decrease": "Зменшити кількість",
     "increase": "Збільшити кількість"
+  },
+  "Sizes": {
+    "backLink": "Назад",
+    "whatFitsButton": "Що підходить зараз",
+    "whatFitsNextButton": "Що підійде далі",
+    "currentHeading": "Поточні розміри",
+    "noSizes": "Розмірів ще немає. Додайте нижче.",
+    "unmapped": "Немає в таблиці розмірів — речі не підбиратимуться",
+    "recordHeading": "Записати новий розмір",
+    "historyHeading": "Історія",
+    "typeLabel": "Тип",
+    "systemLabel": "Система",
+    "valueLabel": "Розмір",
+    "recordButton": "Записати",
+    "type": {
+      "clothing": "Одяг",
+      "shoe": "Взуття",
+      "head": "Головні убори"
+    },
+    "system": {
+      "kids_cm": "Зріст (см)",
+      "kids_eu": "Вік (років)",
+      "intl_letter": "Літерні (S, M, L)",
+      "eu_adult": "EU дорослі",
+      "shoe_eu": "Взуття EU",
+      "shoe_uk": "Взуття UK",
+      "shoe_us": "Взуття US",
+      "one_size": "Універсальний"
+    },
+    "fitsHeading": "Що вже підходить",
+    "fitsNow": "Підходить зараз",
+    "fitsNext": "Наступний розмір",
+    "noFitSets": "Спершу запишіть розмір одягу чи взуття — і те, що вже підходить, з’явиться тут.",
+    "nothingFits": "Нічого з наявного не підходить на цей розмір.",
+    "outgrownButton": "Замалі ({count})",
+    "outgrownDone": "{count, plural, one {# річ} few {# речі} many {# речей} other {# речі}} позначено «віддати».",
+    "undo": "Скасувати",
+    "packButton": "Спакувати (використовується → зберігається)",
+    "unpackButton": "Розпакувати (зберігається → використовується)",
+    "flipDone": "Змінено: {count, plural, one {# річ} few {# речі} many {# речей} other {# речі}}."
   }
 }

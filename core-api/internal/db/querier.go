@@ -105,6 +105,9 @@ type Querier interface {
 	// Archived rather than deleted, because items recorded against a person must
 	// keep their history when that person stops being current.
 	CreatePerson(ctx context.Context, arg CreatePersonParams) (Person, error)
+	// Written as INSERT ... SELECT so a person from another family (or an
+	// archived one) inserts nothing and surfaces as no rows.
+	CreatePersonSize(ctx context.Context, arg CreatePersonSizeParams) (PersonSize, error)
 	// Refresh tokens (SPEC 6, "core-api owns identity").
 	//
 	// Rotating refresh tokens with reuse detection: every refresh issues a new
@@ -233,6 +236,7 @@ type Querier interface {
 	// actually holds. Allowlisted in sqlc.yaml's family-scoped rule for exactly
 	// this reason, the same way the refresh-token reuse-detection revoke is.
 	ListAllStorageKeys(ctx context.Context) ([]string, error)
+	ListBatchEvents(ctx context.Context, arg ListBatchEventsParams) ([]ItemEvent, error)
 	// Categories: the built-in taxonomy plus each family's own (SPEC 4,
 	// "Taxonomy").
 	//
@@ -247,8 +251,16 @@ type Querier interface {
 	// case-insensitive; the caller treats anything but exactly one hit as an
 	// error, so two boxes called "Box" are never silently confused.
 	ListContainersByName(ctx context.Context, arg ListContainersByNameParams) ([]ListContainersByNameRow, error)
+	// The newest recorded size per size_type.
+	ListCurrentPersonSizes(ctx context.Context, arg ListCurrentPersonSizesParams) ([]PersonSize, error)
 	ListFamilyInvites(ctx context.Context, familyID pgtype.UUID) ([]ListFamilyInvitesRow, error)
 	ListFamilyMembers(ctx context.Context, familyID pgtype.UUID) ([]ListFamilyMembersRow, error)
+	// Items whose normalised size range overlaps [range_min, range_max] (strictly:
+	// touching at a bracket boundary is not a fit). An item is shoe-sized when its
+	// size_system is a shoe_* one and clothing-sized otherwise; items already
+	// earmarked for somebody else are left out, and so are items already on their
+	// way out (to_give_away) or gone.
+	ListFitItems(ctx context.Context, arg ListFitItemsParams) ([]ListFitItemsRow, error)
 	ListItemAttachments(ctx context.Context, arg ListItemAttachmentsParams) ([]ItemAttachment, error)
 	ListItemChildren(ctx context.Context, arg ListItemChildrenParams) ([]Item, error)
 	ListItemEvents(ctx context.Context, arg ListItemEventsParams) ([]ItemEvent, error)
@@ -262,6 +274,12 @@ type Querier interface {
 	// `include_archived` is a parameter rather than a second query so the list and
 	// its archived variant cannot drift apart.
 	ListPeople(ctx context.Context, arg ListPeopleParams) ([]Person, error)
+	// Kids' sizes and seasons (M8; SPEC 5, "Kids: what fits now, what's next").
+	//
+	// `person_sizes` has no family_id of its own (SPEC 4); like rooms, it scopes
+	// through its parent, `people`, so the caller proves the person is theirs.
+	// The size_norm_* columns are filled by the person_sizes_normalise trigger.
+	ListPersonSizes(ctx context.Context, arg ListPersonSizesParams) ([]PersonSize, error)
 	ListRecentItemEvents(ctx context.Context, arg ListRecentItemEventsParams) ([]ListRecentItemEventsRow, error)
 	ListRoomsByLocation(ctx context.Context, arg ListRoomsByLocationParams) ([]Room, error)
 	ListShoppingItems(ctx context.Context, familyID pgtype.UUID) ([]ListShoppingItemsRow, error)

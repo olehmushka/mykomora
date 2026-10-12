@@ -298,6 +298,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/people/{personId}/sizes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: string;
+            };
+            cookie?: never;
+        };
+        /** A person's size history, newest first */
+        get: operations["listPersonSizes"];
+        put?: never;
+        /**
+         * Record a new size
+         * @description Appends to the history; the new row becomes the current size for its
+         *     `sizeType`. A label the size table does not know is stored all the
+         *     same but carries no range, so it will not take part in fit matching.
+         */
+        post: operations["recordPersonSize"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/people/{personId}/fits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * What already fits this person, or fits next
+         * @description For each size type with a current size, the family's stored or in-use
+         *     items whose normalised size range overlaps the person's, each with its
+         *     effective place. `offset=1` asks for the next size up: the range of
+         *     the same width directly above the current one. Items earmarked for
+         *     somebody else are left out. Head sizes are recorded but not matched,
+         *     because an item carries no head size.
+         */
+        get: operations["getPersonFits"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/people/{personId}": {
         parameters: {
             query?: never;
@@ -951,6 +1003,78 @@ export interface paths {
          *     set, the item is archived and no further status change is accepted.
          */
         post: operations["setItemStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items/bulk-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move many items between active statuses at once
+         * @description For the "outgrown" sweep. Only `in_use`, `stored`, `lent` and
+         *     `to_give_away` are accepted; terminal statuses go through the
+         *     single-item endpoint. Items already at the target are skipped. One
+         *     `status_changed` event per item, all sharing the returned `batchId`,
+         *     which can be handed to the undo endpoint.
+         */
+        post: operations["bulkSetItemStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items/{itemId}/season-flip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pack or unpack a container's contents
+         * @description `pack` moves the container's direct contents from `in_use` to
+         *     `stored`; `unpack` does the reverse. Contents in any other status are
+         *     left alone. One event per item, one `batchId`, one undo.
+         */
+        post: operations["flipItemSeason"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/item-batches/{batchId}/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batchId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reverse a bulk status action
+         * @description Restores every item in the batch to the status it had before, in one
+         *     transaction. An item whose status has changed since is left alone and
+         *     counted as skipped.
+         */
+        post: operations["undoItemBatch"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1892,6 +2016,55 @@ export interface components {
         SetItemStatusRequest: {
             status: components["schemas"]["ItemStatus"];
         };
+        /** @enum {string} */
+        SizeType: "clothing" | "shoe" | "head";
+        PersonSize: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            personId: string;
+            sizeType: components["schemas"]["SizeType"];
+            sizeSystem: components["schemas"]["SizeSystem"];
+            sizeValue: string;
+            /** @description Absent when the label is not in the size table. */
+            sizeNormMin?: number;
+            sizeNormMax?: number;
+            /** Format: date-time */
+            recordedAt: string;
+        };
+        RecordPersonSizeRequest: {
+            sizeType: components["schemas"]["SizeType"];
+            sizeSystem: components["schemas"]["SizeSystem"];
+            sizeValue: string;
+        };
+        FitSet: {
+            sizeType: components["schemas"]["SizeType"];
+            sizeSystem: components["schemas"]["SizeSystem"];
+            /** @description The person's current label for this size type, whatever the offset. */
+            sizeValue: string;
+            /** @description Lower edge of the normalised range that was matched (shifted for offset 1). */
+            rangeMin: number;
+            rangeMax: number;
+            items: components["schemas"]["ItemHit"][];
+        };
+        PersonFits: {
+            offset: number;
+            sets: components["schemas"]["FitSet"][];
+        };
+        BulkSetItemStatusRequest: {
+            itemIds: string[];
+            status: components["schemas"]["ItemStatus"];
+        };
+        SeasonFlipRequest: {
+            /** @enum {string} */
+            direction: "pack" | "unpack";
+        };
+        BatchResult: {
+            /** Format: uuid */
+            batchId: string;
+            changed: number;
+            skipped: number;
+        };
         ItemEvent: {
             /** Format: uuid */
             id: string;
@@ -1904,6 +2077,11 @@ export interface components {
             payload: {
                 [key: string]: unknown;
             };
+            /**
+             * Format: uuid
+             * @description Shared by the events of one bulk action; absent otherwise.
+             */
+            batchId?: string;
             /** Format: date-time */
             createdAt: string;
         };
@@ -2513,6 +2691,86 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
+        };
+    };
+    listPersonSizes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every recorded size; the newest per `sizeType` is the current one. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonSize"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    recordPersonSize: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordPersonSizeRequest"];
+            };
+        };
+        responses: {
+            /** @description The recorded size. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonSize"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getPersonFits: {
+        parameters: {
+            query?: {
+                offset?: 0 | 1;
+            };
+            header?: never;
+            path: {
+                personId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One set per matched size type. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonFits"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
         };
     };
     getPerson: {
@@ -3641,6 +3899,86 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    bulkSetItemStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkSetItemStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description What changed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    flipItemSeason: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SeasonFlipRequest"];
+            };
+        };
+        responses: {
+            /** @description What changed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    undoItemBatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description What was reverted. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchResult"];
+                };
+            };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
         };

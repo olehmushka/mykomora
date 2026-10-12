@@ -13,9 +13,10 @@ import (
 
 const createItemEvent = `-- name: CreateItemEvent :one
 
-INSERT INTO item_events (family_id, item_id, actor_user_id, type, payload)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, family_id, item_id, actor_user_id, type, payload, created_at
+INSERT INTO item_events (family_id, item_id, actor_user_id, type, payload, batch_id)
+VALUES ($1, $2, $3, $4, $5,
+        $6)
+RETURNING id, family_id, item_id, actor_user_id, type, payload, created_at, batch_id
 `
 
 type CreateItemEventParams struct {
@@ -24,6 +25,7 @@ type CreateItemEventParams struct {
 	ActorUserID pgtype.UUID `json:"actor_user_id"`
 	Type        string      `json:"type"`
 	Payload     []byte      `json:"payload"`
+	BatchID     pgtype.UUID `json:"batch_id"`
 }
 
 // Item events: the audit trail (SPEC 4, "Items" and SPEC 7, "Data safety").
@@ -39,6 +41,7 @@ func (q *Queries) CreateItemEvent(ctx context.Context, arg CreateItemEventParams
 		arg.ActorUserID,
 		arg.Type,
 		arg.Payload,
+		arg.BatchID,
 	)
 	var i ItemEvent
 	err := row.Scan(
@@ -49,12 +52,13 @@ func (q *Queries) CreateItemEvent(ctx context.Context, arg CreateItemEventParams
 		&i.Type,
 		&i.Payload,
 		&i.CreatedAt,
+		&i.BatchID,
 	)
 	return i, err
 }
 
 const listItemEvents = `-- name: ListItemEvents :many
-SELECT id, family_id, item_id, actor_user_id, type, payload, created_at
+SELECT id, family_id, item_id, actor_user_id, type, payload, created_at, batch_id
 FROM item_events
 WHERE item_id = $1
   AND family_id = $2
@@ -91,6 +95,7 @@ func (q *Queries) ListItemEvents(ctx context.Context, arg ListItemEventsParams) 
 			&i.Type,
 			&i.Payload,
 			&i.CreatedAt,
+			&i.BatchID,
 		); err != nil {
 			return nil, err
 		}
