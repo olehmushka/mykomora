@@ -106,6 +106,12 @@ export default async function ItemsPage(props: PageProps<"/items">) {
         >
           {t("exportButton")}
         </a>
+        <Link
+          href="/items/import"
+          className="ml-2 inline-flex min-h-11 items-center rounded-md border border-border px-4 text-sm font-medium hover:bg-border/60"
+        >
+          {t("importButton")}
+        </Link>
       </div>
 
       <FilterPanel

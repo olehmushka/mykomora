@@ -25,6 +25,7 @@ type fakeStorage struct {
 type fakeObject struct {
 	contentType string
 	size        int64
+	data        []byte
 }
 
 func newFakeStorage() *fakeStorage {
@@ -37,6 +38,30 @@ func (f *fakeStorage) put(key, contentType string, size int64) {
 	defer f.mu.Unlock()
 
 	f.objects[key] = fakeObject{contentType: contentType, size: size}
+}
+
+// putData simulates an upload whose bytes core-api will read back.
+func (f *fakeStorage) putData(key, contentType string, data []byte) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.objects[key] = fakeObject{contentType: contentType, size: int64(len(data)), data: data}
+}
+
+func (f *fakeStorage) GetObject(_ context.Context, key string, maxBytes int64) ([]byte, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	obj, ok := f.objects[key]
+	if !ok {
+		return nil, storage.ErrObjectNotFound
+	}
+
+	if int64(len(obj.data)) > maxBytes {
+		return nil, storage.ErrObjectTooLarge
+	}
+
+	return obj.data, nil
 }
 
 func (f *fakeStorage) PresignPut(_ context.Context, key, contentType string, _ int64) (string, map[string]string, time.Time, error) {

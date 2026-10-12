@@ -671,6 +671,82 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/imports/presign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Presigned upload for a CSV file to import */
+        post: operations["presignImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/inspect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read an uploaded CSV's headers and suggest a column mapping */
+        post: operations["inspectImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/dry-run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Validate an import without writing anything
+         * @description Reports every row's problems; creates nothing.
+         */
+        post: operations["dryRunImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/commit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create the items in an uploaded CSV
+         * @description All rows or none. If any row has a problem nothing is created and the
+         *     response is a 400 — run the dry run to see which. The uploaded file
+         *     is deleted on success.
+         */
+        post: operations["commitImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dashboard": {
         parameters: {
             query?: never;
@@ -1485,6 +1561,65 @@ export interface components {
             imageUrl?: string;
             /** @description Which catalogue answered. */
             source?: string;
+        };
+        ImportPresignRequest: {
+            /** @example text/csv */
+            contentType: string;
+            /**
+             * Format: int64
+             * @description Exact byte size, at most 5 MiB.
+             */
+            contentLength: number;
+        };
+        ImportInspectRequest: {
+            storageKey: string;
+        };
+        ImportInspection: {
+            headers: string[];
+            rowCount: number;
+            /** @description The item fields a column can be mapped to. */
+            fields: string[];
+            /** @description Item field to the file's header that probably holds it. */
+            suggestedMapping: {
+                [key: string]: string;
+            };
+        };
+        /** @description Used for rows whose own cell is empty or unmapped. */
+        ImportDefaults: {
+            /** Format: uuid */
+            categoryId?: string;
+            /** Format: uuid */
+            locationId?: string;
+            /** Format: uuid */
+            roomId?: string;
+        };
+        ImportRequest: {
+            storageKey: string;
+            /** @description Item field to the file's header that holds it. */
+            mapping: {
+                [key: string]: string;
+            };
+            defaults?: components["schemas"]["ImportDefaults"];
+        };
+        ImportRowError: {
+            /** @description 1-based data row, not counting the header. */
+            row: number;
+            message: string;
+        };
+        ImportPreviewRow: {
+            row: number;
+            name: string;
+        };
+        ImportReport: {
+            totalRows: number;
+            validRows: number;
+            /** @description At most the first 100 problems. */
+            errors: components["schemas"]["ImportRowError"][];
+            /** @description The first few valid rows. */
+            preview: components["schemas"]["ImportPreviewRow"][];
+        };
+        ImportResult: {
+            created: number;
         };
         CreateItemsBatchRequest: {
             items: components["schemas"]["CreateItemRequest"][];
@@ -2932,6 +3067,110 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BarcodeProduct"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    presignImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportPresignRequest"];
+            };
+        };
+        responses: {
+            /** @description Where to PUT the file; pass `storageKey` to the other import calls. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PresignUploadResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    inspectImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportInspectRequest"];
+            };
+        };
+        responses: {
+            /** @description The file's shape. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportInspection"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    dryRunImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportRequest"];
+            };
+        };
+        responses: {
+            /** @description The validation report. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportReport"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    commitImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportRequest"];
+            };
+        };
+        responses: {
+            /** @description Created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResult"];
                 };
             };
             400: components["responses"]["BadRequest"];

@@ -39,6 +39,8 @@ tags:
     description: Family-defined labels an item can carry.
   - name: lookup
     description: Barcode and ISBN lookup.
+  - name: imports
+    description: CSV import.
   - name: uploads
     description: Presigned object-storage uploads (SPEC 6, "Photos and attachments").
 
@@ -1373,6 +1375,115 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BarcodeProduct"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/imports/presign:
+    post:
+      operationId: presignImport
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [imports]
+      summary: Presigned upload for a CSV file to import
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportPresignRequest"
+      responses:
+        "200":
+          description: Where to PUT the file; pass `storageKey` to the other import calls.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresignUploadResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/imports/inspect:
+    post:
+      operationId: inspectImport
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [imports]
+      summary: Read an uploaded CSV's headers and suggest a column mapping
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportInspectRequest"
+      responses:
+        "200":
+          description: The file's shape.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportInspection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/imports/dry-run:
+    post:
+      operationId: dryRunImport
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [imports]
+      summary: Validate an import without writing anything
+      description: Reports every row's problems; creates nothing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportRequest"
+      responses:
+        "200":
+          description: The validation report.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportReport"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/imports/commit:
+    post:
+      operationId: commitImport
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [imports]
+      summary: Create the items in an uploaded CSV
+      description: |
+        All rows or none. If any row has a problem nothing is created and the
+        response is a 400 — run the dry run to see which. The uploaded file
+        is deleted on success.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportRequest"
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportResult"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -2923,6 +3034,119 @@ components:
         source:
           type: string
           description: Which catalogue answered.
+
+    ImportPresignRequest:
+      type: object
+      required: [contentType, contentLength]
+      properties:
+        contentType:
+          type: string
+          examples: [text/csv]
+        contentLength:
+          type: integer
+          format: int64
+          description: Exact byte size, at most 5 MiB.
+
+    ImportInspectRequest:
+      type: object
+      required: [storageKey]
+      properties:
+        storageKey:
+          type: string
+
+    ImportInspection:
+      type: object
+      required: [headers, rowCount, fields, suggestedMapping]
+      properties:
+        headers:
+          type: array
+          items:
+            type: string
+        rowCount:
+          type: integer
+        fields:
+          type: array
+          description: The item fields a column can be mapped to.
+          items:
+            type: string
+        suggestedMapping:
+          type: object
+          description: Item field to the file's header that probably holds it.
+          additionalProperties:
+            type: string
+
+    ImportDefaults:
+      type: object
+      description: Used for rows whose own cell is empty or unmapped.
+      properties:
+        categoryId:
+          type: string
+          format: uuid
+        locationId:
+          type: string
+          format: uuid
+        roomId:
+          type: string
+          format: uuid
+
+    ImportRequest:
+      type: object
+      required: [storageKey, mapping]
+      properties:
+        storageKey:
+          type: string
+        mapping:
+          type: object
+          description: Item field to the file's header that holds it.
+          additionalProperties:
+            type: string
+        defaults:
+          $ref: "#/components/schemas/ImportDefaults"
+
+    ImportRowError:
+      type: object
+      required: [row, message]
+      properties:
+        row:
+          type: integer
+          description: 1-based data row, not counting the header.
+        message:
+          type: string
+
+    ImportPreviewRow:
+      type: object
+      required: [row, name]
+      properties:
+        row:
+          type: integer
+        name:
+          type: string
+
+    ImportReport:
+      type: object
+      required: [totalRows, validRows, errors, preview]
+      properties:
+        totalRows:
+          type: integer
+        validRows:
+          type: integer
+        errors:
+          type: array
+          description: At most the first 100 problems.
+          items:
+            $ref: "#/components/schemas/ImportRowError"
+        preview:
+          type: array
+          description: The first few valid rows.
+          items:
+            $ref: "#/components/schemas/ImportPreviewRow"
+
+    ImportResult:
+      type: object
+      required: [created]
+      properties:
+        created:
+          type: integer
 
     CreateItemsBatchRequest:
       type: object

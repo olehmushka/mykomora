@@ -110,9 +110,8 @@ func duplicateParams(src *db.Item, principal auth.Principal) *db.CreateItemParam
 	}
 }
 
-// insertMany writes every prepared item in one transaction and returns them
-// as API items, in order.
-func (s *Service) insertMany(ctx context.Context, principal auth.Principal, prepared []newItem) ([]api.Item, error) {
+// insertRows writes every prepared item in one transaction.
+func (s *Service) insertRows(ctx context.Context, principal auth.Principal, prepared []newItem) ([]db.Item, error) {
 	familyID := pgconv.UUID(principal.FamilyID)
 	created := make([]db.Item, 0, len(prepared))
 
@@ -130,6 +129,17 @@ func (s *Service) insertMany(ctx context.Context, principal auth.Principal, prep
 
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return created, nil
+}
+
+// insertMany is insertRows plus the API representation of each new item, in
+// order.
+func (s *Service) insertMany(ctx context.Context, principal auth.Principal, prepared []newItem) ([]api.Item, error) {
+	created, err := s.insertRows(ctx, principal, prepared)
 	if err != nil {
 		return nil, err
 	}

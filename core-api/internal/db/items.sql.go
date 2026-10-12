@@ -719,6 +719,49 @@ func (q *Queries) GetItemDescendantDepths(ctx context.Context, arg GetItemDescen
 	return items, nil
 }
 
+const listContainersByName = `-- name: ListContainersByName :many
+SELECT id, name
+FROM items
+WHERE family_id = $1
+  AND is_container
+  AND archived_at IS NULL
+  AND lower(name) = lower($2::text)
+LIMIT 3
+`
+
+type ListContainersByNameParams struct {
+	FamilyID pgtype.UUID `json:"family_id"`
+	Name     string      `json:"name"`
+}
+
+type ListContainersByNameRow struct {
+	ID   pgtype.UUID `json:"id"`
+	Name string      `json:"name"`
+}
+
+// CSV import resolves a "container" cell by name. Matching is
+// case-insensitive; the caller treats anything but exactly one hit as an
+// error, so two boxes called "Box" are never silently confused.
+func (q *Queries) ListContainersByName(ctx context.Context, arg ListContainersByNameParams) ([]ListContainersByNameRow, error) {
+	rows, err := q.db.Query(ctx, listContainersByName, arg.FamilyID, arg.Name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListContainersByNameRow{}
+	for rows.Next() {
+		var i ListContainersByNameRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listItemChildren = `-- name: ListItemChildren :many
 SELECT id, family_id, name, category_id, location_id, room_id, spot, parent_item_id, is_container, status, quantity, unit, min_quantity, expires_at, opened_at, pao_months, brand, condition, season, size_system, size_value, size_norm_min, size_norm_max, for_person_id, serial_number, warranty_until, purchase_date, purchase_price, purchase_currency, notes, traits, created_by, created_at, updated_at, archived_at, search_tsv
 FROM items

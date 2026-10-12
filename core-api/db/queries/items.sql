@@ -407,3 +407,15 @@ WHERE i.family_id = sqlc.arg(family_id)
   AND i.id > sqlc.arg(after_id)
 ORDER BY i.id
 LIMIT sqlc.arg(page_size);
+
+-- name: ListContainersByName :many
+-- CSV import resolves a "container" cell by name. Matching is
+-- case-insensitive; the caller treats anything but exactly one hit as an
+-- error, so two boxes called "Box" are never silently confused.
+SELECT id, name
+FROM items
+WHERE family_id = sqlc.arg(family_id)
+  AND is_container
+  AND archived_at IS NULL
+  AND lower(name) = lower(sqlc.arg(name)::text)
+LIMIT 3;

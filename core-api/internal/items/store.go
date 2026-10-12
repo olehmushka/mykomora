@@ -23,6 +23,7 @@ type Store interface {
 	SearchItems(ctx context.Context, arg db.SearchItemsParams) ([]db.SearchItemsRow, error)
 	ListItemPlacements(ctx context.Context, arg db.ListItemPlacementsParams) ([]db.ListItemPlacementsRow, error)
 	FindSimilarItems(ctx context.Context, arg db.FindSimilarItemsParams) ([]db.FindSimilarItemsRow, error)
+	ListContainersByName(ctx context.Context, arg db.ListContainersByNameParams) ([]db.ListContainersByNameRow, error)
 	ExportItems(ctx context.Context, arg db.ExportItemsParams) ([]db.ExportItemsRow, error)
 	DashboardCountsByLocation(ctx context.Context, familyID pgtype.UUID) ([]db.DashboardCountsByLocationRow, error)
 	DashboardCountsByCategory(ctx context.Context, familyID pgtype.UUID) ([]db.DashboardCountsByCategoryRow, error)
@@ -46,6 +47,10 @@ type Store interface {
 	DetachItemTag(ctx context.Context, arg db.DetachItemTagParams) (int64, error)
 	ListTagsForItem(ctx context.Context, arg db.ListTagsForItemParams) ([]db.Tag, error)
 
+	ListCategories(ctx context.Context, arg db.ListCategoriesParams) ([]db.Category, error)
+	ListLocations(ctx context.Context, arg db.ListLocationsParams) ([]db.Location, error)
+	ListRoomsByLocation(ctx context.Context, arg db.ListRoomsByLocationParams) ([]db.Room, error)
+	ListPeople(ctx context.Context, arg db.ListPeopleParams) ([]db.Person, error)
 	GetCategory(ctx context.Context, arg db.GetCategoryParams) (db.Category, error)
 	ListTraitDefsForCategories(ctx context.Context, arg db.ListTraitDefsForCategoriesParams) ([]db.TraitDef, error)
 	GetLocation(ctx context.Context, arg db.GetLocationParams) (db.Location, error)

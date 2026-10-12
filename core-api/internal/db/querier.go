@@ -228,6 +228,10 @@ type Querier interface {
 	// row. Built-ins exist solely via the seed migration (00006) — there is no
 	// create/update/archive path for them.
 	ListCategories(ctx context.Context, arg ListCategoriesParams) ([]Category, error)
+	// CSV import resolves a "container" cell by name. Matching is
+	// case-insensitive; the caller treats anything but exactly one hit as an
+	// error, so two boxes called "Box" are never silently confused.
+	ListContainersByName(ctx context.Context, arg ListContainersByNameParams) ([]ListContainersByNameRow, error)
 	ListFamilyInvites(ctx context.Context, familyID pgtype.UUID) ([]ListFamilyInvitesRow, error)
 	ListFamilyMembers(ctx context.Context, familyID pgtype.UUID) ([]ListFamilyMembersRow, error)
 	ListItemAttachments(ctx context.Context, arg ListItemAttachmentsParams) ([]ItemAttachment, error)
