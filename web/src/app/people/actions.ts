@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { archivePerson, createPerson } from "@/lib/api/people";
+import { apiError, errorText } from "@/lib/api-error";
 
 const PEOPLE_PATH = "/people";
 
@@ -11,7 +12,7 @@ export type ActionState = { error?: string };
 export async function addPerson(_: ActionState, form: FormData): Promise<ActionState> {
   const name = String(form.get("name") ?? "").trim();
   if (name === "") {
-    return { error: "A person needs a name." };
+    return { error: await errorText("personName") };
   }
 
   const birthdate = String(form.get("birthdate") ?? "").trim();
@@ -26,10 +27,7 @@ export async function addPerson(_: ActionState, form: FormData): Promise<ActionS
 
   if (!result.ok) {
     return {
-      error:
-        result.reason === "unavailable"
-          ? "mykomora could not reach its API. Try again in a moment."
-          : result.detail,
+      error: await apiError(result),
     };
   }
 

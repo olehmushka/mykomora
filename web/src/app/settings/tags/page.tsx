@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
 import { AddTagForm } from "@/app/settings/tags/add-tag-form";
@@ -7,7 +8,11 @@ import { Notice } from "@/components/notice";
 import { listTags } from "@/lib/api/tags";
 import { requireMe } from "@/lib/api/session";
 
-export const metadata = { title: "Tags — mykomora" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Meta");
+
+  return { title: t("tags") };
+}
 
 export default async function TagsPage() {
   const me = await requireMe("/settings/tags");

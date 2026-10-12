@@ -29,6 +29,8 @@ export type ApiResult<T> =
       ok: false;
       reason: "unauthenticated" | "forbidden" | "missing" | "unavailable" | "error";
       detail: string;
+      /** core-api's machine-readable error code, when the body carried one. */
+      code?: string;
     };
 
 export type ApiFailure = Extract<ApiResult<unknown>, { ok: false }>;
@@ -114,11 +116,9 @@ export async function apiRequest<T>(
   }
 
   if (!response.ok) {
-    return {
-      ok: false,
-      reason: failureReason(response.status),
-      detail: await readErrorDetail(response),
-    };
+    const { detail, code } = await readErrorDetail(response);
+
+    return { ok: false, reason: failureReason(response.status), detail, code };
   }
 
   // 204 is a successful answer with nothing in it. Parsing it as JSON would
@@ -143,17 +143,17 @@ function failureReason(status: number): ApiFailure["reason"] {
   }
 }
 
-async function readErrorDetail(response: Response): Promise<string> {
+async function readErrorDetail(response: Response): Promise<{ detail: string; code?: string }> {
   try {
     const body = (await response.json()) as Partial<ApiError>;
     if (typeof body.message === "string" && body.message.length > 0) {
-      return body.message;
+      return { detail: body.message, code: typeof body.code === "string" ? body.code : undefined };
     }
   } catch {
     // A non-JSON error body is not itself an error worth surfacing.
   }
 
-  return `core-api responded ${response.status}`;
+  return { detail: `core-api responded ${response.status}` };
 }
 
 /** Round-trip probe: proves web -> core-api -> Postgres end to end. */

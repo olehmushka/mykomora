@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createTag, deleteTag, updateTag } from "@/lib/api/tags";
+import { apiError, errorText } from "@/lib/api-error";
 
 const TAGS_PATH = "/settings/tags";
 
@@ -11,7 +12,7 @@ export type ActionState = { error?: string };
 export async function create(_: ActionState, form: FormData): Promise<ActionState> {
   const name = String(form.get("name") ?? "").trim();
   if (name === "") {
-    return { error: "A tag needs a name." };
+    return { error: await errorText("tagName") };
   }
 
   const color = String(form.get("color") ?? "").trim();
@@ -20,10 +21,7 @@ export async function create(_: ActionState, form: FormData): Promise<ActionStat
 
   if (!result.ok) {
     return {
-      error:
-        result.reason === "unavailable"
-          ? "mykomora could not reach its API. Try again in a moment."
-          : result.detail,
+      error: await apiError(result),
     };
   }
 

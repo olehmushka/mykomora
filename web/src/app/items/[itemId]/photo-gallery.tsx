@@ -14,6 +14,7 @@ import {
 import { Notice } from "@/components/notice";
 import type { ItemPhoto } from "@/lib/api/photos";
 import type { PresignUploadResult } from "@/lib/api/uploads";
+import { UploadError } from "@/lib/upload-error";
 import {
   PHOTO_MAX_EDGE,
   RESIZED_CONTENT_TYPE,
@@ -32,6 +33,7 @@ const THUMB_PX = 112;
  */
 export function PhotoGallery({ itemId, photos: initial }: { itemId: string; photos: ItemPhoto[] }) {
   const t = useTranslations("ItemDetail");
+  const tError = useTranslations("Errors");
   const [photos, setPhotos] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -93,7 +95,13 @@ export function PhotoGallery({ itemId, photos: initial }: { itemId: string; phot
 
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(
+        err instanceof UploadError
+          ? tError("uploadFailed", { status: err.status })
+          : err instanceof Error
+            ? err.message
+            : String(err),
+      );
     } finally {
       setBusy(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -249,6 +257,6 @@ async function putObject(presign: PresignUploadResult, blob: Blob) {
   });
 
   if (!response.ok) {
-    throw new Error(`upload failed (${response.status})`);
+    throw new UploadError(response.status);
   }
 }

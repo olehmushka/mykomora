@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { archiveTraitDef, createTraitDef, type TraitDef } from "@/lib/api/taxonomy";
+import { apiError, errorText } from "@/lib/api-error";
 
 const TAXONOMY_PATH = "/settings/taxonomy";
 
@@ -28,17 +29,17 @@ export async function addField(
     .trim()
     .toLowerCase();
   if (!KEY_PATTERN.test(key)) {
-    return { error: "A key must be lowercase letters, digits, underscores or hyphens." };
+    return { error: await errorText("keyFormat") };
   }
 
   const labelCustom = String(form.get("labelCustom") ?? "").trim();
   if (labelCustom === "") {
-    return { error: "A field needs a label." };
+    return { error: await errorText("fieldLabel") };
   }
 
   const dataType = String(form.get("dataType") ?? "");
   if (!(DATA_TYPES as readonly string[]).includes(dataType)) {
-    return { error: "Choose a type." };
+    return { error: await errorText("chooseType") };
   }
 
   const rawOptions = String(form.get("enumOptions") ?? "");
@@ -48,7 +49,7 @@ export async function addField(
     .filter((option) => option !== "");
 
   if (dataType === "enum" && enumOptions.length === 0) {
-    return { error: "A choice field needs at least one comma-separated option." };
+    return { error: await errorText("choiceOptions") };
   }
 
   const result = await createTraitDef(categoryId, {
@@ -63,10 +64,7 @@ export async function addField(
 
   if (!result.ok) {
     return {
-      error:
-        result.reason === "unavailable"
-          ? "mykomora could not reach its API. Try again in a moment."
-          : result.detail,
+      error: await apiError(result),
     };
   }
 

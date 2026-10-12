@@ -29,6 +29,7 @@ import {
 import { lendItem, returnItem } from "@/lib/api/loans";
 import { flipItemSeason, undoItemBatch } from "@/lib/api/sizes";
 import { presignUpload, type PresignUploadRequest } from "@/lib/api/uploads";
+import { apiError, errorText } from "@/lib/api-error";
 
 export type ActionState = { error?: string };
 
@@ -43,7 +44,7 @@ export async function move(itemId: string, _: ActionState, form: FormData): Prom
   const locationId = optStr(form, "locationId");
 
   if (!parentItemId && !locationId) {
-    return { error: "Choose a place or a container." };
+    return { error: await errorText("placeOrContainer") };
   }
 
   const result = await moveItem(
@@ -59,10 +60,7 @@ export async function move(itemId: string, _: ActionState, form: FormData): Prom
 
   if (!result.ok) {
     return {
-      error:
-        result.reason === "unavailable"
-          ? "mykomora could not reach its API. Try again in a moment."
-          : result.detail,
+      error: await apiError(result),
     };
   }
 
@@ -78,17 +76,14 @@ export async function changeStatus(
 ): Promise<ActionState> {
   const status = optStr(form, "status") as ItemStatus | undefined;
   if (!status) {
-    return { error: "Choose a status." };
+    return { error: await errorText("chooseStatus") };
   }
 
   const result = await setItemStatus(itemId, status);
 
   if (!result.ok) {
     return {
-      error:
-        result.reason === "unavailable"
-          ? "mykomora could not reach its API. Try again in a moment."
-          : result.detail,
+      error: await apiError(result),
     };
   }
 
@@ -105,9 +100,7 @@ export async function archive(itemId: string): Promise<void> {
 export async function duplicate(itemId: string): Promise<void> {
   const result = await duplicateItem(itemId, 1);
   if (!result.ok) {
-    throw new Error(
-      result.reason === "unavailable" ? "mykomora could not reach its API." : result.detail,
-    );
+    throw new Error(await apiError(result));
   }
 
   revalidatePath("/items");
@@ -193,13 +186,11 @@ export async function deleteAttachment(itemId: string, attachmentId: string) {
 
 export type FlipState = { error?: string; batchId?: string; changed?: number; skipped?: number };
 
-const UNAVAILABLE = "mykomora could not reach its API. Try again in a moment.";
-
 /** Pack (in_use → stored) or unpack (stored → in_use) a container's contents. */
 export async function flipSeason(itemId: string, direction: "pack" | "unpack"): Promise<FlipState> {
   const result = await flipItemSeason(itemId, direction);
   if (!result.ok) {
-    return { error: result.reason === "unavailable" ? UNAVAILABLE : result.detail };
+    return { error: await apiError(result) };
   }
 
   revalidatePath(`/items/${itemId}`);
@@ -214,7 +205,7 @@ export async function flipSeason(itemId: string, direction: "pack" | "unpack"): 
 export async function undoFlip(itemId: string, batchId: string): Promise<ActionState> {
   const result = await undoItemBatch(batchId);
   if (!result.ok) {
-    return { error: result.reason === "unavailable" ? UNAVAILABLE : result.detail };
+    return { error: await apiError(result) };
   }
 
   revalidatePath(`/items/${itemId}`);
@@ -229,7 +220,7 @@ export async function lend(itemId: string, _: ActionState, form: FormData): Prom
   const note = optStr(form, "note");
 
   if (!personId && !name) {
-    return { error: "Choose who it is lent to." };
+    return { error: await errorText("lentTo") };
   }
 
   const result = await lendItem(itemId, {
@@ -240,10 +231,7 @@ export async function lend(itemId: string, _: ActionState, form: FormData): Prom
 
   if (!result.ok) {
     return {
-      error:
-        result.reason === "unavailable"
-          ? "mykomora could not reach its API. Try again in a moment."
-          : result.detail,
+      error: await apiError(result),
     };
   }
 

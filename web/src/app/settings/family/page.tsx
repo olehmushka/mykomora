@@ -1,3 +1,6 @@
+import type { Metadata } from "next";
+import { getLocale, getTranslations } from "next-intl/server";
+
 import { AppShell } from "@/components/app-shell";
 import { Notice } from "@/components/notice";
 import { removeMember, revokeInvite } from "@/app/settings/family/actions";
@@ -6,9 +9,14 @@ import { RenameForm } from "@/app/settings/family/rename-form";
 import { listFamilyInvites, listFamilyMembers, type FamilyInvite } from "@/lib/api/family";
 import { requireMe } from "@/lib/api/session";
 
-export const metadata = { title: "Family — mykomora" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Family");
+  return { title: t("metaTitle") };
+}
 
 export default async function FamilySettingsPage() {
+  const t = await getTranslations("Family");
+  const locale = await getLocale();
   const me = await requireMe("/settings/family");
   const isOwner = me.role === "owner";
 
@@ -20,14 +28,12 @@ export default async function FamilySettingsPage() {
 
   return (
     <AppShell me={me}>
-      <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Family</h1>
-      <p className="mt-2 text-sm text-muted">
-        Everyone here sees and edits everything. The owner additionally manages the family itself.
-      </p>
+      <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{t("title")}</h1>
+      <p className="mt-2 text-sm text-muted">{t("intro")}</p>
 
       <section aria-labelledby="name" className="mt-10">
         <h2 id="name" className="text-sm font-medium uppercase tracking-wide text-muted">
-          Name
+          {t("nameHeading")}
         </h2>
         {isOwner ? (
           <RenameForm currentName={me.family.name} />
@@ -38,7 +44,7 @@ export default async function FamilySettingsPage() {
 
       <section aria-labelledby="members" className="mt-10">
         <h2 id="members" className="text-sm font-medium uppercase tracking-wide text-muted">
-          Members
+          {t("membersHeading")}
         </h2>
 
         {members.ok ? (
@@ -54,7 +60,9 @@ export default async function FamilySettingsPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <span className="text-xs uppercase tracking-wide text-muted">{member.role}</span>
+                  <span className="text-xs uppercase tracking-wide text-muted">
+                    {t(`role.${member.role}`)}
+                  </span>
 
                   {isOwner && member.role !== "owner" && (
                     <form action={removeMember}>
@@ -63,7 +71,7 @@ export default async function FamilySettingsPage() {
                         type="submit"
                         className="inline-flex min-h-11 items-center rounded-md border border-border px-3 text-sm hover:bg-border/60"
                       >
-                        Remove
+                        {t("remove")}
                       </button>
                     </form>
                   )}
@@ -73,7 +81,7 @@ export default async function FamilySettingsPage() {
           </ul>
         ) : (
           <div className="mt-3">
-            <Notice tone="warning" title="The member list is unavailable">
+            <Notice tone="warning" title={t("membersUnavailable")}>
               {members.detail}
             </Notice>
           </div>
@@ -83,18 +91,16 @@ export default async function FamilySettingsPage() {
       {isOwner && (
         <section aria-labelledby="invites" className="mt-10">
           <h2 id="invites" className="text-sm font-medium uppercase tracking-wide text-muted">
-            Invites
+            {t("invitesHeading")}
           </h2>
-          <p className="mt-3 text-sm text-muted">
-            mykomora sends no email. Create a link and share it however your family already talks.
-          </p>
+          <p className="mt-3 text-sm text-muted">{t("invitesIntro")}</p>
 
           <InvitePanel />
 
           {invites?.ok && invites.data.length > 0 && (
             <ul className="mt-4 divide-y divide-border rounded-lg border border-border">
               {invites.data.map((invite) => (
-                <InviteRow key={invite.id} invite={invite} />
+                <InviteRow key={invite.id} invite={invite} locale={locale} />
               ))}
             </ul>
           )}
@@ -104,15 +110,19 @@ export default async function FamilySettingsPage() {
   );
 }
 
-function InviteRow({ invite }: { invite: FamilyInvite }) {
+async function InviteRow({ invite, locale }: { invite: FamilyInvite; locale: string }) {
+  const t = await getTranslations("Family");
+  const formatDate = (value: string) =>
+    new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(value));
+
   return (
     <li className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
       <div>
-        <p className="text-sm capitalize">{invite.status}</p>
+        <p className="text-sm">{t(`inviteStatus.${invite.status}`)}</p>
         <p className="text-sm text-muted">
           {invite.status === "pending"
-            ? `Expires ${formatDate(invite.expiresAt)}`
-            : `Created ${formatDate(invite.createdAt)}`}
+            ? t("expires", { date: formatDate(invite.expiresAt) })
+            : t("created", { date: formatDate(invite.createdAt) })}
         </p>
       </div>
 
@@ -123,16 +133,10 @@ function InviteRow({ invite }: { invite: FamilyInvite }) {
             type="submit"
             className="inline-flex min-h-11 items-center rounded-md border border-border px-3 text-sm hover:bg-border/60"
           >
-            Cancel
+            {t("cancel")}
           </button>
         </form>
       )}
     </li>
   );
-}
-
-function formatDate(value: string): string {
-  // Fixed locale until M2 introduces locale resolution; an ISO-ish date reads
-  // the same either way and is never ambiguous about day and month.
-  return new Intl.DateTimeFormat("en-CA", { dateStyle: "medium" }).format(new Date(value));
 }

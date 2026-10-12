@@ -15,6 +15,7 @@ import type { FlatCategory, LocationOption } from "@/app/items/new/item-form";
 import { FieldRow } from "@/components/ui/field-row";
 import { Select } from "@/components/ui/select";
 import type { ImportInspection, ImportReport, ImportRequest } from "@/lib/api/imports";
+import { UploadError } from "@/lib/upload-error";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 
@@ -28,6 +29,7 @@ export function ImportWizard({
   locations: LocationOption[];
 }) {
   const t = useTranslations("Import");
+  const tError = useTranslations("Errors");
   const router = useRouter();
 
   const [step, setStep] = useState<Step>("upload");
@@ -70,7 +72,7 @@ export function ImportWizard({
         headers: presign.uploadHeaders,
         body: file,
       });
-      if (!put.ok) throw new Error(`upload failed (${put.status})`);
+      if (!put.ok) throw new UploadError(put.status);
 
       const inspected = take(await inspectImportAction(presign.storageKey));
       if (!inspected) return;
@@ -80,7 +82,13 @@ export function ImportWizard({
       setMapping(inspected.suggestedMapping);
       setStep("map");
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("unavailable"));
+      setError(
+        e instanceof UploadError
+          ? tError("uploadFailed", { status: e.status })
+          : e instanceof Error
+            ? e.message
+            : t("unavailable"),
+      );
     } finally {
       setBusy(false);
     }

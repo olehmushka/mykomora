@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
@@ -9,7 +10,11 @@ import { getPerson } from "@/lib/api/people";
 import { requireMe } from "@/lib/api/session";
 import { getPersonFits } from "@/lib/api/sizes";
 
-export const metadata = { title: "What fits — mykomora" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Meta");
+
+  return { title: t("fits") };
+}
 
 /**
  * The screen M8 is about: before buying anything for a child, what already

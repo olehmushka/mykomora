@@ -12,6 +12,7 @@ import {
   type ItemSeason,
   type SizeSystem,
 } from "@/lib/api/items";
+import { apiError, errorText } from "@/lib/api-error";
 
 export type ActionState = { error?: string };
 
@@ -72,24 +73,24 @@ function collectTraits(form: FormData): Record<string, unknown> {
 export async function create(_: ActionState, form: FormData): Promise<ActionState> {
   const name = str(form, "name");
   if (name === "") {
-    return { error: "An item needs a name." };
+    return { error: await errorText("itemName") };
   }
 
   const categoryId = optStr(form, "categoryId");
   if (!categoryId) {
-    return { error: "Choose a category." };
+    return { error: await errorText("chooseCategory") };
   }
 
   const quantity = optNumber(form, "quantity") ?? 1;
   if (quantity < 0) {
-    return { error: "Quantity must not be negative." };
+    return { error: await errorText("quantityNegative") };
   }
 
   const parentItemId = optStr(form, "parentItemId");
   const locationId = optStr(form, "locationId");
 
   if (!parentItemId && !locationId) {
-    return { error: "Choose a location." };
+    return { error: await errorText("chooseLocation") };
   }
 
   const body: CreateItemRequest = {
@@ -148,10 +149,7 @@ export async function create(_: ActionState, form: FormData): Promise<ActionStat
 
   if (!result.ok) {
     return {
-      error:
-        result.reason === "unavailable"
-          ? "mykomora could not reach its API. Try again in a moment."
-          : result.detail,
+      error: await apiError(result),
     };
   }
 

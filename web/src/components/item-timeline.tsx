@@ -12,7 +12,12 @@ function str(payload: ItemEvent["payload"], key: string): string | undefined {
 }
 
 /** One localised sentence per event, built from its type and payload. */
-function describe(event: ItemEvent, t: T, status: (value: string) => string): string {
+function describe(
+  event: ItemEvent,
+  t: T,
+  status: (value: string) => string,
+  date: (value: string) => string,
+): string {
   const p = event.payload;
 
   switch (event.type) {
@@ -48,10 +53,10 @@ function describe(event: ItemEvent, t: T, status: (value: string) => string): st
 
       return name
         ? due
-          ? t("lent_to_due", { name, date: due })
+          ? t("lent_to_due", { name, date: date(due) })
           : t("lent_to", { name })
         : due
-          ? t("lent_due", { date: due })
+          ? t("lent_due", { date: date(due) })
           : t("lent");
     }
     case "returned":
@@ -79,6 +84,12 @@ export async function ItemTimeline({
 }) {
   const t = await getTranslations("Timeline");
   const byId = new Map(members.map((m) => [m.userId, m]));
+  const day = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
+  const formatDay = (value: string) => {
+    const parsed = new Date(value);
+
+    return Number.isNaN(parsed.getTime()) ? value : day.format(parsed);
+  };
   const when = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
 
   return (
@@ -91,7 +102,7 @@ export async function ItemTimeline({
           <li key={event.id} className="flex items-start gap-3 px-4 py-3 text-sm">
             <Avatar name={name} url={actor?.avatarUrl} />
             <div className="min-w-0">
-              <p>{describe(event, t, statusLabel)}</p>
+              <p>{describe(event, t, statusLabel, formatDay)}</p>
               <p className="text-muted">
                 {name} ·{" "}
                 <time dateTime={event.createdAt}>{when.format(new Date(event.createdAt))}</time>

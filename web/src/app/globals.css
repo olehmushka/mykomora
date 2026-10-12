@@ -7,6 +7,7 @@
   --border: #e4e4e4;
   --ok: #157f3d;
   --degraded: #8a5a00;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -28,6 +29,7 @@
     --border: #262626;
     --ok: #4ade80;
     --degraded: #fbbf24;
+    color-scheme: dark;
   }
 }
 
@@ -35,4 +37,10 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+select,
+option {
+  background-color: var(--background);
+  color: var(--foreground);
 }

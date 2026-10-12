@@ -1,16 +1,18 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 
 import { renameFamily, type ActionState } from "@/app/settings/family/actions";
 
 export function RenameForm({ currentName }: { currentName: string }) {
+  const t = useTranslations("Family");
   const [state, formAction, pending] = useActionState<ActionState, FormData>(renameFamily, {});
 
   return (
     <form action={formAction} className="mt-3">
       <label htmlFor="family-name" className="sr-only">
-        Family name
+        {t("familyName")}
       </label>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -27,7 +29,7 @@ export function RenameForm({ currentName }: { currentName: string }) {
           disabled={pending}
           className="inline-flex min-h-11 items-center rounded-md border border-border px-4 text-sm font-medium hover:bg-border/60 disabled:opacity-60"
         >
-          {pending ? "Saving…" : "Save"}
+          {pending ? t("saving") : t("save")}
         </button>
       </div>
 

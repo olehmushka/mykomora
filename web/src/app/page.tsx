@@ -35,8 +35,8 @@ export default async function Home() {
     <AppShell me={me}>
       <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{me.family.name}</h1>
       <p className="mt-2 text-sm text-muted">
-        Signed in as {me.user.displayName}
-        {me.role === "owner" && " · owner"}
+        {t("signedInAs", { name: me.user.displayName })}
+        {me.role === "owner" && ` · ${t("ownerSuffix")}`}
       </p>
 
       {alerts.ok && <AttentionPanel data={alerts.data} locale={locale} />}
@@ -75,15 +75,13 @@ export default async function Home() {
 
       <section aria-labelledby="sharing" className="mt-10">
         <h2 id="sharing" className="text-sm font-medium uppercase tracking-wide text-muted">
-          Sharing
+          {t("sharing")}
         </h2>
 
         <p className="mt-3 text-sm">
-          {members.ok
-            ? `${members.data.length} ${members.data.length === 1 ? "person has" : "people have"} access to this family.`
-            : "The member list is unavailable right now."}{" "}
+          {members.ok ? t("access", { count: members.data.length }) : t("membersUnavailable")}{" "}
           <Link href="/settings/family" className="underline underline-offset-4">
-            Family settings
+            {t("familySettings")}
           </Link>
         </p>
       </section>
