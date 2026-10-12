@@ -96,7 +96,8 @@
       "discarded": "Викинуто",
       "lost": "Втрачено"
     },
-    "batchButton": "Додати багато"
+    "batchButton": "Додати багато",
+    "exportButton": "Експорт CSV"
   },
   "ItemForm": {
     "heading": "Додати річ",

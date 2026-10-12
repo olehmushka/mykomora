@@ -97,6 +97,15 @@ export default async function ItemsPage(props: PageProps<"/items">) {
         >
           {t("batchButton")}
         </Link>
+        {/* A plain link: the session cookie rides along and the server's
+            Content-Disposition makes the browser save the file. */}
+        <a
+          href="/api/v1/items/export"
+          download
+          className="ml-2 inline-flex min-h-11 items-center rounded-md border border-border px-4 text-sm font-medium hover:bg-border/60"
+        >
+          {t("exportButton")}
+        </a>
       </div>
 
       <FilterPanel

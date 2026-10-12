@@ -147,6 +147,11 @@ type Querier interface {
 	DeleteItemPhoto(ctx context.Context, arg DeleteItemPhotoParams) (ItemPhoto, error)
 	DeleteTag(ctx context.Context, arg DeleteTagParams) (int64, error)
 	DetachItemTag(ctx context.Context, arg DetachItemTagParams) (int64, error)
+	// One keyset page of the family's live items for CSV export, with every
+	// reference resolved to something a person can read (the category as its
+	// stable slug, so a re-import finds it again). Ordered by id so the caller can
+	// pass the last id back as after_id.
+	ExportItems(ctx context.Context, arg ExportItemsParams) ([]ExportItemsRow, error)
 	// Duplicate hints for the create form: close fuzzy matches on the name within
 	// the family. Uses the same trigram expression the index is built on.
 	FindSimilarItems(ctx context.Context, arg FindSimilarItemsParams) ([]FindSimilarItemsRow, error)

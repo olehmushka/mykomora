@@ -96,7 +96,8 @@
       "discarded": "Discarded",
       "lost": "Lost"
     },
-    "batchButton": "Add many"
+    "batchButton": "Add many",
+    "exportButton": "Export CSV"
   },
   "ItemForm": {
     "heading": "Add an item",

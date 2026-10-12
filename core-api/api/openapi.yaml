@@ -1250,6 +1250,34 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/items/export:
+    get:
+      operationId: exportItems
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: Download the whole inventory as CSV
+      description: |
+        Every live (not archived) item, one row each, streamed. Places, the
+        container, the person and tags are written as names; the category as
+        its slug. The columns are the ones CSV import maps.
+      responses:
+        "200":
+          description: The CSV file.
+          headers:
+            Content-Disposition:
+              description: Makes the browser save it as mykomora-items.csv.
+              schema:
+                type: string
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   /api/v1/items/batch:
     post:
       operationId: createItemsBatch

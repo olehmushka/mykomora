@@ -580,6 +580,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/items/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download the whole inventory as CSV
+         * @description Every live (not archived) item, one row each, streamed. Places, the
+         *     container, the person and tags are written as names; the category as
+         *     its slug. The columns are the ones CSV import maps.
+         */
+        get: operations["exportItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/items/batch": {
         parameters: {
             query?: never;
@@ -2815,6 +2837,29 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    exportItems: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The CSV file. */
+            200: {
+                headers: {
+                    /** @description Makes the browser save it as mykomora-items.csv. */
+                    "Content-Disposition"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
         };
     };
     createItemsBatch: {

@@ -23,6 +23,7 @@ type Store interface {
 	SearchItems(ctx context.Context, arg db.SearchItemsParams) ([]db.SearchItemsRow, error)
 	ListItemPlacements(ctx context.Context, arg db.ListItemPlacementsParams) ([]db.ListItemPlacementsRow, error)
 	FindSimilarItems(ctx context.Context, arg db.FindSimilarItemsParams) ([]db.FindSimilarItemsRow, error)
+	ExportItems(ctx context.Context, arg db.ExportItemsParams) ([]db.ExportItemsRow, error)
 	DashboardCountsByLocation(ctx context.Context, familyID pgtype.UUID) ([]db.DashboardCountsByLocationRow, error)
 	DashboardCountsByCategory(ctx context.Context, familyID pgtype.UUID) ([]db.DashboardCountsByCategoryRow, error)
 	DashboardValueByCurrency(ctx context.Context, familyID pgtype.UUID) ([]db.DashboardValueByCurrencyRow, error)

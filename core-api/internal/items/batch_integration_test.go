@@ -3,6 +3,7 @@
 package items_test
 
 import (
+	"encoding/csv"
 	"strings"
 	"testing"
 
@@ -89,5 +90,36 @@ func TestDuplicateCopiesFieldsAndRecordsItsSource(t *testing.T) {
 		if c.Id == src.Id || c.Name != "Jacket" || c.Brand == nil || *c.Brand != "Zara" {
 			t.Errorf("copy %+v does not mirror the source", c)
 		}
+	}
+}
+
+func TestExportWritesHeaderAndEveryLiveItem(t *testing.T) {
+	f := newFixture(t)
+
+	createItem(t, f, api.CreateItemRequest{Name: "=Lamp", CategoryId: f.categoryID, LocationId: &f.locationID, Quantity: 2})
+	createItem(t, f, api.CreateItemRequest{Name: "Chair", CategoryId: f.categoryID, LocationId: &f.locationID, Quantity: 1})
+
+	resp, err := f.h.ExportItems(f.ctx, api.ExportItemsRequestObject{})
+	if err != nil {
+		t.Fatalf("ExportItems: %v", err)
+	}
+
+	csvResp, ok := resp.(api.ExportItems200TextcsvResponse)
+	if !ok {
+		t.Fatalf("ExportItems returned %T, want a 200", resp)
+	}
+
+	records, err := csv.NewReader(csvResp.Body).ReadAll()
+	if err != nil {
+		t.Fatalf("read exported csv: %v", err)
+	}
+
+	if len(records) != 3 || records[0][0] != "name" {
+		t.Fatalf("exported %d records (%v), want a header and 2 items", len(records), records)
+	}
+
+	names := map[string]bool{records[1][0]: true, records[2][0]: true}
+	if !names["'=Lamp"] || !names["Chair"] {
+		t.Errorf("exported names %v, want the formula-looking one quoted", names)
 	}
 }

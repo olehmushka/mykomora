@@ -301,6 +301,144 @@ func (q *Queries) DashboardValueByCurrency(ctx context.Context, familyID pgtype.
 	return items, nil
 }
 
+const exportItems = `-- name: ExportItems :many
+SELECT i.id,
+       i.name,
+       c.slug AS category_slug,
+       l.name AS location_name,
+       r.name AS room_name,
+       p.name AS container_name,
+       i.spot,
+       i.is_container,
+       i.status,
+       i.quantity,
+       i.unit,
+       i.min_quantity,
+       i.expires_at,
+       i.opened_at,
+       i.pao_months,
+       i.brand,
+       i.condition,
+       i.season,
+       i.size_system,
+       i.size_value,
+       pe.name AS person_name,
+       i.serial_number,
+       i.warranty_until,
+       i.purchase_date,
+       i.purchase_price,
+       i.purchase_currency,
+       i.notes,
+       i.traits,
+       COALESCE((SELECT string_agg(t.name, ';' ORDER BY t.name)
+                 FROM item_tags it
+                          JOIN tags t ON t.id = it.tag_id AND t.family_id = $1
+                 WHERE it.item_id = i.id), '')::text AS tag_names
+FROM items i
+         JOIN categories c ON c.id = i.category_id
+         LEFT JOIN locations l ON l.id = i.location_id AND l.family_id = $1
+         LEFT JOIN rooms r ON r.id = i.room_id AND r.location_id = l.id
+         LEFT JOIN items p ON p.id = i.parent_item_id AND p.family_id = $1
+         LEFT JOIN people pe ON pe.id = i.for_person_id AND pe.family_id = $1
+WHERE i.family_id = $1
+  AND i.archived_at IS NULL
+  AND i.id > $2
+ORDER BY i.id
+LIMIT $3
+`
+
+type ExportItemsParams struct {
+	FamilyID pgtype.UUID `json:"family_id"`
+	AfterID  pgtype.UUID `json:"after_id"`
+	PageSize int32       `json:"page_size"`
+}
+
+type ExportItemsRow struct {
+	ID               pgtype.UUID       `json:"id"`
+	Name             string            `json:"name"`
+	CategorySlug     string            `json:"category_slug"`
+	LocationName     pgtype.Text       `json:"location_name"`
+	RoomName         pgtype.Text       `json:"room_name"`
+	ContainerName    pgtype.Text       `json:"container_name"`
+	Spot             pgtype.Text       `json:"spot"`
+	IsContainer      bool              `json:"is_container"`
+	Status           ItemStatus        `json:"status"`
+	Quantity         pgtype.Numeric    `json:"quantity"`
+	Unit             pgtype.Text       `json:"unit"`
+	MinQuantity      pgtype.Numeric    `json:"min_quantity"`
+	ExpiresAt        pgtype.Date       `json:"expires_at"`
+	OpenedAt         pgtype.Date       `json:"opened_at"`
+	PaoMonths        pgtype.Int4       `json:"pao_months"`
+	Brand            pgtype.Text       `json:"brand"`
+	Condition        NullItemCondition `json:"condition"`
+	Season           NullItemSeason    `json:"season"`
+	SizeSystem       NullSizeSystem    `json:"size_system"`
+	SizeValue        pgtype.Text       `json:"size_value"`
+	PersonName       pgtype.Text       `json:"person_name"`
+	SerialNumber     pgtype.Text       `json:"serial_number"`
+	WarrantyUntil    pgtype.Date       `json:"warranty_until"`
+	PurchaseDate     pgtype.Date       `json:"purchase_date"`
+	PurchasePrice    pgtype.Numeric    `json:"purchase_price"`
+	PurchaseCurrency pgtype.Text       `json:"purchase_currency"`
+	Notes            pgtype.Text       `json:"notes"`
+	Traits           []byte            `json:"traits"`
+	TagNames         string            `json:"tag_names"`
+}
+
+// One keyset page of the family's live items for CSV export, with every
+// reference resolved to something a person can read (the category as its
+// stable slug, so a re-import finds it again). Ordered by id so the caller can
+// pass the last id back as after_id.
+func (q *Queries) ExportItems(ctx context.Context, arg ExportItemsParams) ([]ExportItemsRow, error) {
+	rows, err := q.db.Query(ctx, exportItems, arg.FamilyID, arg.AfterID, arg.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ExportItemsRow{}
+	for rows.Next() {
+		var i ExportItemsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.CategorySlug,
+			&i.LocationName,
+			&i.RoomName,
+			&i.ContainerName,
+			&i.Spot,
+			&i.IsContainer,
+			&i.Status,
+			&i.Quantity,
+			&i.Unit,
+			&i.MinQuantity,
+			&i.ExpiresAt,
+			&i.OpenedAt,
+			&i.PaoMonths,
+			&i.Brand,
+			&i.Condition,
+			&i.Season,
+			&i.SizeSystem,
+			&i.SizeValue,
+			&i.PersonName,
+			&i.SerialNumber,
+			&i.WarrantyUntil,
+			&i.PurchaseDate,
+			&i.PurchasePrice,
+			&i.PurchaseCurrency,
+			&i.Notes,
+			&i.Traits,
+			&i.TagNames,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const findSimilarItems = `-- name: FindSimilarItems :many
 SELECT i.id, i.name, i.category_id, i.status,
        similarity(immutable_unaccent(lower(i.name)), immutable_unaccent(lower($1::text))) AS score

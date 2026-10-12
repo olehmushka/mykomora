@@ -103,6 +103,21 @@ func (h *Handler) DuplicateItem(ctx context.Context, request api.DuplicateItemRe
 	return api.DuplicateItem201JSONResponse(items), nil
 }
 
+// ExportItems streams the inventory as CSV.
+func (h *Handler) ExportItems(ctx context.Context, _ api.ExportItemsRequestObject) (api.ExportItemsResponseObject, error) {
+	principal, ok := auth.PrincipalFrom(ctx)
+	if !ok {
+		return api.ExportItems401JSONResponse{UnauthorizedJSONResponse: unauthorized()}, nil
+	}
+
+	disposition := `attachment; filename="mykomora-items.csv"`
+
+	return api.ExportItems200TextcsvResponse{
+		Body:    h.service.ExportCSV(ctx, principal),
+		Headers: api.ExportItems200ResponseHeaders{ContentDisposition: &disposition},
+	}, nil
+}
+
 // GetItem returns one item.
 func (h *Handler) GetItem(ctx context.Context, request api.GetItemRequestObject) (api.GetItemResponseObject, error) {
 	principal, ok := auth.PrincipalFrom(ctx)
