@@ -45,7 +45,8 @@ rules:
   # runs before a tenant exists; reuse detection revokes an account's tokens
   # across every family it belongs to, on purpose; and the orphaned-object
   # cleanup sweeper (db/queries/attachments.sql's ListAllStorageKeys) needs
-  # every family's storage keys at once, with no per-family loop to run.
+  # every family's storage keys at once, with no per-family loop to run; and
+  # `product_cache` holds public barcode metadata shared by every family.
   - name: family-scoped
     message: >-
       query is not family-scoped: it must filter or insert on family_id
@@ -59,5 +60,7 @@ rules:
         "TouchUserLastSeen",
         "RevokeAllUserRefreshTokens",
         "UpdateUserLocale",
-        "ListAllStorageKeys"
+        "ListAllStorageKeys",
+        "GetProductCache",
+        "UpsertProductCache"
       ])

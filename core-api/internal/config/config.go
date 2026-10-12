@@ -65,6 +65,15 @@ type Config struct {
 	// never touch the network.
 	GoogleIssuerURL string `env:"GOOGLE_ISSUER_URL" envDefault:"https://accounts.google.com"`
 
+	// GoogleBooksAPIKey is optional: the Books API answers keyless at a low
+	// quota, and a key only raises it. The base URLs below exist so tests can
+	// point the barcode lookup at an httptest server.
+	GoogleBooksAPIKey    string `env:"GOOGLE_BOOKS_API_KEY"`
+	GoogleBooksURL       string `env:"GOOGLE_BOOKS_URL" envDefault:"https://www.googleapis.com/books/v1"`
+	OpenFoodFactsURL     string `env:"OPEN_FOOD_FACTS_URL" envDefault:"https://world.openfoodfacts.org"`
+	OpenBeautyFactsURL   string `env:"OPEN_BEAUTY_FACTS_URL" envDefault:"https://world.openbeautyfacts.org"`
+	OpenProductsFactsURL string `env:"OPEN_PRODUCTS_FACTS_URL" envDefault:"https://world.openproductsfacts.org"`
+
 	// S3Endpoint is reached from inside core-api's own network — LocalStack's
 	// Compose-internal hostname locally, the same as S3PublicEndpoint in
 	// production. core-api's own HeadObject/DeleteObject/ListObjects calls use

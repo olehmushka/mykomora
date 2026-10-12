@@ -187,6 +187,10 @@ type Querier interface {
 	GetItemPhoto(ctx context.Context, arg GetItemPhotoParams) (ItemPhoto, error)
 	GetLocation(ctx context.Context, arg GetLocationParams) (Location, error)
 	GetPerson(ctx context.Context, arg GetPersonParams) (Person, error)
+	// Barcode lookup cache. `product_cache` is global public metadata with no
+	// tenant column, so neither query takes family_id; both are on the
+	// family-scoped allowlist in sqlc.yaml.
+	GetProductCache(ctx context.Context, barcode string) (ProductCache, error)
 	// `rotated_to` is what makes reuse detectable: a non-NULL value means this
 	// token was already exchanged, and the presenter should not still have it.
 	GetRefreshTokenByHash(ctx context.Context, tokenHash []byte) (GetRefreshTokenByHashRow, error)
@@ -327,6 +331,7 @@ type Querier interface {
 	// locale preference belongs to the account, not to any one family it is a
 	// member of.
 	UpdateUserLocale(ctx context.Context, arg UpdateUserLocaleParams) (User, error)
+	UpsertProductCache(ctx context.Context, arg UpsertProductCacheParams) error
 	// Identity. `users` is the one global table in the schema: a Google account
 	// exists before it belongs to any family, so the queries here run *before* a
 	// tenant is known and cannot be scoped by one.

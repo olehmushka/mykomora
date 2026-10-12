@@ -622,6 +622,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/lookup/barcode/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description An EAN-8, UPC-A, EAN-13 or ISBN-10/13, digits only (ISBN-10 may end in X). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Look a barcode or ISBN up in public product catalogues
+         * @description Answers from a shared cache when it can, otherwise asks Open Food
+         *     Facts, Open Beauty Facts, Open Products Facts and (for ISBNs) Google
+         *     Books at once and takes the first hit. Not found is a normal 200 with
+         *     `found: false`, never an error — catalogue coverage outside books,
+         *     food and cosmetics is patchy.
+         */
+        get: operations["lookupBarcode"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dashboard": {
         parameters: {
             query?: never;
@@ -1424,6 +1451,18 @@ export interface components {
             updatedAt: string;
             /** Format: date-time */
             archivedAt?: string;
+        };
+        BarcodeProduct: {
+            code: string;
+            found: boolean;
+            name?: string;
+            /** @description The brand, or for a book its authors. */
+            brand?: string;
+            /** @description The catalogue's own category text, to help the user pick one. */
+            categoryHint?: string;
+            imageUrl?: string;
+            /** @description Which catalogue answered. */
+            source?: string;
         };
         CreateItemsBatchRequest: {
             items: components["schemas"]["CreateItemRequest"][];
@@ -2823,6 +2862,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SimilarItem"][];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    lookupBarcode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description An EAN-8, UPC-A, EAN-13 or ISBN-10/13, digits only (ISBN-10 may end in X). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The product, or a not-found answer. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BarcodeProduct"];
                 };
             };
             400: components["responses"]["BadRequest"];

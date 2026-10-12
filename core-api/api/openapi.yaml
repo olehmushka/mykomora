@@ -37,6 +37,8 @@ tags:
     description: Real possessions — in real places, optionally inside a container.
   - name: tags
     description: Family-defined labels an item can carry.
+  - name: lookup
+    description: Barcode and ISBN lookup.
   - name: uploads
     description: Presigned object-storage uploads (SPEC 6, "Photos and attachments").
 
@@ -1308,6 +1310,41 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/SimilarItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/lookup/barcode/{code}:
+    parameters:
+      - name: code
+        in: path
+        required: true
+        description: An EAN-8, UPC-A, EAN-13 or ISBN-10/13, digits only (ISBN-10 may end in X).
+        schema:
+          type: string
+          minLength: 8
+          maxLength: 14
+    get:
+      operationId: lookupBarcode
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [lookup]
+      summary: Look a barcode or ISBN up in public product catalogues
+      description: |
+        Answers from a shared cache when it can, otherwise asks Open Food
+        Facts, Open Beauty Facts, Open Products Facts and (for ISBNs) Google
+        Books at once and takes the first hit. Not found is a normal 200 with
+        `found: false`, never an error — catalogue coverage outside books,
+        food and cosmetics is patchy.
+      responses:
+        "200":
+          description: The product, or a not-found answer.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BarcodeProduct"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -2836,6 +2873,28 @@ components:
         archivedAt:
           type: string
           format: date-time
+
+    BarcodeProduct:
+      type: object
+      required: [code, found]
+      properties:
+        code:
+          type: string
+        found:
+          type: boolean
+        name:
+          type: string
+        brand:
+          type: string
+          description: The brand, or for a book its authors.
+        categoryHint:
+          type: string
+          description: The catalogue's own category text, to help the user pick one.
+        imageUrl:
+          type: string
+        source:
+          type: string
+          description: Which catalogue answered.
 
     CreateItemsBatchRequest:
       type: object

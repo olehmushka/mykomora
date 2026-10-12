@@ -4,10 +4,14 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { createBatch, type ActionState } from "@/app/items/batch/actions";
+import { lookupBarcodeAction } from "@/app/items/lookup-action";
 import type { FlatCategory, LocationOption } from "@/app/items/new/item-form";
+import { BarcodeScanner } from "@/components/barcode-scanner";
 import { FieldRow } from "@/components/ui/field-row";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+
+type Row = { key: number; name?: string; brand?: string };
 
 const SEASONS = ["summer", "winter", "demi", "all_season"] as const;
 
@@ -23,7 +27,9 @@ export function BatchForm({
   const t = useTranslations("Batch");
 
   const [locationId, setLocationId] = useState(locations[0]?.id ?? "");
-  const [rowKeys, setRowKeys] = useState([0, 1, 2]);
+  const [rows, setRows] = useState<Row[]>([{ key: 0 }, { key: 1 }, { key: 2 }]);
+  const [scanning, setScanning] = useState(false);
+  const [scanNote, setScanNote] = useState("");
   const nextKey = useRef(3);
   const focusLast = useRef(false);
   const rowsRef = useRef<HTMLDivElement>(null);
@@ -39,18 +45,49 @@ export function BatchForm({
     focusLast.current = false;
     const names = rowsRef.current?.querySelectorAll<HTMLInputElement>('input[name="rowName"]');
     names?.[names.length - 1]?.focus();
-  }, [rowKeys]);
+  }, [rows]);
 
-  function addRow() {
+  function addRow(prefill: Omit<Row, "key"> = {}) {
     focusLast.current = true;
-    setRowKeys((keys) => [...keys, nextKey.current++]);
+    setRows((current) => [...current, { key: nextKey.current++, ...prefill }]);
+  }
+
+  // A scanned product goes into the first still-empty row, so the three
+  // starter rows are used before new ones are appended.
+  async function onScan(code: string) {
+    setScanNote(t("looking", { code }));
+
+    const product = await lookupBarcodeAction(code);
+    if (!product.found || !product.name) {
+      setScanNote(t("notFoundScan", { code }));
+
+      return;
+    }
+
+    setScanNote(t("foundScan", { name: product.name }));
+    const filled = { name: product.name, brand: product.brand };
+
+    setRows((current) => {
+      const typed = new Set(
+        Array.from(
+          rowsRef.current?.querySelectorAll<HTMLInputElement>('input[name="rowName"]') ?? [],
+        )
+          .filter((input) => input.value.trim() !== "")
+          .map((input) => input.closest("[data-row]")?.getAttribute("data-row")),
+      );
+      const free = current.find((row) => !row.name && !typed.has(String(row.key)));
+
+      return free
+        ? current.map((row) => (row === free ? { ...row, ...filled } : row))
+        : [...current, { key: nextKey.current++, ...filled }];
+    });
   }
 
   function onRowKeyDown(event: React.KeyboardEvent<HTMLInputElement>, key: number) {
     if (event.key !== "Enter") return;
 
     event.preventDefault();
-    if (key === rowKeys[rowKeys.length - 1]) addRow();
+    if (key === rows[rows.length - 1]?.key) addRow();
   }
 
   const errorText =
@@ -132,13 +169,17 @@ export function BatchForm({
         </h2>
 
         <div ref={rowsRef} className="mt-2 flex flex-col gap-2">
-          {rowKeys.map((key) => (
+          {rows.map(({ key, name, brand }) => (
+            // Remounting when a scan fills the row is what makes the new
+            // defaultValue show; the row was empty, so nothing is lost.
             <div
-              key={key}
+              key={`${key}-${name ?? ""}`}
+              data-row={key}
               className="grid grid-cols-[1fr_5rem] gap-2 sm:grid-cols-[2fr_1fr_5rem_1fr_auto]"
             >
               <Input
                 name="rowName"
+                defaultValue={name}
                 aria-label={t("nameLabel")}
                 placeholder={t("nameLabel")}
                 maxLength={120}
@@ -162,14 +203,15 @@ export function BatchForm({
               />
               <Input
                 name="rowBrand"
+                defaultValue={brand}
                 aria-label={t("brandLabel")}
                 placeholder={t("brandLabel")}
                 onKeyDown={(event) => onRowKeyDown(event, key)}
               />
               <button
                 type="button"
-                onClick={() => setRowKeys((keys) => keys.filter((k) => k !== key))}
-                disabled={rowKeys.length === 1}
+                onClick={() => setRows((current) => current.filter((row) => row.key !== key))}
+                disabled={rows.length === 1}
                 aria-label={t("removeRow")}
                 className="mt-1 min-h-11 rounded-md border border-border px-3 text-sm hover:bg-border/60 disabled:opacity-40"
               >
@@ -181,11 +223,32 @@ export function BatchForm({
 
         <button
           type="button"
-          onClick={addRow}
+          onClick={() => addRow()}
           className="mt-3 inline-flex min-h-11 items-center rounded-md border border-border px-4 text-sm hover:bg-border/60"
         >
           {t("addRow")}
         </button>
+        <button
+          type="button"
+          onClick={() => setScanning((on) => !on)}
+          className="ml-2 mt-3 inline-flex min-h-11 items-center rounded-md border border-border px-4 text-sm hover:bg-border/60"
+        >
+          {t("scanButton")}
+        </button>
+
+        {scanning && (
+          <div className="mt-3">
+            <BarcodeScanner
+              onCode={(code) => void onScan(code)}
+              onClose={() => setScanning(false)}
+            />
+          </div>
+        )}
+        {scanNote && (
+          <p role="status" className="mt-2 text-sm text-muted">
+            {scanNote}
+          </p>
+        )}
       </section>
 
       {errorText && (
@@ -199,7 +262,7 @@ export function BatchForm({
         disabled={pending}
         className="inline-flex min-h-11 items-center justify-center rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-60 sm:self-start"
       >
-        {t("submit", { count: rowKeys.length })}
+        {t("submit", { count: rows.length })}
       </button>
     </form>
   );

@@ -322,6 +322,20 @@
       "all_season": "All seasons"
     },
     "empty": "Give at least one row a name.",
-    "unavailable": "mykomora could not reach its API. Try again in a moment."
+    "unavailable": "mykomora could not reach its API. Try again in a moment.",
+    "notFoundScan": "No match for {code}. Fill it in by hand.",
+    "foundScan": "Found: {name}",
+    "scanButton": "Scan barcode",
+    "looking": "Looking up {code}…"
+  },
+  "Scanner": {
+    "cameraUnavailable": "The camera is not available. Type or scan the code below instead.",
+    "manualLabel": "Barcode or ISBN",
+    "manualSubmit": "Look up",
+    "close": "Close scanner",
+    "scanButton": "Scan barcode",
+    "notFound": "No match for {code}. Fill it in by hand.",
+    "found": "Found: {name}",
+    "looking": "Looking up {code}…"
   }
 }

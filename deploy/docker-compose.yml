@@ -67,6 +67,7 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_REDIRECT_URL: ${GOOGLE_REDIRECT_URL}
+      GOOGLE_BOOKS_API_KEY: ${GOOGLE_BOOKS_API_KEY:-}
       # S3_ENDPOINT is reached from inside this network (the "s3" service
       # below); S3_PUBLIC_ENDPOINT is what a presigned URL is signed
       # against, because it has to be reachable from the browser, which

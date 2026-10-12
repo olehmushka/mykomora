@@ -322,6 +322,20 @@
       "all_season": "Цілий рік"
     },
     "empty": "Назвіть хоча б один рядок.",
-    "unavailable": "mykomora не може зв’язатися з API. Спробуйте за мить."
+    "unavailable": "mykomora не може зв’язатися з API. Спробуйте за мить.",
+    "notFoundScan": "Для {code} збігів немає. Заповніть вручну.",
+    "foundScan": "Знайдено: {name}",
+    "scanButton": "Сканувати штрихкод",
+    "looking": "Шукаю {code}…"
+  },
+  "Scanner": {
+    "cameraUnavailable": "Камера недоступна. Введіть або скануйте код нижче.",
+    "manualLabel": "Штрихкод або ISBN",
+    "manualSubmit": "Знайти",
+    "close": "Закрити сканер",
+    "scanButton": "Сканувати штрихкод",
+    "notFound": "Для {code} збігів немає. Заповніть вручну.",
+    "found": "Знайдено: {name}",
+    "looking": "Шукаю {code}…"
   }
 }

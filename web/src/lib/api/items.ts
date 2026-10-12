@@ -158,3 +158,9 @@ export function detachItemTag(itemId: string, tagId: string) {
     { method: "DELETE" },
   );
 }
+
+export type BarcodeProduct = components["schemas"]["BarcodeProduct"];
+
+export function lookupBarcode(code: string) {
+  return callApi<Ok<"lookupBarcode", 200>>(`/api/v1/lookup/barcode/${encodeURIComponent(code)}`);
+}
