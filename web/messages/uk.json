@@ -6,7 +6,8 @@
     "family": "Сім'я",
     "locations": "Місця",
     "taxonomy": "Категорії",
-    "tags": "Теги"
+    "tags": "Теги",
+    "shoppingList": "Покупки"
   },
   "LocaleSwitcher": {
     "label": "Мова",
@@ -224,10 +225,13 @@
       "updated": "Оновлено",
       "moved": "Переміщено",
       "status_changed": "Статус змінено",
-      "archived": "Заархівовано"
+      "archived": "Заархівовано",
+      "quantity_changed": "Кількість змінено"
     },
     "duplicateButton": "Дублювати",
-    "addManyInsideButton": "Додати багато всередину"
+    "addManyInsideButton": "Додати багато всередину",
+    "expiresLabel": "Термін придатності",
+    "paoHint": "Придатне {months} міс. після відкриття"
   },
   "Tags": {
     "heading": "Теги",
@@ -292,7 +296,8 @@
       "created": "Додано",
       "updated": "Змінено",
       "moved": "Переміщено",
-      "status_changed": "Змінено статус"
+      "status_changed": "Змінено статус",
+      "quantity_changed": "Змінено кількість"
     }
   },
   "Batch": {
@@ -395,5 +400,44 @@
       "tags": "Теги (через ;)",
       "traits": "Додаткові ознаки (JSON)"
     }
+  },
+  "Attention": {
+    "heading": "Потребує уваги",
+    "allClear": "Сьогодні нічого не потребує уваги.",
+    "summary": "Сповіщення за видами",
+    "kind": {
+      "expired": "Прострочено",
+      "expiring": "Скоро спливає термін",
+      "below_minimum": "Закінчується",
+      "warranty_ending": "Гарантія спливає"
+    },
+    "expiredOn": "Прострочено {date}",
+    "expiresOn": "Термін спливає {date}",
+    "warrantyEnds": "Гарантія діє до {date}",
+    "belowMinimum": "Залишилось {quantity} {unit}, мінімум {min}",
+    "snooze": "Відкласти",
+    "snoozeFor": {
+      "day": "На 1 день",
+      "week": "На тиждень",
+      "month": "На місяць"
+    },
+    "shoppingList": "Список покупок",
+    "snoozedSummary": "{count, plural, one {# відкладене сповіщення} few {# відкладені сповіщення} many {# відкладених сповіщень} other {# відкладеного сповіщення}}",
+    "until": "до {date}",
+    "undo": "Повернути"
+  },
+  "ShoppingList": {
+    "heading": "Список покупок",
+    "intro": "Усе, чого лишилося менше за мінімум.",
+    "empty": "Нічого не закінчується.",
+    "unavailable": "Список покупок зараз недоступний.",
+    "need": "Потрібно ще {shortfall} {unit} (мінімум {min})",
+    "copy": "Скопіювати текстом",
+    "copied": "Скопійовано",
+    "download": "Завантажити .txt"
+  },
+  "Quantity": {
+    "decrease": "Зменшити кількість",
+    "increase": "Збільшити кількість"
   }
 }

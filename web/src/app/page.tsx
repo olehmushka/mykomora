@@ -2,6 +2,8 @@ import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 
 import { AppShell } from "@/components/app-shell";
+import { AttentionPanel } from "@/components/attention-panel";
+import { listAlerts } from "@/lib/api/alerts";
 import { listFamilyMembers } from "@/lib/api/family";
 import { getDashboard, type Dashboard } from "@/lib/api/items";
 import { requireMe } from "@/lib/api/session";
@@ -18,10 +20,11 @@ export default async function Home() {
   const me = await requireMe("/");
   const t = await getTranslations("Dashboard");
   const locale = await getLocale();
-  const [members, dashboard, taxonomy] = await Promise.all([
+  const [members, dashboard, taxonomy, alerts] = await Promise.all([
     listFamilyMembers(),
     getDashboard(),
     getTaxonomy(),
+    listAlerts(),
   ]);
 
   const categoryNames = new Map(
@@ -35,6 +38,8 @@ export default async function Home() {
         Signed in as {me.user.displayName}
         {me.role === "owner" && " · owner"}
       </p>
+
+      {alerts.ok && <AttentionPanel data={alerts.data} locale={locale} />}
 
       <section aria-labelledby="inventory" className="mt-10">
         <h2 id="inventory" className="text-sm font-medium uppercase tracking-wide text-muted">
