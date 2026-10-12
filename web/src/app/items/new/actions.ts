@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 
 import {
   createItem,
+  findSimilarItems,
+  type SimilarItem,
   type CreateItemRequest,
   type ItemCondition,
   type ItemSeason,
@@ -155,4 +157,18 @@ export async function create(_: ActionState, form: FormData): Promise<ActionStat
 
   revalidatePath("/items");
   redirect(`/items/${result.data.id}`);
+}
+
+/**
+ * Duplicate hints for the name being typed. Advisory: an error or a miss
+ * simply shows nothing, because a hint must never stand between a person and
+ * saving the item.
+ */
+export async function findSimilarAction(name: string): Promise<SimilarItem[]> {
+  const trimmed = name.trim();
+  if (trimmed.length < 2) return [];
+
+  const result = await findSimilarItems(trimmed.slice(0, 120));
+
+  return result.ok ? result.data : [];
 }

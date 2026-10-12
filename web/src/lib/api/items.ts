@@ -17,20 +17,53 @@ type Ok<K extends keyof operations, S extends number> = operations[K] extends {
   ? T
   : never;
 
+export type ItemPage = components["schemas"]["ItemPage"];
+export type ItemHit = components["schemas"]["ItemHit"];
+export type ItemPlacement = components["schemas"]["ItemPlacement"];
+export type SimilarItem = components["schemas"]["SimilarItem"];
+export type Dashboard = components["schemas"]["Dashboard"];
+export type ItemSort = NonNullable<
+  NonNullable<operations["listItems"]["parameters"]["query"]>["sort"]
+>;
+
+/**
+ * Everything GET /items accepts. All strings are passed through as typed by
+ * the URL: core-api validates them, and a bad one comes back as a 400 the
+ * page can show rather than something this layer second-guesses.
+ */
 export type ListItemsParams = {
+  q?: string;
+  categoryId?: string;
   locationId?: string;
   roomId?: string;
-  categoryId?: string;
+  containerId?: string;
+  personId?: string;
+  tagId?: string;
+  status?: string;
+  season?: string;
+  condition?: string;
+  /** JSON object of filterable trait keys to required values. */
+  traits?: string;
+  expiresFrom?: string;
+  expiresTo?: string;
+  warrantyFrom?: string;
+  warrantyTo?: string;
+  priceMin?: string;
+  priceMax?: string;
+  sort?: string;
+  cursor?: string;
+  limit?: number;
   includeArchived?: boolean;
 };
 
-function itemsQuery(params: ListItemsParams): string {
+export function itemsQuery(params: ListItemsParams): string {
   const search = new URLSearchParams();
 
-  if (params.locationId) search.set("locationId", params.locationId);
-  if (params.roomId) search.set("roomId", params.roomId);
-  if (params.categoryId) search.set("categoryId", params.categoryId);
-  if (params.includeArchived) search.set("includeArchived", "true");
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === "" || value === false) continue;
+
+    search.set(key, String(value));
+  }
 
   const query = search.toString();
 
@@ -39,6 +72,16 @@ function itemsQuery(params: ListItemsParams): string {
 
 export function listItems(params: ListItemsParams = {}) {
   return callApi<Ok<"listItems", 200>>(`/api/v1/items${itemsQuery(params)}`);
+}
+
+export function findSimilarItems(name: string) {
+  return callApi<Ok<"findSimilarItems", 200>>(
+    `/api/v1/items/similar?name=${encodeURIComponent(name)}`,
+  );
+}
+
+export function getDashboard() {
+  return callApi<Ok<"getDashboard", 200>>("/api/v1/dashboard");
 }
 
 export function createItem(body: CreateItemRequest) {

@@ -4,14 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-M0–M3 have landed. core-api performs the Google OAuth2 exchange and issues its own tokens;
+M0–M5 have landed. core-api performs the Google OAuth2 exchange and issues its own tokens;
 `users`, `families`, `family_members`, `family_invites`, `refresh_tokens` and `people` exist
 (M1); `locations`, `rooms`, `categories` and `trait_defs` exist, seeded with all 23 built-in
 categories, with uk/en i18n (M2); `items`, `item_events`, `tags` and `item_tags` exist, with
 trait validation, containment, lifecycle and a transactional audit trail (M3). The web app has
 sign-in, family settings, invites, people, locations/rooms, the category browser, item
-create/edit/detail/move/status/contents/events, and tag management. Search, photos, batch entry
-and the rest of the post-M3 milestones have not started.
+create/edit/detail/move/status/contents/events, and tag management. M4 added photos and
+attachments; M5 added search, filters with keyset pagination, duplicate hints and the dashboard. Batch entry and the rest of the post-M5 milestones
+have not started.
 
 The domain is settled and written down. Treat these as the source of truth and read them before
 proposing domain changes:

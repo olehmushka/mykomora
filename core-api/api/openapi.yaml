@@ -1068,30 +1068,134 @@ paths:
         - sessionCookie: []
         - bearerToken: []
       tags: [items]
-      summary: The family's root items
+      summary: Browse and search the family's items
       description: |
-        Items with a parent are reached through their container's own
-        `/contents`, not this list: a nested item's place columns are
-        cosmetic (SPEC 4, "Containment").
+        With no `q` and only place filters, lists root items (a nested item's
+        place columns are cosmetic, SPEC 4 "Containment"). With `q` or any
+        other filter, nested items are included, and every hit carries the
+        container path and room it is found in.
+
+        Pagination is keyset: pass `nextCursor` back unchanged.
       parameters:
+        - name: q
+          in: query
+          required: false
+          description: Free text. Matched against name, brand, notes, size, serial number, season/condition words and traits, accent-insensitively and by word prefix.
+          schema:
+            type: string
+            maxLength: 200
+        - name: categoryId
+          in: query
+          required: false
+          description: Also matches every descendant category.
+          schema:
+            type: string
+            format: uuid
         - name: locationId
           in: query
           required: false
+          description: Matches the item's effective place, i.e. its root container's.
           schema:
             type: string
             format: uuid
         - name: roomId
           in: query
           required: false
+          description: Matches the item's effective place, i.e. its root container's.
           schema:
             type: string
             format: uuid
-        - name: categoryId
+        - name: containerId
+          in: query
+          required: false
+          description: Direct contents of this container.
+          schema:
+            type: string
+            format: uuid
+        - name: personId
           in: query
           required: false
           schema:
             type: string
             format: uuid
+        - name: tagId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/ItemStatus"
+        - name: season
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/ItemSeason"
+        - name: condition
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/ItemCondition"
+        - name: traits
+          in: query
+          required: false
+          description: A JSON object of `trait_defs` keys marked `filterable` and the values they must equal, e.g. `{"shoe_type":"boots"}`.
+          schema:
+            type: string
+            maxLength: 2000
+        - name: expiresFrom
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: expiresTo
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: warrantyFrom
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: warrantyTo
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: priceMin
+          in: query
+          required: false
+          schema:
+            type: number
+            format: double
+        - name: priceMax
+          in: query
+          required: false
+          schema:
+            type: number
+            format: double
+        - name: sort
+          in: query
+          required: false
+          description: Defaults to `relevance` when `q` is given, otherwise `created` (newest first). `expires` and `price` put items without a value last; `relevance` requires `q`.
+          schema:
+            type: string
+            enum: [relevance, created, name, expires, price]
+        - name: cursor
+          in: query
+          required: false
+          description: The `nextCursor` of the previous page, with the same filters and sort.
+          schema:
+            type: string
+            maxLength: 512
         - name: includeArchived
           in: query
           required: false
@@ -1106,22 +1210,15 @@ paths:
             format: int32
             default: 50
             maximum: 200
-        - name: offset
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int32
-            default: 0
       responses:
         "200":
-          description: Root items, most recently created first.
+          description: One page of hits.
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Item"
+                $ref: "#/components/schemas/ItemPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
     post:
@@ -1150,6 +1247,55 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+
+  /api/v1/items/similar:
+    get:
+      operationId: findSimilarItems
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: Existing items whose name is close to a new one
+      description: Duplicate hint for the create form. Advisory only; at most five.
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 120
+      responses:
+        "200":
+          description: Close matches, best first; empty when there are none.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SimilarItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/dashboard:
+    get:
+      operationId: getDashboard
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      tags: [items]
+      summary: Counts, value and recent activity for the family
+      responses:
+        "200":
+          description: The dashboard.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /api/v1/items/{itemId}:
     parameters:
@@ -2328,6 +2474,160 @@ components:
         sortOrder:
           type: integer
           format: int32
+
+    NamedRef:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+
+    ItemPlacement:
+      type: object
+      description: Where an item is found, resolved from its root container.
+      required: [location, containerPath]
+      properties:
+        location:
+          $ref: "#/components/schemas/NamedRef"
+        room:
+          $ref: "#/components/schemas/NamedRef"
+        spot:
+          type: string
+        containerPath:
+          type: array
+          description: Containers the item sits in, outermost first. Empty for a root item.
+          items:
+            $ref: "#/components/schemas/NamedRef"
+
+    ItemHit:
+      type: object
+      required: [item, placement]
+      properties:
+        item:
+          $ref: "#/components/schemas/Item"
+        placement:
+          $ref: "#/components/schemas/ItemPlacement"
+        thumbUrl:
+          type: string
+          format: uri
+          description: Presigned GET for the primary photo's thumbnail, absent when the item has none.
+
+    ItemPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ItemHit"
+        nextCursor:
+          type: string
+          description: Absent on the last page.
+
+    SimilarItem:
+      type: object
+      required: [id, name, categoryId, status, score]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        categoryId:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/ItemStatus"
+        score:
+          type: number
+          format: float
+
+    Dashboard:
+      type: object
+      required: [totalItems, byLocation, byCategory, value, recentEvents]
+      properties:
+        totalItems:
+          type: integer
+          format: int64
+        byLocation:
+          type: array
+          items:
+            $ref: "#/components/schemas/DashboardLocationCount"
+        byCategory:
+          type: array
+          items:
+            $ref: "#/components/schemas/DashboardCategoryCount"
+        value:
+          type: array
+          description: Purchase value of items still owned, one entry per currency; items without a price are not counted.
+          items:
+            $ref: "#/components/schemas/DashboardValue"
+        recentEvents:
+          type: array
+          items:
+            $ref: "#/components/schemas/DashboardEvent"
+
+    DashboardLocationCount:
+      type: object
+      required: [locationId, name, count]
+      properties:
+        locationId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        count:
+          type: integer
+          format: int64
+
+    DashboardCategoryCount:
+      type: object
+      required: [categoryId, count]
+      properties:
+        categoryId:
+          type: string
+          format: uuid
+        count:
+          type: integer
+          format: int64
+
+    DashboardValue:
+      type: object
+      required: [currency, total, itemCount]
+      properties:
+        currency:
+          type: string
+          description: Empty when the purchase had no currency recorded.
+        total:
+          type: number
+          format: double
+        itemCount:
+          type: integer
+          format: int64
+
+    DashboardEvent:
+      type: object
+      required: [id, itemId, itemName, type, actorUserId, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        itemId:
+          type: string
+          format: uuid
+        itemName:
+          type: string
+        type:
+          type: string
+        actorUserId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
 
     ItemStatus:
       type: string

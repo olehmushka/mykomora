@@ -495,6 +495,7 @@ type Item struct {
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 	ArchivedAt       pgtype.Timestamptz `json:"archived_at"`
+	SearchTsv        string             `json:"search_tsv"`
 }
 
 type ItemAttachment struct {

@@ -107,7 +107,7 @@ export default async function ItemDetailPage(props: PageProps<"/items/[itemId]">
     }),
   );
 
-  const containers = (rootsResult.ok ? rootsResult.data : [])
+  const containers = (rootsResult.ok ? rootsResult.data.items.map((hit) => hit.item) : [])
     .filter((candidate) => candidate.isContainer && candidate.id !== item.id)
     .map((candidate) => ({ id: candidate.id, name: candidate.name }));
 

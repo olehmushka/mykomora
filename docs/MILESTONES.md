@@ -195,6 +195,39 @@ Prove the entire toolchain end to end before writing any domain code.
 
 **Done when:** *«де зимові чоботи 32 розміру»* finds the item and names the box and the room, in under a second.
 
+> **Delivered, with five notes.**
+>
+> *Matching is "most of the words", not "all of them".* The milestone's own query, «де зимові
+> чоботи 32 розміру», contains words no item says ("де", "розміру"). Stopwords ("де", "розмір",
+> "size"…) are dropped, and an item must contain at least ⌈0.6·n⌉ of the remaining words, ranked by
+> how many it has plus trigram similarity of the name. Postgres has no Ukrainian stemmer, so words
+> are cut by hand before prefix matching (six letters or more lose two, four or five lose one):
+> "чоботи" becomes `чобо:*`. Numbers stay exact so "32" does not match "320".
+>
+> *Season and condition are searchable by word.* They are stored as English enum labels, yet people
+> type «зимові». `item_enum_keywords()` (migration 00010) maps each label to its Ukrainian and
+> English words inside the generated `search_tsv`; a new enum label has to be taught to it. The
+> document also contains `traits::text`, so JSON keys are searchable too — noise, but the only
+> option inside a generated column.
+>
+> *`GET /items` is the single list-and-search endpoint, and `offset` is gone.* Pagination is keyset
+> on `(sort_key, id)` with an opaque cursor that is rejected if replayed against a different sort.
+> A bare browse or a place-only filter still lists root items; any words or other filter searches
+> nested items too, and each hit carries its container path and room so the UI can say "Box ›
+> Bedroom · Flat". Location and room filters match the *effective* place (the root container's).
+> Trait filters are one JSON `traits` parameter, equality only, validated against the chosen
+> category's `filterable` fields; numeric ranges on traits are not built yet.
+>
+> *pgx needed a text codec for `tsvector`.* `SELECT *` and `RETURNING *` read the new column and pgx
+> has no binary codec for it. `postgres.ConfigurePool` registers one, and sqlc maps the column to
+> `string`; nothing in Go reads it.
+>
+> *Dashboard counts nested items under their root's location; value is per currency.* No
+> conversion between currencies (post-v1), and only items with a price that are still owned count.
+> Duplicate hints use trigram similarity ≥ 0.4 on the unaccented name, top five, advisory only.
+> Results paginate with a "Next page" link rather than infinite scroll. Search over 20k seeded
+> items measured ≈33 ms warm in the integration suite.
+
 ---
 
 ## M6 — Fast entry *(6–8 days — load-bearing, not optional)*

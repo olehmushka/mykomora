@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/olehmushka/mykomora/core-api/internal/api"
 	"github.com/olehmushka/mykomora/core-api/internal/auth"
@@ -35,6 +36,8 @@ import (
 // photo/attachment tests can simulate the client's upload before
 // confirming it.
 type fixture struct {
+	pool       *pgxpool.Pool
+	familyID   uuid.UUID
 	h          *items.Handler
 	storage    *fakeStorage
 	ctx        context.Context
@@ -107,6 +110,8 @@ func newFixture(t *testing.T) fixture {
 	fakeS3 := newFakeStorage()
 
 	return fixture{
+		pool:       database.Pool,
+		familyID:   session.Principal.FamilyID,
 		h:          items.NewHandler(items.NewService(queries, tx, fakeS3, log), log),
 		storage:    fakeS3,
 		ctx:        ctx,

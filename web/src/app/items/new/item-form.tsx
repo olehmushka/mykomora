@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { create, type ActionState } from "@/app/items/new/actions";
+import { NameInput } from "@/app/items/new/name-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FieldRow } from "@/components/ui/field-row";
 import { Input } from "@/components/ui/input";
@@ -125,7 +126,7 @@ export function ItemForm({
       )}
 
       <FieldRow label={t("nameLabel")} htmlFor="item-name">
-        <Input id="item-name" name="name" required maxLength={120} />
+        <NameInput />
       </FieldRow>
 
       <FieldRow label={t("categoryLabel")} htmlFor="item-category">
