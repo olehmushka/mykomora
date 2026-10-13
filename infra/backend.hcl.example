@@ -1,0 +1,8 @@
+# Copy to backend.hcl (git-ignored) and run:
+#   tofu init -backend-config=backend.hcl
+bucket = "mykomora-tfstate"
+endpoints = {
+  s3 = "https://<account-id>.r2.cloudflarestorage.com"
+}
+# Credentials for that bucket come from the environment:
+#   export AWS_ACCESS_KEY_ID=...   AWS_SECRET_ACCESS_KEY=...   (R2 API token, state bucket only)

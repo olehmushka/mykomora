@@ -1,0 +1,132 @@
+name: Deploy
+
+# Runs after CI succeeds on main: build the three images, push them to GHCR
+# tagged with the commit, then ask the VPS to roll to that tag. Can also be
+# started by hand (e.g. to redeploy or to roll back to an older sha-... tag).
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Commit SHA to build and deploy (default: tip of main)"
+        required: false
+
+# Two deploys must never overlap, and a newer one must not cancel one that is
+# half-way through a migration.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/olehmushka/mykomora
+
+jobs:
+  images:
+    name: images / ${{ matrix.image }}
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - image: core-api
+            context: core-api
+            target: runtime
+          - image: migrate
+            context: core-api
+            target: migrate
+          - image: web
+            context: web
+            target: runtime
+    steps:
+      - name: Resolve commit
+        id: tag
+        env:
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          INPUT_REF: ${{ inputs.ref }}
+        run: |
+          sha="${RUN_SHA:-${INPUT_REF:-$GITHUB_SHA}}"
+          echo "sha=$sha" >>"$GITHUB_OUTPUT"
+          echo "tag=sha-${sha:0:7}" >>"$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.tag.outputs.sha }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          target: ${{ matrix.target }}
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-${{ matrix.image }}:${{ steps.tag.outputs.tag }}
+            ${{ env.IMAGE_PREFIX }}-${{ matrix.image }}:latest
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+  deploy:
+    name: deploy / production
+    needs: images
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || inputs.ref || github.sha }}
+
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" >~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" >~/.ssh/known_hosts
+
+      # The compose file, Caddyfile and scripts travel with the commit, so a
+      # change to them deploys like any other. The server keeps only .env.prod
+      # (secrets) of its own.
+      - name: Sync deploy files
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          scp -i ~/.ssh/id_deploy -o IdentitiesOnly=yes \
+            deploy/docker-compose.prod.yml deploy/Caddyfile.prod \
+            deploy/deploy.sh deploy/backup.sh deploy/.env.prod.example \
+            "deploy@${HOST}:/opt/mykomora/deploy/"
+
+      - name: Roll out
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          TAG: ${{ needs.images.outputs.tag }}
+        run: |
+          ssh -i ~/.ssh/id_deploy -o IdentitiesOnly=yes "deploy@${HOST}" \
+            "/opt/mykomora/deploy/deploy.sh '${TAG}'"
+
+      - name: Smoke test
+        env:
+          DOMAIN: ${{ vars.DEPLOY_DOMAIN }}
+        run: curl --fail --silent --show-error --retry 5 --retry-delay 3 "https://${DOMAIN}/healthz"
