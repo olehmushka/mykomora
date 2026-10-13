@@ -1,0 +1,44 @@
+#cloud-config
+# First-boot setup only. Runs once; later changes go through deploy/deploy.sh.
+
+package_update: true
+package_upgrade: true
+packages:
+  - docker.io
+  - docker-compose-v2
+  - unattended-upgrades
+  - fail2ban
+  - curl
+
+users:
+  # You: full sudo, for maintenance.
+  - name: admin
+    groups: [sudo, docker]
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    lock_passwd: true
+    ssh_authorized_keys:
+      - ${admin_ssh_public_key}
+  # CI: can run docker and write /opt/mykomora/deploy, nothing else.
+  - name: deploy
+    groups: [docker]
+    shell: /bin/bash
+    lock_passwd: true
+    ssh_authorized_keys:
+      - ${deploy_ssh_public_key}
+
+write_files:
+  - path: /etc/ssh/sshd_config.d/99-hardening.conf
+    content: |
+      PermitRootLogin no
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+
+runcmd:
+  - mkdir -p /opt/mykomora/deploy
+  - chown -R deploy:deploy /opt/mykomora
+  # A little swap as a safety net for the 2 GB host.
+  - fallocate -l 1G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+  - echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  - systemctl enable --now docker fail2ban
+  - systemctl restart ssh
