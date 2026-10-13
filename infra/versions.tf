@@ -6,10 +6,6 @@ terraform {
       source  = "hetznercloud/hcloud"
       version = "~> 1.49"
     }
-    cloudflare = {
-      source  = "cloudflare/cloudflare"
-      version = "~> 5.0"
-    }
   }
 
   # State lives in a small R2 bucket created once by hand (infra/README.md).

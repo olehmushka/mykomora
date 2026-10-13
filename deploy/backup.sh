@@ -36,7 +36,7 @@ docker run --rm \
 	-e AWS_ACCESS_KEY_ID="$S3_ACCESS_KEY_ID" \
 	-e AWS_SECRET_ACCESS_KEY="$S3_SECRET_ACCESS_KEY" \
 	-e AWS_DEFAULT_REGION="${S3_REGION:-auto}" \
-	amazon/aws-cli:2 --endpoint-url "$S3_ENDPOINT" \
+	amazon/aws-cli:2.37.13 --endpoint-url "$S3_ENDPOINT" \
 	s3 cp "/backup/$file" "s3://${BACKUP_BUCKET}/postgres/$file" --only-show-errors
 
 echo "$(date -u +%FT%TZ) done: postgres/$file"
