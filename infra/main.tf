@@ -2,10 +2,6 @@ provider "hcloud" {
   token = var.hcloud_token
 }
 
-provider "cloudflare" {
-  api_token = var.cloudflare_api_token
-}
-
 resource "hcloud_ssh_key" "admin" {
   name       = "mykomora-admin"
   public_key = var.admin_ssh_public_key
