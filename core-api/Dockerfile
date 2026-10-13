@@ -2,7 +2,8 @@
 
 # core-api image. Three stages share one dependency layer:
 #   dev      -- live reload, source bind-mounted by Compose
-#   builder  -- static binary
+#   builder  -- static binaries (api, migrate)
+#   migrate  -- one-shot migration runner for production
 #   runtime  -- distroless, non-root (the default target)
 
 FROM golang:1.26-alpine AS base
@@ -27,7 +28,19 @@ FROM base AS builder
 COPY . .
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    go build -trimpath -ldflags="-s -w" -o /out/api ./cmd/api
+    go build -trimpath -ldflags="-s -w" -o /out/api ./cmd/api && \
+    go build -trimpath -ldflags="-s -w" -o /out/migrate ./cmd/migrate
+
+# --- migrate ---------------------------------------------------------------
+# One-shot production migration runner. cmd/migrate reads the .sql files from
+# db/migrations relative to the working directory, so they ship beside it.
+FROM gcr.io/distroless/static-debian12:nonroot AS migrate
+WORKDIR /
+COPY --from=builder /out/migrate /migrate
+COPY --from=builder /app/db/migrations /db/migrations
+USER nonroot:nonroot
+ENTRYPOINT ["/migrate"]
+CMD ["up"]
 
 # --- runtime ---------------------------------------------------------------
 FROM gcr.io/distroless/static-debian12:nonroot AS runtime
