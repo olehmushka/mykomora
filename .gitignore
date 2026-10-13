@@ -25,3 +25,11 @@ deploy/.env
 .vscode/*
 !.vscode/extensions.json
 *.swp
+
+# production secrets
+deploy/.env.prod
+infra/.terraform/
+infra/*.tfstate*
+infra/backend.hcl
+infra/terraform.tfvars
+infra/crash.log

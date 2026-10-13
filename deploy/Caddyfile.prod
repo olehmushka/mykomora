@@ -1,0 +1,53 @@
+# Production reverse proxy. Same routing as the dev Caddyfile; the difference is
+# a real hostname, which makes Caddy obtain and renew a Let's Encrypt
+# certificate on its own. Ports 80 and 443 must be reachable from the internet.
+#
+# The CSP is not set here: it belongs to the M10 hardening work.
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	log {
+		output stdout
+		format json
+	}
+
+	# core-api owns these paths. Keep this list in step with api/openapi.yaml.
+	#
+	# lb_try_duration is what makes a deploy invisible with a single replica:
+	# while a container is being replaced the connection is refused, and Caddy
+	# keeps retrying for up to 15 s instead of answering 502. Requests during the
+	# swap simply wait a moment.
+	handle /api/* {
+		reverse_proxy core-api:8081 {
+			lb_try_duration 15s
+			lb_try_interval 250ms
+		}
+	}
+
+	handle /healthz {
+		reverse_proxy core-api:8081 {
+			lb_try_duration 15s
+			lb_try_interval 250ms
+		}
+	}
+
+	# Everything else is the Next.js app.
+	handle {
+		reverse_proxy web:3000 {
+			lb_try_duration 15s
+			lb_try_interval 250ms
+		}
+	}
+}
