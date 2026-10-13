@@ -24,7 +24,7 @@ about €10 per year if you buy your own domain.
 | Photo storage | Where uploaded photos and files live | Cloudflare R2 | free up to 10 GB |
 | Sign-in | "Sign in with Google" | Google Cloud | free |
 | Deploy robot | Builds and ships your code on every merge | GitHub Actions | free |
-| OpenTofu | A tool on your laptop that creates the server and storage from the files in `infra/`, so you never click through consoles to build them | open source | free |
+| OpenTofu | A tool on your laptop that creates the server and firewall from the files in `infra/`, so you never click through the Hetzner console to build them | open source | free |
 
 Prices and screens change from time to time. If a button is named slightly
 differently, look for the closest match.
@@ -133,8 +133,9 @@ Back them up in your password manager. **Never commit these to git.**
 ## Part 5. Prepare Cloudflare storage for OpenTofu
 
 OpenTofu has to remember what it built (its "state"). It keeps that in a small
-private Cloudflare bucket. This bucket and two keys are the only things you
-create by clicking; OpenTofu does the rest.
+private Cloudflare bucket. OpenTofu builds the Hetzner server and firewall; the
+Cloudflare buckets for photos and backups you create by hand in Part 6 (it takes
+a few minutes and avoids a lot of token trouble).
 
 ### 5.1 The state bucket
 R2 Object Storage → **Create bucket** → name `mykomora-tfstate` → Create.
@@ -146,16 +147,7 @@ R2 → **Manage R2 API Tokens** (right side) → **Create API token**.
 - Create. Cloudflare shows an **Access Key ID** and a **Secret Access Key**.
   Save both. Call them **STATE KEY ID** and **STATE KEY SECRET**.
 
-### 5.3 A key for OpenTofu to create the other buckets
-Top-right profile icon → **My Profile → API Tokens → Create Token → Create
-Custom Token**.
-- Permissions (add two rows):
-  - **Account → Workers R2 Storage → Edit**
-  - **Account → API Tokens → Edit** (may be named "Account API Tokens")
-- Account resources: include your account.
-- Create, and **copy the token**. Call it **CLOUDFLARE TOKEN**.
-
-### 5.4 A passphrase that locks the state
+### 5.3 A passphrase that locks the state
 Make up a long random sentence or run `openssl rand -base64 24`. This encrypts
 OpenTofu's notes. **If you lose it, OpenTofu's state becomes unreadable** (you
 would have to import everything again by hand). Save it. Call it **STATE
@@ -163,7 +155,7 @@ PASSPHRASE**.
 
 ---
 
-## Part 6. Run OpenTofu to create the server and storage
+## Part 6. Create the server (OpenTofu) and the photo storage
 
 In a terminal, inside your copy of the repository:
 
@@ -183,10 +175,7 @@ endpoints = {
 ```
 
 Open **terraform.tfvars** and fill in:
-- `cloudflare_account_id` → your **ACCOUNT ID**
-- `domain` → **YOUR-ADDRESS**
-- `admin_key` line: paste the **entire contents** of `~/mykomora-keys/admin_key.pub`
-  into `admin_ssh_public_key`
+- `admin_ssh_public_key`: paste the **entire contents** of `~/mykomora-keys/admin_key.pub`
 - `deploy_ssh_public_key` → the entire contents of `deploy_key.pub`
 
 (Neither file contains secrets: both are meant to be public.)
@@ -198,7 +187,6 @@ and nothing is written to disk:
 export AWS_ACCESS_KEY_ID='<STATE KEY ID>'
 export AWS_SECRET_ACCESS_KEY='<STATE KEY SECRET>'
 export TF_VAR_hcloud_token='<HETZNER TOKEN>'
-export TF_VAR_cloudflare_api_token='<CLOUDFLARE TOKEN>'
 export TF_VAR_state_passphrase='<STATE PASSPHRASE>'
 ```
 
@@ -213,12 +201,10 @@ tofu plan
 ```
 
 `plan` is a preview: it lists what will be created and changes nothing. Read it.
-You should see roughly: an SSH key, an IP address, a firewall, a server, two
-buckets, a CORS rule, a lifecycle rule and an API token. If it shows an error
+You should see four things: an SSH key, an IP address, a firewall and a server. If it shows an error
 about the **server type**, run the Hetzner CLI or check the Hetzner price list
 for the cheapest 2 GB "shared vCPU" plan and set `server_type` in
-`terraform.tfvars`. If it complains about the **permission group** for R2,
-see "If something goes wrong" below.
+`terraform.tfvars`.
 
 When the preview looks right:
 
@@ -230,10 +216,34 @@ Type `yes`. After a minute or two it prints your outputs. Write these down:
 
 ```
 tofu output server_ipv4                  # the server's address, e.g. 95.216.1.2
-tofu output s3_endpoint
-tofu output s3_access_key_id
-tofu output -raw s3_secret_access_key    # a secret: password manager
 ```
+
+### Create the photo and backup storage (by hand, about 5 minutes)
+In Cloudflare → **R2 Object Storage**:
+
+1. **Create bucket** `mykomora-media` (location: Western Europe). Then create
+   `mykomora-backups` the same way.
+2. **mykomora-media → Settings → CORS Policy → Add**, and paste (replace
+   YOUR-ADDRESS):
+   ```json
+   [{"AllowedOrigins":["https://YOUR-ADDRESS"],"AllowedMethods":["GET","PUT"],"AllowedHeaders":["*"],"ExposeHeaders":["ETag"],"MaxAgeSeconds":3600}]
+   ```
+   This lets the browser upload photos directly to the bucket.
+3. **mykomora-backups → Settings → Object lifecycle rules → Add rule**: prefix
+   `postgres/`, delete objects 14 days after they are uploaded. This keeps two
+   weeks of backups and removes older ones.
+4. **Storage address.** In either bucket's **Settings** find **S3 API** and copy
+   the address. It looks like `https://<long-id>.r2.cloudflarestorage.com`; copy
+   only that part, without the bucket name after it. Call it **S3 ENDPOINT**.
+
+### Create the app's storage key (by hand, 2 minutes)
+The app needs its own key to read and write photos:
+1. R2 → **Manage R2 API Tokens → Create Account API token**.
+2. Permission: **Object Read & Write**. Under "Specify bucket(s)" choose
+   **mykomora-media** and **mykomora-backups** (both).
+3. Create. Cloudflare shows an **Access Key ID** and a **Secret Access Key**
+   (shown once). Save both in your password manager. Call them **APP KEY ID**
+   and **APP KEY SECRET**.
 
 The server needs another 2–3 minutes after this to finish installing itself.
 Test that you can get in:
@@ -318,9 +328,9 @@ cp deploy/.env.prod.example deploy/.env.prod
 | `POSTGRES_PASSWORD` | run `openssl rand -hex 24` and paste the result |
 | `APP_SECRET` | run `openssl rand -base64 48` and paste the result |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | from Part 8 |
-| `S3_ENDPOINT` | from `tofu output s3_endpoint` |
-| `S3_ACCESS_KEY_ID` | from `tofu output s3_access_key_id` |
-| `S3_SECRET_ACCESS_KEY` | from `tofu output -raw s3_secret_access_key` |
+| `S3_ENDPOINT` | **S3 ENDPOINT** (Part 6) |
+| `S3_ACCESS_KEY_ID` | **APP KEY ID** (Part 6) |
+| `S3_SECRET_ACCESS_KEY` | **APP KEY SECRET** (Part 6) |
 
 Leave `S3_REGION=auto`, the bucket names and the rest as they are.
 
@@ -389,7 +399,7 @@ and check that adding an item with a photo works.
 ## Part 12. Turn on the nightly backup
 
 The database is backed up every night to the private backup bucket, and old
-copies are removed after 14 days (OpenTofu already set that up).
+copies are removed after 14 days (the lifecycle rule you added in Part 6).
 
 ```
 ssh -i ~/mykomora-keys/admin_key admin@<server_ipv4>
@@ -440,7 +450,7 @@ writing the code to keep this in mind.
 |---|---|
 | `tofu init` fails with access denied | Re-check the `AWS_...` variables are from the **state** key (5.2), and `backend.hcl` has the right account ID. |
 | `tofu plan` complains about server type | Pick a currently available cheap 2 GB plan and set `server_type`. |
-| `tofu plan` finds no or several R2 permission groups | Easiest fix: in Cloudflare create an R2 API token by hand (Object Read & Write on `mykomora-media` and `mykomora-backups`) and use it instead; remove the token resource from `infra/r2.tf`. Ask for help if unsure. |
+| `tofu init` fails with "tls: handshake failure" talking to `r2.cloudflarestorage.com` | A VPN or your network is interfering. Turn the VPN off (or try your phone's hotspot) and retry. |
 | Can't `ssh` to the server | Wait 3 minutes after `tofu apply`. Use `-i ~/mykomora-keys/admin_key`. |
 | Browser shows a certificate warning | Your address doesn't point at the server yet (`dig +short YOUR-ADDRESS`), or you left the Cloudflare cloud orange. |
 | Google says "redirect_uri_mismatch" | The redirect in Part 8 must match exactly, including `https://` and the path. |
@@ -465,7 +475,7 @@ docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml log
 - [ ] Hetzner account + **HETZNER TOKEN**
 - [ ] Cloudflare account with R2 enabled, **ACCOUNT ID**
 - [ ] Bucket `mykomora-tfstate`, **STATE KEY ID / SECRET**
-- [ ] **CLOUDFLARE TOKEN** (R2 edit + API tokens edit)
+- [ ] Buckets `mykomora-media` and `mykomora-backups` with CORS and 14-day rule, **APP KEY ID / SECRET**
 - [ ] **STATE PASSPHRASE** (saved!)
 - [ ] An address: DuckDNS name or a bought domain
 - [ ] SSH keys: `admin_key`, `deploy_key` (+ `.pub`)

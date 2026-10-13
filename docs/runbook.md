@@ -1,7 +1,7 @@
 # Runbook: deploying mykomora on one small VPS
 
 Target: one Hetzner Cloud VPS (2 GB RAM, Helsinki), a free DuckDNS hostname,
-Cloudflare R2 for photos and backups, about €4–5 a month. The infrastructure is
+Cloudflare R2 for photos and backups, about €4–5 a month. The server is
 OpenTofu (`infra/`); deploys are GitHub Actions (`.github/workflows/deploy.yml`)
 running `deploy/deploy.sh` on the server.
 
@@ -34,8 +34,10 @@ breaks.
 
 ## 1. One-time setup
 
-1. **Infra:** follow `infra/README.md`. Result: server, firewall, buckets, CORS,
-   backup retention and R2 credentials.
+1. **Infra:** follow `infra/README.md` (server and firewall). Then create the R2
+   buckets by hand: `mykomora-media` (with CORS for your domain) and
+   `mykomora-backups` (14-day expiry on `postgres/`), plus an S3 key with
+   Object Read & Write on both (docs/deploy-guide.md, Part 6).
 2. **DuckDNS:** point `yourname.duckdns.org` at `tofu output server_ipv4`. The
    address is a primary IP, so it survives server rebuilds. Check with
    `dig +short yourname.duckdns.org` before the first deploy, or certificate
@@ -47,8 +49,8 @@ breaks.
    cp /opt/mykomora/deploy/.env.prod.example /opt/mykomora/deploy/.env.prod
    chmod 600 /opt/mykomora/deploy/.env.prod && chown deploy: /opt/mykomora/deploy/.env.prod
    ```
-   Fill every empty value (generators are in the file). `S3_*` values come from
-   `tofu output`.
+   Fill every empty value (generators are in the file). `S3_ENDPOINT` is the R2 "S3 API"
+   address; the key pair is the one you created by hand.
 4. **GitHub.** Repo > Settings:
    - Environment `production` (optionally with a required reviewer).
    - Secrets: `DEPLOY_HOST` (the IP or hostname), `DEPLOY_SSH_KEY` (private half
@@ -85,15 +87,15 @@ breaks.
 
 ## 3. Backups
 
-`backup.sh` dumps Postgres nightly to the backup bucket; the OpenTofu lifecycle
-rule deletes dumps after 14 days. Photos and attachments already live in R2 and
+`backup.sh` dumps Postgres nightly to the backup bucket; the R2 lifecycle
+rule you set deletes dumps after 14 days. Photos and attachments already live in R2 and
 are not copied.
 
 ### Restore rehearsal (do once before relying on it, and after big changes)
 ```
 # 1. fetch the latest dump
 docker run --rm -v "$PWD:/b" -e AWS_ACCESS_KEY_ID=... -e AWS_SECRET_ACCESS_KEY=... \
-  -e AWS_DEFAULT_REGION=auto amazon/aws-cli:2 --endpoint-url "$S3_ENDPOINT" \
+  -e AWS_DEFAULT_REGION=auto amazon/aws-cli:2.37.13 --endpoint-url "$S3_ENDPOINT" \
   s3 cp s3://mykomora-backups/postgres/<file>.dump /b/restore.dump
 
 # 2. restore into a scratch database
